@@ -1,5 +1,5 @@
 // ================================================================
-// AUTH.JS - Autenticación, Sesiones y Roles
+// AUTH.JS - Autenticación, Sesiones, Roles y Registro
 // ================================================================
 
 const SUPABASE_URL = 'https://chstqhjoizljlpegehdkn.supabase.co';
@@ -14,6 +14,7 @@ const Auth = {
   supabase: supabase
 };
 
+// FUNCIÓN DE INICIAR SESIÓN
 async function iniciarSesion(email, password) {
   try {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -27,13 +28,42 @@ async function iniciarSesion(email, password) {
       .eq('id', data.user.id)
       .single();
 
-    if (perfilError || !perfilData) throw new Error("No tienes perfil asignado.");
+    if (perfilError || !perfilData) throw new Error("No tienes perfil asignado en ninguna tienda.");
     if (!perfilData.activo) throw new Error("Usuario bloqueado remotamente.");
 
     Auth.perfil = perfilData;
     Auth.tienda = perfilData.tiendas;
     
     return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+// FUNCIÓN DE REGISTRAR NUEVA TIENDA Y ADMIN
+async function registrarTienda(email, password, nombreTienda) {
+  try {
+    // 1. Crear usuario en Supabase Auth
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
+    const userId = data.user.id;
+
+    // 2. Crear la Tienda en la base de datos
+    const { data: tiendaData, error: tiendaError } = await supabase
+      .from('tiendas')
+      .insert([{ nombre: nombreTienda, cfg: { tema: 'light', moneda: '$', nombre: nombreTienda } }])
+      .select()
+      .single();
+    if (tiendaError) throw tiendaError;
+
+    // 3. Crear el Perfil de Admin vinculado a esa tienda
+    const { error: perfilError } = await supabase
+      .from('perfiles')
+      .insert([{ id: userId, tienda_id: tiendaData.id, username: 'admin', rol: 'admin', activo: true }]);
+    if (perfilError) throw perfilError;
+
+    // 4. Iniciar sesión automáticamente
+    return await iniciarSesion(email, password);
   } catch (e) {
     return { success: false, error: e.message };
   }
