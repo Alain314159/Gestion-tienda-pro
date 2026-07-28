@@ -22,19 +22,31 @@
     <p class="loader-text">Cargando Tienda Pro...</p>
   </div>
 
+  <!-- Pantalla de Login / Registro -->
   <div v-else-if="!Auth.usuario" class="login-screen">
     <div class="login-box">
       <div class="login-logo"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#fff" stroke-width="2"><path d="M2 7l1.5-4h17L22 7"/><path d="M4 7v13a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V7"/><path d="M2 7h20"/></svg></div>
-      <h1>Tienda Pro</h1>
+      <h1>{{ esRegistro ? 'Crear Tienda' : 'Tienda Pro' }}</h1>
+      
+      <input v-if="esRegistro" v-model="loginForm.nombreTienda" type="text" placeholder="Nombre de tu tienda">
+      
       <input v-model="loginForm.email" type="email" placeholder="Correo electrónico">
-      <input v-model="loginForm.password" type="password" placeholder="Contraseña" @keyup.enter="iniciarSesion">
-      <button class="btn pri" @click="iniciarSesion">Iniciar Sesión</button>
+      <input v-model="loginForm.password" type="password" placeholder="Contraseña" @keyup.enter="esRegistro ? registrarTienda() : iniciarSesion()">
+      
+      <button class="btn pri" @click="esRegistro ? registrarTienda() : iniciarSesion()">
+        {{ esRegistro ? 'Registrar Tienda' : 'Iniciar Sesión' }}
+      </button>
+      
+      <button class="btn ghost" @click="esRegistro = !esRegistro">
+        {{ esRegistro ? '¿Ya tienes cuenta? Inicia sesión' : '¿Primera vez? Crea tu tienda' }}
+      </button>
     </div>
   </div>
 
+  <!-- App Principal -->
   <div v-else class="app-container">
     <header class="header no-print">
-      <h1><icon name="store" :size="20" color="#fff"></icon> {{cfg.nombre||'Tienda Pro'}}</h1>
+      <h1><icon name="store" :size="20" color="#fff"></icon> {{Auth.tienda.nombre || 'Tienda Pro'}}</h1>
       <div class="hacts">
         <button class="h-btn" @click="ir('ajustes')" aria-label="Ajustes">
           <icon name="settings" :size="18" color="#fff"></icon><span>Ajustes</span>
@@ -46,7 +58,11 @@
     </header>
 
     <main>
-      <!-- Aquí se inyectarán las vistas -->
+      <!-- Aquí se inyectarán las vistas en el siguiente paso -->
+      <div class="card">
+        <div class="card-title">Bienvenido, {{ Auth.perfil.username }}</div>
+        <p>La estructura de la Fase 2 está lista. Conectada a Supabase y funcionando Offline.</p>
+      </div>
     </main>
 
     <nav class="nav no-print">
