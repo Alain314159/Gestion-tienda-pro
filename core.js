@@ -29,13 +29,13 @@ const app = Vue.createApp({
   data() {
     return {
       cargando: true,
-      Auth: window.Auth, // Conecta el sistema de login
+      Auth: window.Auth,
       cfg: { tema: 'light', moneda: '$', nombre: 'Tienda Pro' },
       sec: 'dashboard',
       masAbierto: false,
       toast: { show: false, msg: '', type: 'ok', timer: null },
-      loginForm: { email: '', password: '' },
-      // Datos locales
+      loginForm: { email: '', password: '', nombreTienda: '' },
+      esRegistro: false, // Bandera para cambiar entre Login y Registro
       productos: [], lotes: [], ventas: [], carrito: [],
       busqVenta: '', focusVenta: false
     };
@@ -62,10 +62,12 @@ const app = Vue.createApp({
       this.toast.timer = setTimeout(() => { this.toast.show = false; }, 3000);
     },
     ir(s) { this.masAbierto = false; this.sec = s; },
+    
     async iniciarSesion() {
       this.cargando = true;
       const res = await window.iniciarSesion(this.loginForm.email, this.loginForm.password);
       if (res.success) {
+        this.cfg = this.Auth.tienda.cfg || this.cfg;
         await this.cargarDatosLocales();
         this.toastMsg('Bienvenido ' + this.Auth.perfil.username);
       } else {
@@ -73,21 +75,41 @@ const app = Vue.createApp({
       }
       this.cargando = false;
     },
+    
+    async registrarTienda() {
+      if (!this.loginForm.nombreTienda || !this.loginForm.email || !this.loginForm.password) {
+        return this.toastMsg('Completa todos los campos', 'bad');
+      }
+      this.cargando = true;
+      const res = await window.registrarTienda(this.loginForm.email, this.loginForm.password, this.loginForm.nombreTienda);
+      if (res.success) {
+        this.cfg = this.Auth.tienda.cfg || this.cfg;
+        await this.cargarDatosLocales();
+        this.toastMsg('¡Tienda creada con éxito!');
+      } else {
+        this.toastMsg(res.error, 'bad');
+      }
+      this.cargando = false;
+    },
+
     async cerrarSesion() {
       await window.cerrarSesion();
       this.sec = 'dashboard';
+      this.loginForm = { email: '', password: '', nombreTienda: '' };
       this.toastMsg('Sesión cerrada');
     },
+    
     async cargarDatosLocales() {
-      // Carga solo los datos de LA TIENDA del usuario logueado
       const tid = this.Auth.perfil.tienda_id;
       this.productos = await db.productos.where('tienda_id').equals(tid).toArray();
       this.lotes = await db.lotes.where('tienda_id').equals(tid).toArray();
       this.ventas = await db.ventas.where('tienda_id').equals(tid).toArray();
     },
+    
     stock(pid) {
       return this.lotes.filter(l => l.producto_id === pid).reduce((s, l) => s + (q(l.cantidad_inicial) - q(l.cantidad_vendida)), 0);
     },
+    
     agregarCarrito(p) {
       const ex = this.carrito.find(i => i.producto_id === p.id);
       if (ex) {
@@ -96,6 +118,7 @@ const app = Vue.createApp({
         this.carrito.push({ producto_id: p.id, nombre: p.nombre, precio: p.precio, cant: 1, unidad: p.unidad });
       }
     },
+    
     async procesarVenta() {
       try {
         const tid = this.Auth.perfil.tienda_id;
@@ -106,7 +129,6 @@ const app = Vue.createApp({
           const sub = m(it.precio) * q(it.cant);
           tot += sub;
           items.push({ producto_id: it.producto_id, nombre: it.nombre, cantidad: q(it.cant), precio: m(it.precio), subtotal: sub });
-          // Descontar stock FIFO (Simplificado para este paso)
           let rest = q(it.cant);
           const lotes = this.lotes.filter(l => l.producto_id === it.producto_id && (q(l.cantidad_inicial) - q(l.cantidad_vendida)) > 0);
           for (const l of lotes) {
@@ -114,7 +136,7 @@ const app = Vue.createApp({
             const disp = q(l.cantidad_inicial) - q(l.cantidad_vendida);
             const usar = Math.min(disp, rest);
             l.cantidad_vendida = q(l.cantidad_vendida) + usar;
-            l.sync_flag = 0; // Marcar para sincronizar
+            l.sync_flag = 0;
             await db.lotes.put(l);
             rest -= usar;
           }
@@ -127,17 +149,15 @@ const app = Vue.createApp({
           fecha: new Date().toISOString(),
           items: items,
           total: tot,
-          ganancia: 0, // Calcular en sync si es necesario
+          ganancia: 0,
           anulada: false,
-          sync_flag: 0 // Marcar para sincronizar
+          sync_flag: 0
         };
         
         await db.ventas.put(venta);
         this.ventas.unshift(venta);
         this.carrito = [];
         this.toastMsg('Venta exitosa: ' + this.fmt(tot));
-        
-        // Forzar sincronización en segundo plano
         SyncEngine.pushChanges();
       } catch (e) {
         this.toastMsg('Error: ' + e.message, 'bad');
@@ -145,7 +165,6 @@ const app = Vue.createApp({
     }
   },
   async mounted() {
-    // Verificar si ya hay sesión abierta al cargar la app
     const { data } = await Auth.supabase.auth.getSession();
     if (data.session) {
       Auth.usuario = data.session.user;
@@ -153,15 +172,15 @@ const app = Vue.createApp({
       if (perf && perf.activo) {
         Auth.perfil = perf;
         Auth.tienda = perf.tiendas;
+        this.cfg = perf.tiendas.cfg || this.cfg;
         await this.cargarDatosLocales();
       }
     }
     this.cargando = false;
-    SyncEngine.init(); // Iniciar motor de sincronización
+    SyncEngine.init();
   }
 });
 
-// Componente de Iconos SVG
 app.component('icon', {
   props: { name:String, size:{ type:[Number, String], default:22 }, color:{ type:String, default:'#2196F3' } },
   render() {
