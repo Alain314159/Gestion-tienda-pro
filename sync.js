@@ -21,7 +21,7 @@ const SyncEngine = {
           return { ...rest, tienda_id: Auth.perfil.tienda_id, usuario_id: Auth.perfil.id };
         });
 
-        const { error } = await supabase.from(t).upsert(recordsToPush);
+        const { error } = await Auth.supabase.from(t).upsert(recordsToPush);
         
         if (!error) {
           const ids = pending.map(r => r.id);
@@ -40,7 +40,7 @@ const SyncEngine = {
     try {
       const tables = ['productos', 'ventas', 'compras', 'lotes'];
       for (const t of tables) {
-        const { data, error } = await supabase.from(t).select('*').eq('tienda_id', Auth.perfil.tienda_id);
+        const { data, error } = await Auth.supabase.from(t).select('*').eq('tienda_id', Auth.perfil.tienda_id);
         if (data && data.length > 0) {
           const mapped = data.map(r => ({ ...r, sync_flag: 1 }));
           await db.table(t).bulkPut(mapped);

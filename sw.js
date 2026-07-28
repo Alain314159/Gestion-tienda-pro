@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tienda-pro-v2';
+const CACHE_NAME = 'tienda-pro-v3';
 const urlsToCache = [
   './',
   './index.html',
