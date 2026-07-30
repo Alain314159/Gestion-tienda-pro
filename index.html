@@ -68,7 +68,6 @@
 
   <!-- App principal -->
   <div v-else>
-    <div v-if="!online" class="banner off no-print">Sin conexión — los datos se guardan localmente</div>
     <div v-if="hayUpdate" class="banner upd no-print" @click="aplicarUpdate">Nueva versión disponible — tocar para actualizar</div>
 
     <header class="header no-print">
