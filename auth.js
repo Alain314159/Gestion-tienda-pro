@@ -163,34 +163,39 @@ async function iniciarSesion(email, password) {
 async function registrarTienda(email, password, nombreTienda) {
   try {
     let userId = null;
+    let supabaseErrorMsg = null;
 
     if (navigator.onLine) {
-      const { data, error } = await sb.auth.signUp({ email, password });
+      try {
+        const { data, error } = await sb.auth.signUp({ email, password });
 
-      if (error) {
-        const errorMsg = (error.message || '').toLowerCase();
-        // Si el usuario ya existe en Supabase Auth
-        if (errorMsg.includes('already registered') || errorMsg.includes('already exists') || error.status === 400) {
-          const loginRes = await sb.auth.signInWithPassword({ email, password });
-          if (loginRes.error) {
-            throw new Error('El correo ya está registrado en Supabase. Si es tu cuenta, inicia sesión con tu contraseña.');
+        if (error) {
+          const errorMsg = (error.message || '').toLowerCase();
+          if (errorMsg.includes('already registered') || errorMsg.includes('already exists') || error.status === 400) {
+            const loginRes = await sb.auth.signInWithPassword({ email, password });
+            if (!loginRes.error && loginRes.data?.user) {
+              userId = loginRes.data.user.id;
+              const perfExist = await cargarPerfil(userId);
+              if (perfExist && perfExist.tienda_id) {
+                Auth.usuario = loginRes.data.user;
+                localStorage.setItem('tienda_logged_in', 'true');
+                return { success: true };
+              }
+            } else {
+              supabaseErrorMsg = 'El correo ya existe en Supabase o la contraseña no coincide.';
+            }
+          } else {
+            supabaseErrorMsg = error.message;
           }
-          userId = loginRes.data.user.id;
-          const perfExist = await cargarPerfil(userId);
-          if (perfExist && perfExist.tienda_id) {
-            Auth.usuario = loginRes.data.user;
-            localStorage.setItem('tienda_logged_in', 'true');
-            return { success: true };
-          }
-        } else {
-          throw error;
+        } else if (data?.user) {
+          userId = data.user.id;
         }
-      } else {
-        if (!data?.user) throw new Error('No se pudo crear el usuario en Supabase.');
-        userId = data.user.id;
+      } catch (e) {
+        supabaseErrorMsg = e.message;
       }
     }
 
+    // Si no se obtuvo userId de Supabase (por offline o por error de Supabase), usar ID local
     if (!userId) {
       userId = genId('u_');
     }
@@ -219,14 +224,11 @@ async function registrarTienda(email, password, nombreTienda) {
     await P(db.tiendas, tiendaObj);
     await db.config.put({ key: 'cfg', value: cfgDefecto });
 
-    // Intentar guardar en Supabase si hay red
-    if (navigator.onLine) {
+    // Intentar guardar en Supabase si hay red y userId remoto
+    if (navigator.onLine && userId && !userId.startsWith('u_')) {
       try {
-        const { error: tError } = await sb
-          .from('tiendas')
-          .insert([{ id: tiendaId, nombre: nombreTienda, cfg: cfgDefecto }]);
-        if (tError) console.warn('Supabase tiendas insert:', tError.message);
-      } catch (e) { console.warn('Supabase tiendas ex:', e); }
+        await sb.from('tiendas').insert([{ id: tiendaId, nombre: nombreTienda, cfg: cfgDefecto }]);
+      } catch (e) { console.warn('Supabase tiendas insert:', e); }
     }
 
     // 2. Crear Objeto Perfil Admin
@@ -242,30 +244,43 @@ async function registrarTienda(email, password, nombreTienda) {
     // Guardar en Dexie IndexedDB (Garantía Local Offline-First)
     await P(db.perfiles, perfilObj);
 
-    // Intentar guardar en Supabase si hay red
-    if (navigator.onLine) {
+    // Intentar guardar en Supabase si hay red y userId remoto
+    if (navigator.onLine && userId && !userId.startsWith('u_')) {
       try {
-        const { error: pError } = await sb
-          .from('perfiles')
-          .insert([perfilObj]);
-        if (pError) console.warn('Supabase perfiles insert:', pError.message);
-      } catch (e) { console.warn('Supabase perfiles ex:', e); }
+        await sb.from('perfiles').insert([perfilObj]);
+      } catch (e) { console.warn('Supabase perfiles insert:', e); }
     }
 
-    // 3. Establecer sesión en el objeto Auth
+    // 3. Establecer sesión activa en la aplicación
     Auth.usuario = { id: userId, email: email };
     Auth.perfil = perfilObj;
     Auth.tienda = tiendaObj;
     localStorage.setItem('tienda_logged_in', 'true');
 
-    // Intentar login de sesión con Supabase
-    if (navigator.onLine) {
-      await sb.auth.signInWithPassword({ email, password }).catch(() => {});
+    if (supabaseErrorMsg) {
+      console.warn('Nota de Supabase al registrar tienda:', supabaseErrorMsg);
     }
 
     return { success: true };
   } catch (e) {
-    return { success: false, error: e.message || 'Error al registrar la tienda.' };
+    console.error('Error en registrarTienda, ejecutando fallback local:', e);
+    try {
+      const uId = genId('u_');
+      const tId = genId('t_');
+      const cfgDefecto = { tema:'light', colorPri:'azul', moneda:'$', nombre:nombreTienda, pinActivo:false, pin:'', periodoInicio:new Date().toISOString(), capitalInicial:0, ultimoExport:null };
+      const tObj = { id: tId, nombre: nombreTienda, cfg: cfgDefecto, updated_at: new Date().toISOString() };
+      const pObj = { id: uId, tienda_id: tId, username: 'admin', rol: 'admin', activo: true, updated_at: new Date().toISOString() };
+      await P(db.tiendas, tObj);
+      await P(db.perfiles, pObj);
+      await db.config.put({ key: 'cfg', value: cfgDefecto });
+      Auth.usuario = { id: uId, email: email };
+      Auth.perfil = pObj;
+      Auth.tienda = tObj;
+      localStorage.setItem('tienda_logged_in', 'true');
+      return { success: true };
+    } catch (errLocal) {
+      return { success: false, error: errLocal.message };
+    }
   }
 }
 

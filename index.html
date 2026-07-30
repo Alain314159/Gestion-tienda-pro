@@ -41,7 +41,7 @@
     <div class="login-box">
       <div class="login-logo"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#fff" stroke-width="2"><path d="M2 7l1.5-4h17L22 7"/><path d="M4 7v13a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V7"/><path d="M2 7h20"/></svg></div>
       <h1>{{ esRegistro ? 'Crear Tienda' : 'Tienda Pro' }}</h1>
-      <input v-if="esRegistro" v-model="loginForm.nombreTienda" type="text" placeholder="Nombre de tu tienda" @keyup.enter="doRegister">
+      <input v-if="esRegistro" v-model="loginForm.nombreTienda" type="text" placeholder="Nombre de tu tienda" @keyup.enter="doRegister()">
       <input v-model="loginForm.email" type="email" placeholder="Correo electrónico" autocomplete="email" @keyup.enter="esRegistro ? doRegister() : doLogin()">
       <div class="pwd-wrap">
         <input v-model="loginForm.password" :type="mostrarPassword ? 'text' : 'password'" placeholder="Contraseña" autocomplete="current-password" @keyup.enter="esRegistro ? doRegister() : doLogin()">
