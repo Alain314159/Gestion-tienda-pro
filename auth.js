@@ -2,7 +2,7 @@
 // AUTH.JS - Autenticación, Roles, Gestión de Empleados (Fase 2)
 // ================================================================
 
-const SUPABASE_URL = 'https://chstqhjoizljlpegehdkn.supabase.co';
+const SUPABASE_URL = 'https://chstqhjoizljlpgehdkn.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNoc3RxaGpvaXpsamxwZ2VoZGtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyNTczNDgsImV4cCI6MjEwMDgzMzM0OH0.SzSOCiBH4S89UjF0rwvNSg36PHANjLzYSyTy8GN3q9o';
 
 // ⚠️ Cliente: 'sb' para no chocar con window.supabase de la UMD
@@ -53,11 +53,15 @@ async function cargarPerfil(userId) {
       try {
         const { data, error } = await sb
           .from('perfiles')
-          .select('*, tiendas(*)')
+          .select('*')
           .eq('id', userId)
-          .single();
+          .maybeSingle();
         if (!error && data) {
           perf = data;
+          if (perf.tienda_id) {
+            const { data: tData } = await sb.from('tiendas').select('*').eq('id', perf.tienda_id).maybeSingle();
+            if (tData) perf.tiendas = tData;
+          }
           if (perf.tiendas) {
             Auth.tienda = perf.tiendas;
             await P(db.tiendas, perf.tiendas);
