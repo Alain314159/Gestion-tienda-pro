@@ -194,6 +194,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--pri);box-shadow:0 0 0
 .login-logo{background:var(--pri);width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;box-shadow:0 6px 18px rgba(var(--pri-rgb),.4)}
 .login-box h1{color:var(--txt);margin-bottom:1.5rem;font-size:1.5rem}
 
+.pwd-wrap{position:relative;width:100%;margin-bottom:.5rem}
+.pwd-wrap input{margin-bottom:0;padding-right:2.8rem}
+.toggle-pwd-btn{position:absolute;right:.5rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--mut);cursor:pointer;padding:.3rem;display:flex;align-items:center;justify-content:center;border-radius:.4rem;transition:color .2s}
+.toggle-pwd-btn:hover{color:var(--pri)}
+
 /* Skeleton loaders */
 .skeleton{background:linear-gradient(90deg,var(--brd) 25%,var(--bg) 50%,var(--brd) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:var(--r-sm)}
 .skeleton-title{width:150px;height:24px;margin-bottom:.8rem}

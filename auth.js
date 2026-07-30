@@ -21,9 +21,23 @@ window.sb = sb;
 async function restaurarSesion() {
   try {
     const { data } = await sb.auth.getSession();
-    if (!data.session) return null;
-    Auth.usuario = data.session.user;
-    return await cargarPerfil(data.session.user.id);
+    if (data?.session?.user) {
+      Auth.usuario = data.session.user;
+      return await cargarPerfil(data.session.user.id);
+    }
+    // Fallback local si el usuario inició sesión previamente pero está offline o sin sesión remota activa
+    if (localStorage.getItem('tienda_logged_in') === 'true') {
+      const perfilesLocales = await db.perfiles.toArray();
+      if (perfilesLocales.length > 0) {
+        const perf = perfilesLocales[0];
+        const tienda = await db.tiendas.get(perf.tienda_id);
+        Auth.usuario = { id: perf.id, email: perf.username + '@local' };
+        Auth.perfil = perf;
+        Auth.tienda = tienda || { id: perf.tienda_id, nombre: 'Mi Tienda' };
+        return perf;
+      }
+    }
+    return null;
   } catch (e) {
     console.warn('restaurarSesion:', e);
     return null;
@@ -32,25 +46,62 @@ async function restaurarSesion() {
 
 async function cargarPerfil(userId) {
   try {
-    const { data: perf, error } = await sb
-      .from('perfiles')
-      .select('*, tiendas(*)')
-      .eq('id', userId)
-      .single();
-    if (error || !perf) {
-      console.warn('No se pudo cargar perfil:', error?.message);
+    let perf = null;
+
+    // 1. Intentar desde Supabase si hay red
+    if (navigator.onLine) {
+      try {
+        const { data, error } = await sb
+          .from('perfiles')
+          .select('*, tiendas(*)')
+          .eq('id', userId)
+          .single();
+        if (!error && data) {
+          perf = data;
+          if (perf.tiendas) {
+            Auth.tienda = perf.tiendas;
+            await P(db.tiendas, perf.tiendas);
+          }
+          await P(db.perfiles, perf);
+        } else if (error) {
+          console.warn('No se pudo cargar perfil de Supabase:', error.message);
+        }
+      } catch (e) {
+        console.warn('Error conectando a Supabase al cargar perfil:', e);
+      }
+    }
+
+    // 2. Fallback a IndexedDB local
+    if (!perf) {
+      perf = await db.perfiles.get(userId);
+      if (perf) {
+        const tienda = await db.tiendas.get(perf.tienda_id);
+        if (tienda) {
+          perf.tiendas = tienda;
+          Auth.tienda = tienda;
+        }
+      }
+    }
+
+    if (!perf) {
+      console.warn('Perfil no encontrado ni en Supabase ni en IndexedDB para:', userId);
       return null;
     }
+
     if (!perf.activo) {
-      // Punto 46: Borrado remoto
-      await sb.auth.signOut();
+      try { await sb.auth.signOut(); } catch(e) {}
+      localStorage.removeItem('tienda_logged_in');
       Auth.usuario = null;
       Auth.perfil = null;
       Auth.tienda = null;
       return { bloqueado: true };
     }
+
     Auth.perfil = perf;
-    Auth.tienda = perf.tiendas;
+    if (!Auth.tienda && perf.tiendas) {
+      Auth.tienda = perf.tiendas;
+    }
+    localStorage.setItem('tienda_logged_in', 'true');
     return perf;
   } catch (e) {
     console.warn('cargarPerfil:', e);
@@ -60,13 +111,46 @@ async function cargarPerfil(userId) {
 
 async function iniciarSesion(email, password) {
   try {
-    const { data, error } = await sb.auth.signInWithPassword({ email, password });
-    if (error) throw new Error('Correo o contraseña incorrectos.');
-    Auth.usuario = data.user;
-    const perf = await cargarPerfil(data.user.id);
-    if (!perf) throw new Error('No tienes perfil asignado en ninguna tienda.');
-    if (perf.bloqueado) throw new Error('Tu usuario fue desactivado remotamente. Contacta al administrador.');
-    return { success: true };
+    let user = null;
+
+    if (navigator.onLine) {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) {
+        console.warn('signInWithPassword error:', error.message);
+      } else {
+        user = data.user;
+      }
+    } else {
+      const sessionRes = await sb.auth.getSession();
+      if (sessionRes?.data?.session?.user) {
+        user = sessionRes.data.session.user;
+      }
+    }
+
+    // Si tenemos usuario remoto
+    if (user) {
+      Auth.usuario = user;
+      const perf = await cargarPerfil(user.id);
+      if (perf?.bloqueado) throw new Error('Tu usuario fue desactivado remotamente. Contacta al administrador.');
+      if (perf) {
+        localStorage.setItem('tienda_logged_in', 'true');
+        return { success: true };
+      }
+    }
+
+    // Intentar login con datos locales si offline o si no encontró perfil en Supabase
+    const perfilesLocales = await db.perfiles.toArray();
+    if (perfilesLocales.length > 0) {
+      const perf = perfilesLocales[0];
+      const tienda = await db.tiendas.get(perf.tienda_id);
+      Auth.usuario = { id: perf.id, email: email };
+      Auth.perfil = perf;
+      Auth.tienda = tienda || { id: perf.tienda_id, nombre: 'Mi Tienda' };
+      localStorage.setItem('tienda_logged_in', 'true');
+      return { success: true };
+    }
+
+    throw new Error('Correo o contraseña incorrectos, o no existe la tienda asignada.');
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -74,34 +158,116 @@ async function iniciarSesion(email, password) {
 
 async function registrarTienda(email, password, nombreTienda) {
   try {
-    const { data, error } = await sb.auth.signUp({ email, password });
-    if (error) throw error;
-    const userId = data.user.id;
+    let userId = null;
 
-    // 1. Crear tienda
-    const cfgDefecto = { tema:'light', colorPri:'azul', moneda:'$', nombre:nombreTienda, pinActivo:false, pin:'', periodoInicio:new Date().toISOString(), capitalInicial:0, ultimoExport:null };
-    const { data: tiendaData, error: tiendaError } = await sb
-      .from('tiendas')
-      .insert([{ nombre: nombreTienda, cfg: cfgDefecto }])
-      .select()
-      .single();
-    if (tiendaError) throw tiendaError;
+    if (navigator.onLine) {
+      const { data, error } = await sb.auth.signUp({ email, password });
 
-    // 2. Crear perfil admin
-    const { error: perfilError } = await sb
-      .from('perfiles')
-      .insert([{ id: userId, tienda_id: tiendaData.id, username: 'admin', rol: 'admin', activo: true }]);
-    if (perfilError) throw perfilError;
+      if (error) {
+        const errorMsg = (error.message || '').toLowerCase();
+        // Si el usuario ya existe en Supabase Auth
+        if (errorMsg.includes('already registered') || errorMsg.includes('already exists') || error.status === 400) {
+          const loginRes = await sb.auth.signInWithPassword({ email, password });
+          if (loginRes.error) {
+            throw new Error('El correo ya está registrado en Supabase. Si es tu cuenta, inicia sesión con tu contraseña.');
+          }
+          userId = loginRes.data.user.id;
+          const perfExist = await cargarPerfil(userId);
+          if (perfExist && perfExist.tienda_id) {
+            Auth.usuario = loginRes.data.user;
+            localStorage.setItem('tienda_logged_in', 'true');
+            return { success: true };
+          }
+        } else {
+          throw error;
+        }
+      } else {
+        if (!data?.user) throw new Error('No se pudo crear el usuario en Supabase.');
+        userId = data.user.id;
+      }
+    }
 
-    // 3. Auto-login
-    return await iniciarSesion(email, password);
+    if (!userId) {
+      userId = genId('u_');
+    }
+
+    // 1. Crear Objeto Tienda
+    const tiendaId = genId('t_');
+    const cfgDefecto = {
+      tema: 'light',
+      colorPri: 'azul',
+      moneda: '$',
+      nombre: nombreTienda,
+      pinActivo: false,
+      pin: '',
+      periodoInicio: new Date().toISOString(),
+      capitalInicial: 0,
+      ultimoExport: null
+    };
+    const tiendaObj = {
+      id: tiendaId,
+      nombre: nombreTienda,
+      cfg: cfgDefecto,
+      updated_at: new Date().toISOString()
+    };
+
+    // Guardar en Dexie IndexedDB (Garantía Local Offline-First)
+    await P(db.tiendas, tiendaObj);
+    await db.config.put({ key: 'cfg', value: cfgDefecto });
+
+    // Intentar guardar en Supabase si hay red
+    if (navigator.onLine) {
+      try {
+        const { error: tError } = await sb
+          .from('tiendas')
+          .insert([{ id: tiendaId, nombre: nombreTienda, cfg: cfgDefecto }]);
+        if (tError) console.warn('Supabase tiendas insert:', tError.message);
+      } catch (e) { console.warn('Supabase tiendas ex:', e); }
+    }
+
+    // 2. Crear Objeto Perfil Admin
+    const perfilObj = {
+      id: userId,
+      tienda_id: tiendaId,
+      username: 'admin',
+      rol: 'admin',
+      activo: true,
+      updated_at: new Date().toISOString()
+    };
+
+    // Guardar en Dexie IndexedDB (Garantía Local Offline-First)
+    await P(db.perfiles, perfilObj);
+
+    // Intentar guardar en Supabase si hay red
+    if (navigator.onLine) {
+      try {
+        const { error: pError } = await sb
+          .from('perfiles')
+          .insert([perfilObj]);
+        if (pError) console.warn('Supabase perfiles insert:', pError.message);
+      } catch (e) { console.warn('Supabase perfiles ex:', e); }
+    }
+
+    // 3. Establecer sesión en el objeto Auth
+    Auth.usuario = { id: userId, email: email };
+    Auth.perfil = perfilObj;
+    Auth.tienda = tiendaObj;
+    localStorage.setItem('tienda_logged_in', 'true');
+
+    // Intentar login de sesión con Supabase
+    if (navigator.onLine) {
+      await sb.auth.signInWithPassword({ email, password }).catch(() => {});
+    }
+
+    return { success: true };
   } catch (e) {
-    return { success: false, error: e.message };
+    return { success: false, error: e.message || 'Error al registrar la tienda.' };
   }
 }
 
 async function cerrarSesion() {
   try { await sb.auth.signOut(); } catch(e) {}
+  localStorage.removeItem('tienda_logged_in');
   Auth.usuario = null;
   Auth.perfil = null;
   Auth.tienda = null;

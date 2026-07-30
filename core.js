@@ -118,6 +118,7 @@ const app = Vue.createApp({
 
       // Login
       esRegistro: false,
+      mostrarPassword: false,
       loginForm: { email:'', password:'', nombreTienda:'' }
     };
   },
