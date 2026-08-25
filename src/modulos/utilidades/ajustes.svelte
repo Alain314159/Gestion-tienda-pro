@@ -1,10 +1,8 @@
 <script>
   import { onMount } from 'svelte';
   import { getDB } from '../../core/db.js';
-  import { bus } from '../../core/bus.js';
-  import { avisar, confirmar, preguntar } from '../../core/store.svelte.js';
-  import { actualizarCfg } from '../../core/appstate.svelte.js';
-  import { alternarTema } from '../../core/store.svelte.js';
+  import { avisar, confirmar, preguntar, ui, alternarTema } from '../../core/store.svelte.js';
+  import { actualizarCfg, app } from '../../core/appstate.svelte.js';
   import Icono from '../../core/Icono.svelte';
 
   export const manifiesto = {
@@ -16,23 +14,8 @@
     tablas: {}
   };
 
-  let ui = $state({ tema: 'light' });
-  let cfg = $state({ pin: null });
   let contadores = $state({ productos: 0, ventas: 0, compras: 0 });
   let backupAuto = $state(null);
-
-  async function cargarConfig() {
-    const db = getDB();
-    const cfgData = await db.config.toArray();
-    if (cfgData.length > 0) {
-      cfg = cfgData[0];
-    }
-    const uiData = await db.ui.toArray();
-    if (uiData.length > 0) {
-      ui = uiData[0];
-    }
-    backupAuto = localStorage.getItem('tp-backup-auto');
-  }
 
   async function cargarContadores() {
     const db = getDB();
@@ -43,7 +26,6 @@
 
   async function cambiarTema() {
     await alternarTema();
-    await cargarConfig();
   }
 
   async function cambiarPin() {
@@ -57,7 +39,6 @@
     }
     await actualizarCfg({ pin: pin1 });
     avisar('PIN actualizado', 'ok');
-    await cargarConfig();
   }
 
   async function quitarPin() {
@@ -65,7 +46,6 @@
     if (!ok) return;
     await actualizarCfg({ pin: null });
     avisar('PIN eliminado', 'ok');
-    await cargarConfig();
   }
 
   async function exportarRespaldo() {
@@ -74,13 +54,8 @@
     for (const table of db.tables) {
       tablas[table.name] = await table.toArray();
     }
-    const data = {
-      version: 6,
-      fecha: Date.now(),
-      tablas
-    };
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
+    const data = { version: 6, fecha: Date.now(), tablas };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -93,15 +68,12 @@
   async function importarDatos(e) {
     const file = e.target.files[0];
     if (!file) return;
-    const text = await file.text();
-    const data = JSON.parse(text);
+    const data = JSON.parse(await file.text());
     const ok = await confirmar('Importar', 'Se reemplazan TODOS los datos actuales');
     if (!ok) return;
     const db = getDB();
     for (const [nombre, filas] of Object.entries(data.tablas)) {
-      if (db[nombre]) {
-        await db[nombre].bulkPut(filas);
-      }
+      if (db[nombre]) await db[nombre].bulkPut(filas);
     }
     avisar('Datos importados', 'ok');
     setTimeout(() => location.reload(), 1000);
@@ -110,22 +82,19 @@
   async function backupAhora() {
     const db = getDB();
     const tablas = {};
-    for (const table of db.tables) {
-      tablas[table.name] = await table.toArray();
-    }
-    const data = {
-      version: 6,
-      fecha: Date.now(),
-      tablas
-    };
-    localStorage.setItem('tp-backup-auto', JSON.stringify(data));
+    for (const table of db.tables) tablas[table.name] = await table.toArray();
+    localStorage.setItem('tp-backup-auto', JSON.stringify({ version: 6, fecha: Date.now(), tablas }));
     backupAuto = new Date().toISOString();
     avisar('Backup guardado', 'ok');
   }
 
   onMount(async () => {
-    await cargarConfig();
     await cargarContadores();
+    const ba = localStorage.getItem('tp-backup-auto');
+    if (ba) {
+      try { backupAuto = new Date(JSON.parse(ba).fecha).toISOString(); } 
+      catch(e) { backupAuto = ba; }
+    }
   });
 </script>
 
@@ -135,8 +104,7 @@
     <div class="item">
       <label class="switch">
         <input type="checkbox" checked={ui.tema === 'dark'} on:change={cambiarTema} />
-        <i></i>
-        Modo oscuro
+        <i></i> Modo oscuro
       </label>
     </div>
   </div>
@@ -149,7 +117,7 @@
         <button class="btn sec sm" on:click={cambiarPin}>
           <Icono nombre="edit" size={16} /> Cambiar PIN
         </button>
-        {#if cfg.pin}
+        {#if app.cfg?.pin}
           <button class="btn dgr sm" on:click={quitarPin}>
             <Icono nombre="trash" size={16} /> Quitar PIN
           </button>
@@ -172,9 +140,7 @@
       </div>
     </div>
     <div class="item">
-      <div class="mut">
-        Último backup automático: {backupAuto ? new Date(backupAuto).toLocaleString() : 'Nunca'}
-      </div>
+      <div class="mut">Último backup automático: {backupAuto ? new Date(backupAuto).toLocaleString() : 'Nunca'}</div>
       <button class="btn sec sm" on:click={backupAhora}>
         <Icono nombre="save" size={16} /> Hacer backup ahora
       </button>
