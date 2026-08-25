@@ -50,7 +50,7 @@
     }, 0);
   }
 
-  let saldoCaja = $derived.by(() => {
+  let saldoCaja = $derived(() => {
     const cap = n(app.cfg?.capitalInicial);
     const ap = movsCaja.filter(m => m.tipo === 'aporte').reduce((a, m) => a + n(m.monto), 0);
     const re = movsCaja.filter(m => m.tipo === 'retiro').reduce((a, m) => a + n(m.monto), 0);
@@ -158,28 +158,28 @@
 <div class="modulo">
   <div class="card">
     <div class="tit">Patrimonio Total</div>
-    <div class="big pos">{dinero(patrimonioTotal)}</div>
-    <div class="mut">Capital {dinero(capitalTotal)} · Gan. acum. {dinero(gananciasAcumuladas)}</div>
+    <div class="big pos">{dinero(patrimonioTotal())}</div>
+    <div class="mut">Capital {dinero(capitalTotal())} · Gan. acum. {dinero(gananciasAcumuladas())}</div>
   </div>
 
   <div class="card">
     <div class="tit">Resumen contable</div>
     <div class="list">
-      <div class="item"><div class="t">Capital inicial</div><div>{dinero(capitalInicial)}</div></div>
-      <div class="item"><div class="t">Aportes</div><div class="pos">+{dinero(aportesPatrimonio)}</div></div>
-      <div class="item" style="font-weight:700"><div class="t">= CAPITAL</div><div>{dinero(capitalTotal)}</div></div>
+      <div class="item"><div class="t">Capital inicial</div><div>{dinero(capitalInicial())}</div></div>
+      <div class="item"><div class="t">Aportes</div><div class="pos">+{dinero(aportesPatrimonio())}</div></div>
+      <div class="item" style="font-weight:700"><div class="t">= CAPITAL</div><div>{dinero(capitalTotal())}</div></div>
       <hr class="sep" />
-      <div class="item"><div class="t">Caja</div><div>{dinero(saldoCaja)}</div></div>
+      <div class="item"><div class="t">Caja</div><div>{dinero(saldoCaja())}</div></div>
       <div class="item"><div class="t">Inventario</div><div>{dinero(valorInventario())}</div></div>
-      <div class="item" style="font-weight:700"><div class="t">= ACTIVOS</div><div>{dinero(saldoCaja + valorInventario())}</div></div>
+      <div class="item" style="font-weight:700"><div class="t">= ACTIVOS</div><div>{dinero(saldoCaja() + valorInventario())}</div></div>
       <hr class="sep" />
-      <div class="item"><div class="t">Ganancia bruta</div><div>{dinero(ventasPeriodo)}</div></div>
-      <div class="item"><div class="t">Gastos operativos</div><div class="neg">-{dinero(gastosOpPeriodo)}</div></div>
-      <div class="item" style="font-weight:700"><div class="t">= Ganancia neta (período)</div><div class="pos">{dinero(gananciaNetaPeriodo)}</div></div>
+      <div class="item"><div class="t">Ganancia bruta</div><div>{dinero(ventasPeriodo())}</div></div>
+      <div class="item"><div class="t">Gastos operativos</div><div class="neg">-{dinero(gastosOpPeriodo())}</div></div>
+      <div class="item" style="font-weight:700"><div class="t">= Ganancia neta (período)</div><div class="pos">{dinero(gananciaNetaPeriodo())}</div></div>
       <hr class="sep" />
       <div class="item" style="background:var(--sf);font-weight:700">
         <div class="t">DISPONIBLE PARA RETIRO</div>
-        <div class="pos">{dinero(gananciaDisponible)}</div>
+        <div class="pos">{dinero(gananciaDisponible())}</div>
       </div>
     </div>
   </div>
@@ -204,9 +204,9 @@
     <div class="mut" style="margin-bottom:0.5rem">
       Al cerrar, los contadores del inicio se reinician. El historial se conserva y la ganancia se acumula.
     </div>
-    <div class="mut">Período actual: desde {fmtFecha(periodoInicio)}</div>
+    <div class="mut">Período actual: desde {fmtFecha(periodoInicio())}</div>
     <div class="mut" style="margin-top:0.25rem">
-      Ventas {dinero(ventasPeriodo)} · Compras {dinero(comprasPeriodo)} · Ganancia {dinero(gananciaNetaPeriodo)}
+      Ventas {dinero(ventasPeriodo())} · Compras {dinero(comprasPeriodo())} · Ganancia {dinero(gananciaNetaPeriodo())}
     </div>
     <button class="btn dgr" style="margin-top:0.75rem;width:100%" on:click={cerrarPeriodo}>
       <Icono nombre="check" size={16} /> Cerrar Período y Empezar Nuevo
@@ -277,7 +277,7 @@
     <div class="mask cent" on:click={() => modalAbierto = null} on:keydown={(e) => e.key === 'Escape' && (modalAbierto = null)} role="dialog">
       <div class="modal" on:click={(e) => e.stopPropagation()} role="dialog">
         <div class="tit"><Icono nombre="edit" size={20} /> Capital Inicial</div>
-        <div class="mut">Actual: {dinero(capitalInicial)}</div>
+        <div class="mut">Actual: {dinero(capitalInicial())}</div>
         <label class="lbl" style="margin-top:0.5rem">
           Nuevo capital inicial
           <input class="inp" type="number" step="0.01" bind:value={nuevoCapital} placeholder="0.00" />

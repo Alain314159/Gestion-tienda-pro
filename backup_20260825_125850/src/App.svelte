@@ -20,8 +20,8 @@
     document.title = tit;
   });
 
-  let activo = $derived(modulos.find(m => m.id === ui.activo) || modulos[0] || null);
-  let navMods = $derived(modulos.filter(m => m.grupo !== 'utilidades' || m.id === 'ajustes'));
+  $derived const activo = modulos.find(m => m.id === ui.activo) || modulos[0] || null;
+  $derived const navMods = modulos.filter(m => m.grupo !== 'utilidades' || m.id === 'ajustes');
 
   async function actualizar() {
     if (typeof ui._updateSW === 'function') {
@@ -64,10 +64,7 @@
 
 <main>
   {#if activo}
-    {@const Activo = activo?.Componente}
-    {#if Activo}
-      <Activo />
-    {/if}
+    <svelte:component this={activo.Componente} />
   {:else}
     <div class="empty">No hay módulos registrados.</div>
   {/if}

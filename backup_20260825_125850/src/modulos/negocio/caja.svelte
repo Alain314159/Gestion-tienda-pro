@@ -110,10 +110,10 @@
 <div class="modulo">
   <div class="card">
     <div class="tit">Saldo en Caja</div>
-    <div class="big" class:neg={saldoCaja < 0} class:pos={saldoCaja >= 0}>
-      {dinero(saldoCaja)}
+    <div class="big" class:neg={saldoCaja() < 0} class:pos={saldoCaja() >= 0}>
+      {dinero(saldoCaja())}
     </div>
-    {#if saldoCaja < 0}
+    {#if saldoCaja() < 0}
       <div class="mut" style="color:var(--dg);margin-top:0.25rem">⚠ Caja en negativo</div>
     {/if}
     <div class="mut" style="margin-top:0.5rem;font-size:0.85rem">
@@ -124,17 +124,17 @@
   <div class="card">
     <div class="tit">Desglose</div>
     <div class="list">
-      <div class="item"><div class="t">Capital inicial</div><div class="pos">+{dinero(capitalInicial)}</div></div>
-      <div class="item"><div class="t">Aportes</div><div class="pos">+{dinero(aportesTotal)}</div></div>
-      <div class="item"><div class="t">Ventas</div><div class="pos">+{dinero(ventasContadoTotal)}</div></div>
-      <div class="item"><div class="t">Compras</div><div class="neg">-{dinero(comprasTotal)}</div></div>
-      <div class="item"><div class="t">Retiros</div><div class="neg">-{dinero(retirosTotal)}</div></div>
-      <div class="item"><div class="t">Ajustes de arqueo</div><div class={arqueoNeto >= 0 ? 'pos' : 'neg'}>{arqueoNeto >= 0 ? '+' : ''}{dinero(arqueoNeto)}</div></div>
+      <div class="item"><div class="t">Capital inicial</div><div class="pos">+{dinero(capitalInicial())}</div></div>
+      <div class="item"><div class="t">Aportes</div><div class="pos">+{dinero(aportesTotal())}</div></div>
+      <div class="item"><div class="t">Ventas</div><div class="pos">+{dinero(ventasContadoTotal())}</div></div>
+      <div class="item"><div class="t">Compras</div><div class="neg">-{dinero(comprasTotal())}</div></div>
+      <div class="item"><div class="t">Retiros</div><div class="neg">-{dinero(retirosTotal())}</div></div>
+      <div class="item"><div class="t">Ajustes de arqueo</div><div class={arqueoNeto() >= 0 ? 'pos' : 'neg'}>{arqueoNeto() >= 0 ? '+' : ''}{dinero(arqueoNeto())}</div></div>
     </div>
     <hr class="sep" />
     <div class="row" style="justify-content:space-between;font-weight:700;font-size:1.05rem">
       <span>= SALDO</span>
-      <span class={saldoCaja >= 0 ? 'pos' : 'neg'}>{dinero(saldoCaja)}</span>
+      <span class={saldoCaja() >= 0 ? 'pos' : 'neg'}>{dinero(saldoCaja())}</span>
     </div>
   </div>
 
@@ -180,7 +180,7 @@
         <div class="tit"><Icono nombre="check" size={20} /> Arqueo de Caja</div>
         <p class="mut">Cuenta el dinero físico. Si es menor al sistema = faltante; si es mayor = sobrante.</p>
         <div class="lbl">
-          El sistema dice: <strong>{dinero(saldoCaja)}</strong>
+          El sistema dice: <strong>{dinero(saldoCaja())}</strong>
         </div>
         <label class="lbl">
           Tú cuentas (físico)
@@ -189,8 +189,8 @@
         {#if fisico !== '' && !isNaN(n(fisico))}
           <div class="row" style="justify-content:space-between;margin-top:0.5rem;font-weight:600">
             <span>Diferencia</span>
-            <span class={diffArqueo === 0 ? 'pos' : diffArqueo > 0 ? 'pos' : 'neg'}>
-              {diffArqueo === 0 ? '✓ Cuadre perfecto' : diffArqueo > 0 ? `SOBRANTE +${dinero(diffArqueo)}` : `FALTANTE ${dinero(diffArqueo)}`}
+            <span class={diffArqueo() === 0 ? 'pos' : diffArqueo() > 0 ? 'pos' : 'neg'}>
+              {diffArqueo() === 0 ? '✓ Cuadre perfecto' : diffArqueo() > 0 ? `SOBRANTE +${dinero(diffArqueo())}` : `FALTANTE ${dinero(diffArqueo())}`}
             </span>
           </div>
         {/if}

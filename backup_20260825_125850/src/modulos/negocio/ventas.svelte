@@ -49,7 +49,7 @@
     return cant > 0 ? total / cant : 0;
   }
 
-  let resultados = $derived.by(() => {
+  let resultados = $derived(() => {
     const q = busqueda.trim().toLowerCase();
     if (!q) return [];
     return productos.filter(p => !p.archivado && stock(p.id) > 0 && (
@@ -190,14 +190,14 @@
     </div>
 
     {#if busqueda.trim()}
-      <div class="mut" style="text-align:right;font-size:0.85rem;margin-top:0.25rem">{resultados.length} resultado(s)</div>
+      <div class="mut" style="text-align:right;font-size:0.85rem;margin-top:0.25rem">{resultados().length} resultado(s)</div>
     {/if}
     {#if busqueda.trim()}
-      <div class="mut" style="text-align:right;font-size:0.85rem;margin-top:0.25rem">{resultados.length} resultado(s)</div>
+      <div class="mut" style="text-align:right;font-size:0.85rem;margin-top:0.25rem">{resultados().length} resultado(s)</div>
     {/if}
-    {#if resultados.length > 0}
+    {#if resultados().length > 0}
       <div class="list" style="margin-top:0.5rem;max-height:200px;overflow-y:auto">
-        {#each resultados as p}
+        {#each resultados() as p}
           <button class="item" on:click={() => agregarAlCarrito(p)}>
             <div class="t">{p.nombre}</div>
             <div class="s">Stock {fmtCant(stock(p.id))} {p.unidad||''} · {dinero(p.precio)}</div>
@@ -304,7 +304,7 @@
         </div>
         <div class="row" style="justify-content:space-between;margin-top:1rem;font-weight:700">
           <span>Vuelto</span>
-          <span class="pos">{dinero(vuelto)}</span>
+          <span class="pos">{dinero(vuelto())}</span>
         </div>
         <div class="row" style="margin-top:1rem">
           <button class="btn sec" on:click={() => cobroAbierto = false}>Cancelar</button>

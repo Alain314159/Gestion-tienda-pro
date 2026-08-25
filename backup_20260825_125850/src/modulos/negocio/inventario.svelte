@@ -59,7 +59,7 @@
       }, 0);
   }
 
-  let resultados = $derived.by(() => {
+  let resultados = $derived(() => {
     const q = busquedaProd.trim().toLowerCase();
     if (!q) return productos.slice(0, 10);
     return productos.filter(p =>
@@ -127,7 +127,7 @@
     prodExpandido = prodExpandido === p.id ? null : p.id;
   }
 
-  let inventario = $derived.by(() => {
+  let inventario = $derived(() => {
     return productos
       .map(p => ({
         ...p,
@@ -162,9 +162,9 @@
           <input class="inp" type="text" placeholder="Buscar..." bind:value={busquedaProd} />
         </div>
       </div>
-      {#if resultados.length > 0 && !prodSel}
+      {#if resultados().length > 0 && !prodSel}
         <div class="list" style="margin-top:0.5rem;max-height:180px;overflow-y:auto">
-          {#each resultados as p}
+          {#each resultados() as p}
             <button class="item" on:click={() => { prodSel = p; busquedaProd = ''; }}>
               <div class="t">{p.nombre}</div>
               <div class="s">Stock: {fmtCant(stock(p.id))} {p.unidad || ''}</div>
@@ -207,11 +207,11 @@
   {:else if tab === 'inventario'}
     <div class="card">
       <div class="tit">Inventario por producto</div>
-      {#if inventario.length === 0}
+      {#if inventario().length === 0}
         <div class="empty"><Icono nombre="layers" size={48} /><p>Sin productos</p></div>
       {:else}
         <div class="list">
-          {#each inventario as p}
+          {#each inventario() as p}
             <div class="item blk">
               <button class="item-row" style="width:100%;background:none;border:none;text-align:left;cursor:pointer;padding:0" on:click={() => toggleExpand(p.id)}>
                 <div class="item-info">

@@ -41,7 +41,7 @@
     compras = (await db.compras.toArray()).sort((a, b) => b.fecha - a.fecha);
   }
 
-  let productosFiltrados = $derived.by(() => {
+  let productosFiltrados = $derived(() => {
     const q = busqueda.trim().toLowerCase();
     if (!q || esNuevo) return [];
     return productos.filter(p => !p.archivado && (
@@ -179,11 +179,11 @@
     </div>
 
     {#if busqueda.trim() && !esNuevo}
-      <div class="mut" style="text-align:right;font-size:0.85rem;margin-top:0.25rem">{productosFiltrados.length} resultado(s)</div>
+      <div class="mut" style="text-align:right;font-size:0.85rem;margin-top:0.25rem">{productosFiltrados().length} resultado(s)</div>
     {/if}
-    {#if productosFiltrados.length > 0 && !esNuevo}
+    {#if productosFiltrados().length > 0 && !esNuevo}
       <div class="list" style="margin-bottom: 1rem; max-height: 150px; overflow-y: auto;">
-        {#each productosFiltrados as p}
+        {#each productosFiltrados() as p}
           <button class="item" on:click={() => seleccionarProducto(p)}>
             <div class="t">{p.nombre}</div>
             <div class="s">Stock: {fmtCant(stock(p.id))} {p.unidad||'u'} · {dinero(p.precio)}</div>

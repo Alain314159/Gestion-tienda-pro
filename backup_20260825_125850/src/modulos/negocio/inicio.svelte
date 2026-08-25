@@ -56,7 +56,7 @@
     }, 0);
   }
 
-  let saldoCaja = $derived.by(() => {
+  let saldoCaja = $derived(() => {
     const cap = n(app.cfg?.capitalInicial);
     const ap = movsCaja.filter(m => m.tipo === 'aporte').reduce((a, m) => a + n(m.monto), 0);
     const re = movsCaja.filter(m => m.tipo === 'retiro').reduce((a, m) => a + n(m.monto), 0);
@@ -72,7 +72,7 @@
   let ventasPeriodo = $derived(() => ventas.filter(v => v.estado === 'activa' && n(v.fecha) >= periodoInicio()).reduce((a, v) => a + n(v.total), 0));
   let comprasPeriodo = $derived(() => compras.filter(c => n(c.fecha) >= periodoInicio()).reduce((a, c) => a + n(c.total), 0));
   let gananciaNetaPeriodo = $derived(() => ventas.filter(v => v.estado === 'activa' && n(v.fecha) >= periodoInicio()).reduce((a, v) => a + n(v.ganancia), 0));
-  let margenPeriodo = $derived.by(() => {
+  let margenPeriodo = $derived(() => {
     const v = ventasPeriodo();
     return v > 0 ? Math.round((gananciaNetaPeriodo() / v) * 100) : 0;
   });
@@ -80,7 +80,7 @@
   let productosAgotados = $derived(() => productos.filter(p => !p.archivado && stock(p.id) <= 0));
   let productosBajoStock = $derived(() => productos.filter(p => !p.archivado && stock(p.id) > 0 && stock(p.id) <= 5));
 
-  let topRentables = $derived.by(() => {
+  let topRentables = $derived(() => {
     const mapa = {};
     ventas.filter(v => v.estado === 'activa' && n(v.fecha) >= periodoInicio()).forEach(v => {
       v.items.forEach(it => {
@@ -91,7 +91,7 @@
     return Object.values(mapa).sort((a, b) => b.gan - a.gan).slice(0, 5);
   });
 
-  let ultimaActividad = $derived.by(() => {
+  let ultimaActividad = $derived(() => {
     const todas = [
       ...ventas.map(v => n(v.fecha)),
       ...compras.map(c => n(c.fecha)),
@@ -184,31 +184,31 @@
 
   <div class="card">
     <div class="tit">Resumen del período</div>
-    <div class="mut" style="margin-bottom:0.5rem">Desde {fmtFecha(periodoInicio)}</div>
+    <div class="mut" style="margin-bottom:0.5rem">Desde {fmtFecha(periodoInicio())}</div>
     <div class="row" style="gap:0.75rem;flex-wrap:wrap">
       <div style="flex:1;min-width:120px">
         <div class="mut">Ventas</div>
-        <div class="big pos">{dinero(ventasPeriodo)}</div>
+        <div class="big pos">{dinero(ventasPeriodo())}</div>
       </div>
       <div style="flex:1;min-width:120px">
         <div class="mut">Ganancia</div>
-        <div class="big pos">{dinero(gananciaNetaPeriodo)}</div>
+        <div class="big pos">{dinero(gananciaNetaPeriodo())}</div>
       </div>
       <div style="flex:1;min-width:120px">
         <div class="mut">Compras</div>
-        <div class="big neg">{dinero(comprasPeriodo)}</div>
+        <div class="big neg">{dinero(comprasPeriodo())}</div>
       </div>
       <div style="flex:1;min-width:120px">
         <div class="mut">Margen</div>
-        <div class="big">{margenPeriodo}%</div>
+        <div class="big">{margenPeriodo()}%</div>
       </div>
     </div>
   </div>
 
   <div class="card">
     <div class="tit">Efectivo en Caja</div>
-    <div class="big" class:pos={saldoCaja >= 0} class:neg={saldoCaja < 0}>
-      {dinero(saldoCaja)}
+    <div class="big" class:pos={saldoCaja() >= 0} class:neg={saldoCaja() < 0}>
+      {dinero(saldoCaja())}
     </div>
     <div class="mut">Inventario: {dinero(valorInventario())}</div>
   </div>
@@ -257,7 +257,7 @@
       </button>
     </div>
     <div class="mut" style="margin-top:0.75rem;font-size:0.85rem">
-      Última actividad: {ultimaActividad}
+      Última actividad: {ultimaActividad()}
     </div>
   </div>
 </div>
