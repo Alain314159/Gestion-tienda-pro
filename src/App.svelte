@@ -46,10 +46,10 @@
   <div class="hdr-in">
     <Icono nombre={activo?.icono || 'home'} size={22} />
     <h1>{activo?.nombre || app.cfg?.nombre || 'Tienda Pro'}</h1>
-    <button class="hbtn" on:click={alternarTema} aria-label="Tema">
+    <button class="hbtn" onclick={alternarTema} aria-label="Tema">
       <Icono nombre={ui.tema === 'dark' ? 'sun' : 'moon'} size={18} />
     </button>
-    <button class="hbtn" on:click={abrirMas} aria-label="Más">
+    <button class="hbtn" onclick={abrirMas} aria-label="Más">
       <Icono nombre="mas2" size={18} />
     </button>
   </div>
@@ -59,7 +59,7 @@
   <div class="banner off">Sin conexión · trabajando con datos locales</div>
 {/if}
 {#if ui.actualizar}
-  <button class="banner upd" on:click={actualizar}>Nueva versión disponible · tocar para actualizar</button>
+  <button class="banner upd" onclick={actualizar}>Nueva versión disponible · tocar para actualizar</button>
 {/if}
 
 <main>
@@ -75,7 +75,7 @@
 
 <nav class="nav">
   {#each navMods as m}
-    <button class:on={ui.activo === m.id} on:click={() => irA(m.id)}>
+    <button class:on={ui.activo === m.id} onclick={() => irA(m.id)}>
       <Icono nombre={m.icono || 'home'} size={22} />
       <span>{m.nombre}</span>
     </button>
@@ -83,12 +83,12 @@
 </nav>
 
 {#if masAbierto}
-  <div class="mask" on:click={cerrarMas} on:keydown={(e) => e.key === 'Escape' && cerrarMas()} role="dialog">
-    <div class="sheet" on:click={(e) => e.stopPropagation()} role="document">
+  <div class="mask" onclick={cerrarMas} onkeydown={(e) => e.key === 'Escape' && cerrarMas()} role="dialog">
+    <div class="sheet" onclick={(e) = onkeydown={(e) => (e.key === "Enter" || e.key === " ") && e.currentTarget.click()}> e.stopPropagation()} role="document">
       <div class="tit">Más opciones</div>
       <div class="list">
         {#each modulos as m}
-          <button class="item" on:click={() => irA(m.id)}>
+          <button class="item" onclick={() => irA(m.id)}>
             <Icono nombre={m.icono || 'home'} size={20} />
             <div>
               <div class="t">{m.nombre}</div>
@@ -102,33 +102,33 @@
 {/if}
 
 {#if ui.confirm}
-  <div class="mask cent" on:click={() => cerrarConfirm(false)} on:keydown={(e) => e.key === 'Escape' && cerrarConfirm(false)} role="dialog">
-    <div class="modal" on:click={(e) => e.stopPropagation()} role="alertdialog">
+  <div class="mask cent" onclick={() => cerrarConfirm(false)} onkeydown={(e) => e.key === 'Escape' && cerrarConfirm(false)} role="dialog">
+    <div class="modal" onclick={(e) = onkeydown={(e) => (e.key === "Enter" || e.key === " ") && e.currentTarget.click()}> e.stopPropagation()} role="alertdialog">
       <div class="tit"><Icono nombre="alert" size={20} /> {ui.confirm.titulo}</div>
       <p class="mut" style="margin-bottom:16px">{ui.confirm.msg}</p>
       <div class="row">
-        <button class="btn sec" on:click={() => cerrarConfirm(false)}>Cancelar</button>
-        <button class="btn dgr" on:click={() => cerrarConfirm(true)}>Confirmar</button>
+        <button class="btn sec" onclick={() => cerrarConfirm(false)}>Cancelar</button>
+        <button class="btn dgr" onclick={() => cerrarConfirm(true)}>Confirmar</button>
       </div>
     </div>
   </div>
 {/if}
 
 {#if ui.prompt}
-  <div class="mask cent" on:click={() => cerrarPrompt(false)} on:keydown={(e) => e.key === 'Escape' && cerrarPrompt(false)} role="dialog">
-    <div class="modal" on:click={(e) => e.stopPropagation()} role="dialog">
+  <div class="mask cent" onclick={() => cerrarPrompt(false)} onkeydown={(e) => e.key === 'Escape' && cerrarPrompt(false)} role="dialog">
+    <div class="modal" onclick={(e) = onkeydown={(e) => (e.key === "Enter" || e.key === " ") && e.currentTarget.click()}> e.stopPropagation()} role="dialog">
       <div class="tit"><Icono nombre="lock" size={20} /> {ui.prompt.titulo}</div>
       <p class="mut">{ui.prompt.msg}</p>
       <input
         class="inp"
         type={ui.prompt.titulo.toLowerCase().includes('pin') ? 'password' : 'text'}
         bind:value={ui.prompt.valor}
-        on:keydown={(e) => e.key === 'Enter' && cerrarPrompt(true)}
+        onkeydown={(e) => e.key === 'Enter' && cerrarPrompt(true)}
         style="margin:12px 0"
       />
       <div class="row">
-        <button class="btn sec" on:click={() => cerrarPrompt(false)}>Cancelar</button>
-        <button class="btn ok" on:click={() => cerrarPrompt(true)}>Aceptar</button>
+        <button class="btn sec" onclick={() => cerrarPrompt(false)}>Cancelar</button>
+        <button class="btn ok" onclick={() => cerrarPrompt(true)}>Aceptar</button>
       </div>
     </div>
   </div>

@@ -147,9 +147,9 @@
 
 <div class="modulo">
   <div class="chips" style="margin-bottom:1rem">
-    <button class="chip" class:activo={tab === 'merma'} on:click={() => tab = 'merma'}>Merma / Ajuste</button>
-    <button class="chip" class:activo={tab === 'inventario'} on:click={() => tab = 'inventario'}>Inventario</button>
-    <button class="chip" class:activo={tab === 'historial'} on:click={() => tab = 'historial'}>Historial</button>
+    <button class="chip" class:activo={tab === 'merma'} onclick={() => tab = 'merma'}>Merma / Ajuste</button>
+    <button class="chip" class:activo={tab === 'inventario'} onclick={() => tab = 'inventario'}>Inventario</button>
+    <button class="chip" class:activo={tab === 'historial'} onclick={() => tab = 'historial'}>Historial</button>
   </div>
 
   {#if tab === 'merma'}
@@ -165,7 +165,7 @@
       {#if resultados.length > 0 && !prodSel}
         <div class="list" style="margin-top:0.5rem;max-height:180px;overflow-y:auto">
           {#each resultados as p}
-            <button class="item" on:click={() => { prodSel = p; busquedaProd = ''; }}>
+            <button class="item" onclick={() => { prodSel = p; busquedaProd = ''; }}>
               <div class="t">{p.nombre}</div>
               <div class="s">Stock: {fmtCant(stock(p.id))} {p.unidad || ''}</div>
             </button>
@@ -176,7 +176,7 @@
         <div class="item" style="margin-top:0.5rem;background:var(--sf)">
           <div class="t">{prodSel.nombre}</div>
           <div class="s">Stock actual: {fmtCant(stock(prodSel.id))} {prodSel.unidad || ''}</div>
-          <button class="mini" style="margin-top:0.25rem" on:click={() => prodSel = null}>
+          <button class="mini" style="margin-top:0.25rem" onclick={() => prodSel = null}>
             <Icono nombre="x" size={14} /> Cambiar
           </button>
         </div>
@@ -199,7 +199,7 @@
       </label>
 
       <div class="row" style="margin-top:1rem">
-        <button class="btn ok" style="flex:1" on:click={registrarAjuste}>
+        <button class="btn ok" style="flex:1" onclick={registrarAjuste}>
           <Icono nombre="save" size={16} /> Registrar Ajuste
         </button>
       </div>
@@ -213,7 +213,7 @@
         <div class="list">
           {#each inventario as p}
             <div class="item blk">
-              <button class="item-row" style="width:100%;background:none;border:none;text-align:left;cursor:pointer;padding:0" on:click={() => toggleExpand(p.id)}>
+              <button class="item-row" style="width:100%;background:none;border:none;text-align:left;cursor:pointer;padding:0" onclick={() => toggleExpand(p.id)}>
                 <div class="item-info">
                   <div class="t">{p.nombre}</div>
                   <div class="s">Stock {fmtCant(p.stockTotal)} {p.unidad || ''} · {dinero(p.valorTotal)}</div>

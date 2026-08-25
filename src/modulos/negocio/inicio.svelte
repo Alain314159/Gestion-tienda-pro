@@ -171,7 +171,7 @@
 </script>
 
 <div class="modulo">
-  {(productosAgotados.length > 0 || productosBajoStock.length > 0) && (
+  {#if productosAgotados.length > 0 || productosBajoStock.length > 0}
     <div class="card" style="border-color:var(--wn)">
       <div class="tit" style="color:var(--wn)">
         <Icono nombre="alert" size={18} /> Alertas de stock
@@ -180,7 +180,7 @@
         {productosAgotados.length} agotado(s) · {productosBajoStock.length} bajo(s)
       </div>
     </div>
-  )}
+{/if}
 
   <div class="card">
     <div class="tit">Resumen del período</div>
@@ -243,16 +243,16 @@
   <div class="card">
     <div class="tit">Accesos rápidos</div>
     <div class="row" style="flex-wrap:wrap;gap:0.5rem">
-      <button class="btn ok sm" on:click={() => irA('ventas')}>
+      <button class="btn ok sm" onclick={() => irA('ventas')}>
         <Icono nombre="cash" size={16} /> Nueva Venta
       </button>
-      <button class="btn sec sm" on:click={() => irA('compras')}>
+      <button class="btn sec sm" onclick={() => irA('compras')}>
         <Icono nombre="cart" size={16} /> Registrar Compra
       </button>
-      <button class="btn sec sm" on:click={() => irA('caja')}>
+      <button class="btn sec sm" onclick={() => irA('caja')}>
         <Icono nombre="check" size={16} /> Arqueo de Caja
       </button>
-      <button class="btn sec sm" on:click={() => irA('inventario')}>
+      <button class="btn sec sm" onclick={() => irA('inventario')}>
         <Icono nombre="layers" size={16} /> Ver Inventario
       </button>
     </div>

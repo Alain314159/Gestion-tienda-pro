@@ -172,11 +172,11 @@
     <div class="item">
       <div class="lbl">PIN para operaciones sensibles</div>
       <div class="row">
-        <button class="btn sec sm" on:click={cambiarPin}>
+        <button class="btn sec sm" onclick={cambiarPin}>
           <Icono nombre="edit" size={16} /> Cambiar PIN
         </button>
         {#if app.cfg?.pin}
-          <button class="btn dgr sm" on:click={quitarPin}>
+          <button class="btn dgr sm" onclick={quitarPin}>
             <Icono nombre="trash" size={16} /> Quitar PIN
           </button>
         {/if}
@@ -188,7 +188,7 @@
     <div class="tit">Datos</div>
     <div class="item">
       <div class="row">
-        <button class="btn ok sm" on:click={exportarRespaldo}>
+        <button class="btn ok sm" onclick={exportarRespaldo}>
           <Icono nombre="save" size={16} /> Exportar respaldo
         </button>
         <label class="btn sec sm">
@@ -199,26 +199,26 @@
     </div>
     <div class="item">
       <div class="mut">Último backup automático: {backupAuto ? new Date(backupAuto).toLocaleString() : 'Nunca'}</div>
-      <button class="btn sec sm" on:click={backupAhora}>
+      <button class="btn sec sm" onclick={backupAhora}>
         <Icono nombre="save" size={16} /> Hacer backup ahora
       </button>
       {#if backupAuto}
-        <button class="btn dgr sm" on:click={restaurarBackup}>
+        <button class="btn dgr sm" onclick={restaurarBackup}>
           <Icono nombre="refresh" size={16} /> Restaurar backup automático
         </button>
       {/if}
       {#if backupAuto}
-        <button class="btn dgr sm" on:click={restaurarBackup}>
+        <button class="btn dgr sm" onclick={restaurarBackup}>
           <Icono nombre="refresh" size={16} /> Restaurar backup automático
         </button>
       {/if}
       {#if backupAuto}
-        <button class="btn dgr sm" on:click={restaurarBackup}>
+        <button class="btn dgr sm" onclick={restaurarBackup}>
           <Icono nombre="refresh" size={16} /> Restaurar backup automático
         </button>
       {/if}
       {#if backupAuto}
-        <button class="btn dgr sm" on:click={restaurarBackup}>
+        <button class="btn dgr sm" onclick={restaurarBackup}>
           <Icono nombre="refresh" size={16} /> Restaurar backup automático
         </button>
       {/if}

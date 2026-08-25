@@ -142,7 +142,7 @@ Ventas: ${resultado.numVentas}`;
         <input class="inp" type="date" bind:value={fechaHasta} />
       </label>
     </div>
-    <button class="btn ok" style="width:100%;margin-top:0.75rem" on:click={generarReporte}>
+    <button class="btn ok" style="width:100%;margin-top:0.75rem" onclick={generarReporte}>
       <Icono nombre="search" size={16} /> Generar Reporte
     </button>
   </div>
@@ -162,10 +162,10 @@ Ventas: ${resultado.numVentas}`;
         <div class="item"><div class="t">Ventas realizadas</div><div>{resultado.numVentas}</div></div>
       </div>
       <div class="row" style="margin-top:0.75rem;gap:0.5rem">
-        <button class="btn sec sm" style="flex:1" on:click={exportarCSV}>
+        <button class="btn sec sm" style="flex:1" onclick={exportarCSV}>
           <Icono nombre="download" size={16} /> CSV
         </button>
-        <button class="btn sec sm" style="flex:1" on:click={compartir}>
+        <button class="btn sec sm" style="flex:1" onclick={compartir}>
           <Icono nombre="share" size={16} /> Compartir
         </button>
       </div>
