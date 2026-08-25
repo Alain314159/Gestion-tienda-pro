@@ -1,184 +1,23 @@
-<script>
-  import { onMount } from 'svelte';
-  import { getDB } from '../../core/db.js';
-  import { bus } from '../../core/bus.js';
-  import { avisar, pedirPIN } from '../../core/store.svelte.js';
-  import { dinero } from '../../core/appstate.svelte.js';
-  import { n, fmtCant, fmtFH } from '../../core/util.js';
-  import Icono from '../../core/Icono.svelte';
-
+<script module>
   export const manifiesto = {
-    id: 'ventas',
-    nombre: 'Ventas',
-    icono: 'cash',
-    grupo: 'negocio',
-    orden: 1,
-    tablas: { ventas: '++id, fecha, estado' }
-  };
+      id: 'ventas',
+      nombre: 'Ventas',
+      icono: 'cash',
+      grupo: 'negocio',
+      orden: 1,
+      tablas: { ventas: '++id, fecha, estado' }
+  </script>
 
-  let productos = $state([]);
-  let lotes = $state([]);
-  let ventas = $state([]);
-  let busqueda = $state('');
-  let carrito = $state([]);
-  let cobroAbierto = $state(false);
-  let recibido = $state('');
-  let procesando = $state(false);
+  <script>
+    import { onMount } from 'svelte';
+    import { getDB } from '../../core/db.js';
+    import { bus } from '../../core/bus.js';
+    import { avisar, pedirPIN } from '../../core/store.svelte.js';
+    import { dinero } from '../../core/appstate.svelte.js';
+    import { n, fmtCant, fmtFH } from '../../core/util.js';
+    import Icono from '../../core/Icono.svelte';
 
-  async function cargarDatos() {
-    const db = getDB();
-    productos = await db.productos.toArray();
-    lotes = await db.lotes.toArray();
-    ventas = (await db.ventas.toArray()).sort((a, b) => b.fecha - a.fecha);
-  }
-
-  function stock(productoId) {
-    return lotes.filter(l => l.productoId === productoId)
-      .reduce((acc, l) => acc + Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida)), 0);
-  }
-
-  function costoPromedio(productoId) {
-    const lotesProd = lotes.filter(l => l.productoId === productoId && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
-      .sort((a, b) => n(a.fecha) - n(b.fecha));
-    let total = 0, cant = 0;
-    for (const l of lotesProd) {
-      const r = n(l.cantidadInicial) - n(l.cantidadVendida);
-      total += r * n(l.costo);
-      cant += r;
-    }
-    return cant > 0 ? total / cant : 0;
-  }
-
-  let resultados = $derived.by(() => {
-    const q = busqueda.trim().toLowerCase();
-    if (!q) return [];
-    return productos.filter(p => !p.archivado && stock(p.id) > 0 && (
-      (p.nombre || '').toLowerCase().includes(q) || (p.codigo || '').toLowerCase().includes(q)
-    )).slice(0, 10);
-  });
-
-  function agregarAlCarrito(p) {
-    const existente = carrito.find(i => i.productoId === p.id);
-    if (existente) {
-      if (existente.cant + 1 > stock(p.id)) {
-        avisar('Stock insuficiente', 'dg');
-        return;
-      }
-      existente.cant += 1;
-    } else {
-      carrito.push({
-        productoId: p.id,
-        nombre: p.nombre,
-        unidad: p.unidad || '',
-        cant: 1,
-        precio: n(p.precio),
-        costo: costoPromedio(p.id)
-      });
-    }
-    busqueda = '';
-    carrito = [...carrito];
-  }
-
-  function cambiarCant(item, delta) {
-    const nueva = item.cant + delta;
-    if (nueva <= 0) {
-      carrito = carrito.filter(i => i !== item);
-      return;
-    }
-    if (nueva > stock(item.productoId)) {
-      avisar('Stock insuficiente', 'dg');
-      return;
-    }
-    item.cant = nueva;
-    carrito = [...carrito];
-  }
-
-  function subTotalItem(it) { return n(it.cant) * n(it.precio); }
-  function totalCarrito() { return carrito.reduce((a, i) => a + subTotalItem(i), 0); }
-  function gananciaCarrito() { return carrito.reduce((a, i) => a + (n(i.precio) - n(i.costo)) * n(i.cant), 0); }
-
-  function abrirCobro() {
-    if (carrito.length === 0) { avisar('Carrito vacío', 'dg'); return; }
-    recibido = String(totalCarrito());
-    cobroAbierto = true;
-  }
-
-  function pagarExacto() { recibido = String(totalCarrito()); }
-
-  let vuelto = $derived(() => Math.max(0, n(recibido) - totalCarrito()));
-
-  async function confirmarPago() {
-    if (n(recibido) < totalCarrito()) { avisar('Monto recibido insuficiente', 'dg'); return; }
-    procesando = true;
-    const db = getDB();
-    const itemsConDesglose = [];
-    try {
-      for (const it of carrito) {
-        let restante = n(it.cant);
-        const desglose = [];
-        const lotesProd = lotes.filter(l => l.productoId === it.productoId)
-          .sort((a, b) => n(a.fecha) - n(b.fecha));
-        for (const l of lotesProd) {
-          if (restante <= 0) break;
-          const disponible = n(l.cantidadInicial) - n(l.cantidadVendida);
-          if (disponible <= 0) continue;
-          const tomar = Math.min(restante, disponible);
-          await db.lotes.update(l.id, { cantidadVendida: n(l.cantidadVendida) + tomar });
-          desglose.push({ loteId: l.id, cantidad: tomar });
-          restante -= tomar;
-        }
-        if (restante > 0) throw new Error('Stock insuficiente para ' + it.nombre);
-        itemsConDesglose.push({
-          productoId: it.productoId, nombre: it.nombre, unidad: it.unidad,
-          cant: it.cant, precio: it.precio, costo: it.costo, desglose
-        });
-      }
-      await db.ventas.add({
-        fecha: Date.now(),
-        items: itemsConDesglose,
-        total: totalCarrito(),
-        ganancia: gananciaCarrito(),
-        estado: 'activa',
-        recibido: n(recibido),
-        vuelto: vuelto()
-      });
-      bus.emitir('venta:registrada', {});
-      avisar('Venta registrada', 'ok');
-      carrito = [];
-      cobroAbierto = false;
-      await cargarDatos();
-    } catch (e) {
-      avisar('Error: ' + e.message, 'dg');
-    }
-    procesando = false;
-  }
-
-  async function anularVenta(v) {
-    if (v.estado === 'anulada') return;
-    const ok = await pedirPIN();
-    if (!ok) { avisar('PIN incorrecto', 'dg'); return; }
-    const db = getDB();
-    try {
-      for (const it of v.items) {
-        for (const d of (it.desglose || [])) {
-          const lote = await db.lotes.get(d.loteId);
-          if (lote) {
-            await db.lotes.update(d.loteId, { cantidadVendida: Math.max(0, n(lote.cantidadVendida) - d.cantidad) });
-          }
-        }
-      }
-      await db.ventas.update(v.id, { estado: 'anulada' });
-      bus.emitir('venta:anulada', { id: v.id });
-      avisar('Venta anulada y stock revertido', 'ok');
-      await cargarDatos();
-    } catch (e) {
-      avisar('Error al anular: ' + e.message, 'dg');
-    }
-  }
-
-  function limpiarCarrito() { carrito = []; }
-
-  onMount(cargarDatos);
+    };
 </script>
 
 <div class="modulo">

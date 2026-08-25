@@ -1,187 +1,27 @@
-<!-- src/modulos/negocio/productos.svelte -->
-<script>
-  import { onMount } from 'svelte';
-  import { getDB } from '../../core/db.js';
-  import { bus } from '../../core/bus.js';
-  import { avisar, confirmar } from '../../core/store.svelte.js';
-  import { dinero } from '../../core/appstate.svelte.js';
-  import { fmtCant, fmtFH, n } from '../../core/util.js';
-  import Icono from '../../core/Icono.svelte';
-
+<script module>
   export const manifiesto = {
-    id: 'productos',
-    nombre: 'Productos',
-    icono: 'box',
-    grupo: 'negocio',
-    orden: 5,
-    tablas: {
-      productos: '++id, nombre, codigo, archivado',
-      lotes: '++id, productoId, fecha'
-    }
-  };
+      id: 'productos',
+      nombre: 'Productos',
+      icono: 'box',
+      grupo: 'negocio',
+      orden: 5,
+      tablas: {
+        productos: '++id, nombre, codigo, archivado',
+        lotes: '++id, productoId, fecha'
+      }
+  </script>
 
-  let productos = $state([]);
-  let lotes = $state([]);
-  let busqueda = $state('');
-  let mostrarArchivados = $state(false);
-  let sheetAbierto = $state(false);
-  let editando = $state(null);
+  <!-- src/modulos/negocio/productos.svelte -->
+  <script>
+    import { onMount } from 'svelte';
+    import { getDB } from '../../core/db.js';
+    import { bus } from '../../core/bus.js';
+    import { avisar, confirmar } from '../../core/store.svelte.js';
+    import { dinero } from '../../core/appstate.svelte.js';
+    import { fmtCant, fmtFH, n } from '../../core/util.js';
+    import Icono from '../../core/Icono.svelte';
 
-  let formNombre = $state('');
-  let formCodigo = $state('');
-  let formUnidad = $state('');
-  let formPrecio = $state('');
-
-  async function cargarDatos() {
-    const db = getDB();
-    productos = await db.productos.toArray();
-    lotes = await db.lotes.toArray();
-  }
-
-  function stock(productoId) {
-    let total = 0;
-    const lotesProd = lotes
-      .filter(l => l.productoId === productoId)
-      .sort((a, b) => n(a.fecha) - n(b.fecha));
-    for (const l of lotesProd) {
-      const restante = n(l.cantidadInicial) - n(l.cantidadVendida);
-      if (restante > 0) total += restante;
-    }
-    return total;
-  }
-
-  function badgeInfo(productoId) {
-    const s = stock(productoId);
-    if (s <= 0) return { texto: 'Agotado', clase: 'dg' };
-    if (s <= 5) return { texto: 'Bajo', clase: 'wn' };
-    return { texto: 'OK', clase: 'ok' };
-  }
-
-  function valorLotes(productoId) {
-    return lotes
-      .filter(l => l.productoId === productoId)
-      .reduce((acc, l) => {
-        const restante = n(l.cantidadInicial) - n(l.cantidadVendida);
-        return restante > 0 ? acc + restante * n(l.costo) : acc;
-      }, 0);
-  }
-
-  function lotesActivosDe(productoId) {
-    return lotes
-      .filter(l => l.productoId === productoId)
-      .filter(l => (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
-      .sort((a, b) => n(a.fecha) - n(b.fecha));
-  }
-
-  function productosFiltrados() {
-    const q = busqueda.trim().toLowerCase();
-    return productos
-      .filter(p => (p.archivado ? mostrarArchivados : !mostrarArchivados))
-      .filter(p => {
-        if (!q) return true;
-        return (p.nombre || '').toLowerCase().includes(q) ||
-               (p.codigo || '').toLowerCase().includes(q);
-      })
-      .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
-  }
-
-  function valorInventario() {
-    return productos
-      .filter(p => !p.archivado)
-      .reduce((acc, p) => acc + valorLotes(p.id), 0);
-  }
-
-  function unidadesTotal() {
-    return productos
-      .filter(p => !p.archivado)
-      .reduce((acc, p) => acc + stock(p.id), 0);
-  }
-
-  function lotesActivosCount() {
-    return lotes.filter(l => {
-      const prod = productos.find(p => p.id === l.productoId);
-      if (!prod || prod.archivado) return false;
-      return (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0;
-    }).length;
-  }
-
-  function abrirSheet(producto) {
-    if (producto) {
-      editando = producto;
-      formNombre = producto.nombre || '';
-      formCodigo = producto.codigo || '';
-      formUnidad = producto.unidad || '';
-      formPrecio = producto.precio != null ? String(producto.precio) : '';
-    } else {
-      editando = null;
-      formNombre = '';
-      formCodigo = '';
-      formUnidad = '';
-      formPrecio = '';
-    }
-    sheetAbierto = true;
-  }
-
-  function cerrarSheet() {
-    sheetAbierto = false;
-    editando = null;
-    formNombre = '';
-    formCodigo = '';
-    formUnidad = '';
-    formPrecio = '';
-  }
-
-  async function guardar() {
-    const nombre = formNombre.trim();
-    const precio = parseFloat(formPrecio);
-    if (!nombre) { avisar('El nombre es obligatorio', 'dg'); return; }
-    if (isNaN(precio) || precio < 0) { avisar('Precio inválido', 'dg'); return; }
-
-    const db = getDB();
-    if (editando) {
-      await db.productos.update(editando.id, {
-        nombre,
-        codigo: formCodigo.trim(),
-        unidad: formUnidad.trim(),
-        precio
-      });
-      bus.emitir('producto:actualizado', { id: editando.id });
-      avisar('Producto actualizado', 'ok');
-    } else {
-      const id = await db.productos.add({
-        nombre,
-        codigo: formCodigo.trim(),
-        unidad: formUnidad.trim(),
-        precio,
-        archivado: false,
-        creado: Date.now()
-      });
-      bus.emitir('producto:creado', { id });
-      avisar('Producto creado', 'ok');
-    }
-    cerrarSheet();
-    await cargarDatos();
-  }
-
-  async function archivar(p) {
-    const ok = await confirmar('Archivar producto', `¿Archivar "${p.nombre}"? No aparecerá en la lista principal.`);
-    if (!ok) return;
-    const db = getDB();
-    await db.productos.update(p.id, { archivado: true });
-    bus.emitir('producto:archivado', { id: p.id });
-    avisar('Producto archivado', 'info');
-    await cargarDatos();
-  }
-
-  async function restaurar(p) {
-    const db = getDB();
-    await db.productos.update(p.id, { archivado: false });
-    bus.emitir('producto:restaurado', { id: p.id });
-    avisar('Producto restaurado', 'ok');
-    await cargarDatos();
-  }
-
-  onMount(cargarDatos);
+    };
 </script>
 
 <div class="modulo">

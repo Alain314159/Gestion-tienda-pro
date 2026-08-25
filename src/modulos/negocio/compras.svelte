@@ -1,169 +1,26 @@
-<script>
-  import { onMount } from 'svelte';
-  import { getDB } from '../../core/db.js';
-  import { bus } from '../../core/bus.js';
-  import { avisar } from '../../core/store.svelte.js';
-  import { dinero } from '../../core/appstate.svelte.js';
-  import { n, fmt, fmtCant, fmtFH } from '../../core/util.js';
-  import Icono from '../../core/Icono.svelte';
-
+<script module>
   export const manifiesto = {
-    id: 'compras',
-    nombre: 'Compras',
-    icono: 'cart',
-    grupo: 'negocio',
-    orden: 2,
-    tablas: {
-      compras: '++id, productoId, fecha',
-      lotes: '++id, productoId, fecha'
-    }
-  };
-
-  let productos = $state([]);
-  let lotes = $state([]);
-  let compras = $state([]);
-  
-  let busqueda = $state('');
-  let formAbierto = $state(false);
-  let esNuevo = $state(false);
-  
-  let form = $state({
-    editId: null, productoId: null, productoNombre: '',
-    cantidad: '', costo: '', unidad: '', fecha: Date.now()
-  });
-  
-  let nuevo = $state({ nombre: '', codigo: '', unidad: '', precio: '' });
-
-  async function cargarDatos() {
-    const db = getDB();
-    productos = await db.productos.toArray();
-    lotes = await db.lotes.toArray();
-    compras = (await db.compras.toArray()).sort((a, b) => b.fecha - a.fecha);
-  }
-
-  let productosFiltrados = $derived.by(() => {
-    const q = busqueda.trim().toLowerCase();
-    if (!q || esNuevo) return [];
-    return productos.filter(p => !p.archivado && (
-      (p.nombre || '').toLowerCase().includes(q) || 
-      (p.codigo || '').toLowerCase().includes(q)
-    )).slice(0, 8);
-  });
-
-  function stock(productoId) {
-    return lotes.filter(l => l.productoId === productoId)
-      .reduce((acc, l) => acc + Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida)), 0);
-  }
-
-  function toLocalISOString(date) {
-    const d = new Date(date);
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0, 16);
-  }
-
-  function abrirForm(compra = null) {
-    if (compra) {
-      form.editId = compra.id;
-      form.productoId = compra.productoId;
-      form.productoNombre = compra.productoNombre;
-      form.cantidad = String(compra.cantidad);
-      form.costo = String(compra.costo);
-      form.unidad = compra.unidad || '';
-      form.fecha = compra.fecha;
-      esNuevo = false;
-    } else {
-      form.editId = null;
-      form.productoId = null;
-      form.productoNombre = '';
-      form.cantidad = '';
-      form.costo = '';
-      form.unidad = '';
-      form.fecha = Date.now();
-      esNuevo = false;
-      nuevo = { nombre: '', codigo: '', unidad: '', precio: '' };
-      busqueda = '';
-    }
-    formAbierto = true;
-  }
-
-  function cerrarForm() {
-    formAbierto = false;
-  }
-
-  function seleccionarProducto(p) {
-    form.productoId = p.id;
-    form.productoNombre = p.nombre;
-    form.unidad = p.unidad || '';
-    busqueda = '';
-  }
-
-  async function guardar() {
-    if (esNuevo) {
-      if (!nuevo.nombre.trim()) { avisar('Nombre del producto es obligatorio', 'dg'); return; }
-      const db = getDB();
-      const prodId = await db.productos.add({
-        nombre: nuevo.nombre.trim(),
-        codigo: nuevo.codigo.trim(),
-        unidad: nuevo.unidad.trim(),
-        precio: n(nuevo.precio),
-        archivado: false,
-        creado: Date.now()
-      });
-      form.productoId = prodId;
-      form.productoNombre = nuevo.nombre.trim();
-      form.unidad = nuevo.unidad.trim();
-    } else {
-      if (!form.productoId) { avisar('Selecciona un producto o marca "Es nuevo"', 'dg'); return; }
-    }
-
-    if (n(form.cantidad) <= 0 || n(form.costo) < 0) {
-      avisar('Cantidad y costo deben ser válidos', 'dg');
-      return;
-    }
-
-    const db = getDB();
-    const total = n(form.cantidad) * n(form.costo);
-    const fecha = n(form.fecha) || Date.now();
-
-    if (form.editId) {
-      const compra = await db.compras.get(form.editId);
-      await db.compras.update(form.editId, {
-        productoId: form.productoId,
-        productoNombre: form.productoNombre,
-        fecha, cantidad: n(form.cantidad), costo: n(form.costo),
-        unidad: form.unidad, total
-      });
-      if (compra.loteId) {
-        await db.lotes.update(compra.loteId, {
-          cantidadInicial: n(form.cantidad),
-          costo: n(form.costo),
-          fecha
-        });
+      id: 'compras',
+      nombre: 'Compras',
+      icono: 'cart',
+      grupo: 'negocio',
+      orden: 2,
+      tablas: {
+        compras: '++id, productoId, fecha',
+        lotes: '++id, productoId, fecha'
       }
-      bus.emitir('compra:editada', { id: form.editId });
-      avisar('Compra actualizada', 'ok');
-    } else {
-      const loteId = await db.lotes.add({
-        productoId: form.productoId,
-        fecha,
-        cantidadInicial: n(form.cantidad),
-        cantidadVendida: 0,
-        costo: n(form.costo)
-      });
-      await db.compras.add({
-        productoId: form.productoId,
-        productoNombre: form.productoNombre,
-        fecha, cantidad: n(form.cantidad), costo: n(form.costo),
-        unidad: form.unidad, total, loteId
-      });
-      bus.emitir('compra:registrada', { id: form.productoId });
-      avisar('Compra registrada', 'ok');
-    }
-    cerrarForm();
-    await cargarDatos();
-  }
+  </script>
 
-  onMount(cargarDatos);
+  <script>
+    import { onMount } from 'svelte';
+    import { getDB } from '../../core/db.js';
+    import { bus } from '../../core/bus.js';
+    import { avisar } from '../../core/store.svelte.js';
+    import { dinero } from '../../core/appstate.svelte.js';
+    import { n, fmt, fmtCant, fmtFH } from '../../core/util.js';
+    import Icono from '../../core/Icono.svelte';
+
+    };
 </script>
 
 <div class="modulo">

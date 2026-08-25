@@ -1,148 +1,25 @@
-<script>
-  import { onMount } from 'svelte';
-  import { getDB } from '../../core/db.js';
-  import { bus } from '../../core/bus.js';
-  import { avisar, pedirPIN } from '../../core/store.svelte.js';
-  import { dinero } from '../../core/appstate.svelte.js';
-  import { n, fmtCant, fmtFH } from '../../core/util.js';
-  import Icono from '../../core/Icono.svelte';
-
+<script module>
   export const manifiesto = {
-    id: 'inventario',
-    nombre: 'Inventario',
-    icono: 'layers',
-    grupo: 'negocio',
-    orden: 4,
-    tablas: {
-      ajustesInv: '++id, productoId, fecha'
-    }
-  };
-
-  let productos = $state([]);
-  let lotes = $state([]);
-  let ajustes = $state([]);
-  let tab = $state('merma'); // 'merma' | 'inventario' | 'historial'
-  let prodSel = $state(null);
-  let busquedaProd = $state('');
-  let motivo = $state('Merma / Daño');
-  let cantidadAjuste = $state('');
-  let prodExpandido = $state(null);
-
-  async function cargar() {
-    const db = getDB();
-    productos = (await db.productos.toArray()).filter(p => !p.archivado);
-    lotes = await db.lotes.toArray();
-    ajustes = (await db.ajustesInv.toArray()).sort((a, b) => b.fecha - a.fecha);
-  }
-
-  function stock(productoId) {
-    return lotes.filter(l => l.productoId === productoId)
-      .reduce((a, l) => a + Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida)), 0);
-  }
-
-  function costoPromedio(productoId) {
-    const lotesProd = lotes.filter(l => l.productoId === productoId && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
-      .sort((a, b) => n(a.fecha) - n(b.fecha));
-    let total = 0, cant = 0;
-    for (const l of lotesProd) {
-      const r = n(l.cantidadInicial) - n(l.cantidadVendida);
-      total += r * n(l.costo); cant += r;
-    }
-    return cant > 0 ? total / cant : 0;
-  }
-
-  function valorLotes(productoId) {
-    return lotes.filter(l => l.productoId === productoId)
-      .reduce((a, l) => {
-        const r = Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida));
-        return a + r * n(l.costo);
-      }, 0);
-  }
-
-  let resultados = $derived.by(() => {
-    const q = busquedaProd.trim().toLowerCase();
-    if (!q) return productos.slice(0, 10);
-    return productos.filter(p =>
-      (p.nombre || '').toLowerCase().includes(q) ||
-      (p.codigo || '').toLowerCase().includes(q)
-    ).slice(0, 10);
-  });
-
-  async function registrarAjuste() {
-    if (!prodSel) { avisar('Selecciona un producto', 'dg'); return; }
-    const cant = parseFloat(cantidadAjuste);
-    if (isNaN(cant) || cant === 0) { avisar('Cantidad inválida', 'dg'); return; }
-
-    const ok = await pedirPIN();
-    if (!ok) { avisar('PIN incorrecto', 'dg'); return; }
-
-    const db = getDB();
-    const costoPerdida = cant < 0 ? Math.abs(cant) * costoPromedio(prodSel.id) : 0;
-
-    if (cant < 0) {
-      // Merma: consumir lotes FIFO
-      let restante = Math.abs(cant);
-      const lotesProd = lotes.filter(l => l.productoId === prodSel.id)
-        .sort((a, b) => n(a.fecha) - n(b.fecha));
-      for (const l of lotesProd) {
-        if (restante <= 0) break;
-        const disponible = n(l.cantidadInicial) - n(l.cantidadVendida);
-        if (disponible <= 0) continue;
-        const tomar = Math.min(restante, disponible);
-        await db.lotes.update(l.id, { cantidadVendida: n(l.cantidadVendida) + tomar });
-        restante -= tomar;
+      id: 'inventario',
+      nombre: 'Inventario',
+      icono: 'layers',
+      grupo: 'negocio',
+      orden: 4,
+      tablas: {
+        ajustesInv: '++id, productoId, fecha'
       }
-      if (restante > 0) {
-        avisar(`Stock insuficiente (faltan ${fmtCant(restante)})`, 'dg');
-        return;
-      }
-    } else {
-      // Sobrante: crear lote virtual
-      await db.lotes.add({
-        productoId: prodSel.id,
-        fecha: Date.now(),
-        cantidadInicial: cant,
-        cantidadVendida: 0,
-        costo: costoPromedio(prodSel.id)
-      });
-    }
+  </script>
 
-    await db.ajustesInv.add({
-      productoId: prodSel.id,
-      productoNombre: prodSel.nombre,
-      fecha: Date.now(),
-      motivo,
-      cantidad: cant,
-      costoPerdida
-    });
+  <script>
+    import { onMount } from 'svelte';
+    import { getDB } from '../../core/db.js';
+    import { bus } from '../../core/bus.js';
+    import { avisar, pedirPIN } from '../../core/store.svelte.js';
+    import { dinero } from '../../core/appstate.svelte.js';
+    import { n, fmtCant, fmtFH } from '../../core/util.js';
+    import Icono from '../../core/Icono.svelte';
 
-    bus.emitir('merma:registrada', { productoId: prodSel.id });
-    avisar('Ajuste registrado', 'ok');
-    prodSel = null;
-    cantidadAjuste = '';
-    await cargar();
-  }
-
-  function toggleExpand(p) {
-    prodExpandido = prodExpandido === p.id ? null : p.id;
-  }
-
-  let inventario = $derived.by(() => {
-    return productos
-      .map(p => ({
-        ...p,
-        stockTotal: stock(p.id),
-        valorTotal: valorLotes(p.id),
-        lotesActivos: lotes.filter(l => l.productoId === p.id && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
-          .sort((a, b) => n(a.fecha) - n(b.fecha))
-      }))
-      .sort((a, b) => a.nombre.localeCompare(b.nombre));
-  });
-
-  onMount(cargar);
-  bus.on('compra:registrada', cargar);
-  bus.on('venta:registrada', cargar);
-  bus.on('venta:anulada', cargar);
+    };
 </script>
 
 <div class="modulo">

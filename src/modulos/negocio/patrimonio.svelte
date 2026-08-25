@@ -1,158 +1,26 @@
-<script>
-  import { onMount } from 'svelte';
-  import { getDB } from '../../core/db.js';
-  import { bus } from '../../core/bus.js';
-  import { avisar, confirmar, pedirPIN } from '../../core/store.svelte.js';
-  import { dinero, actualizarCfg, app } from '../../core/appstate.svelte.js';
-  import { n, fmt, fmtFecha } from '../../core/util.js';
-  import Icono from '../../core/Icono.svelte';
-
+<script module>
   export const manifiesto = {
-    id: 'patrimonio',
-    nombre: 'Patrimonio',
-    icono: 'chart',
-    grupo: 'negocio',
-    orden: 6,
-    tablas: {
-      patrimonioMov: '++id, fecha, tipo',
-      cierresPeriodo: '++id, periodo, fechaCierre'
-    }
-  };
+      id: 'patrimonio',
+      nombre: 'Patrimonio',
+      icono: 'chart',
+      grupo: 'negocio',
+      orden: 6,
+      tablas: {
+        patrimonioMov: '++id, fecha, tipo',
+        cierresPeriodo: '++id, periodo, fechaCierre'
+      }
+  </script>
 
-  let movs = $state([]);
-  let cierres = $state([]);
-  let ventas = $state([]);
-  let compras = $state([]);
-  let ajustesInv = $state([]);
-  let movsCaja = $state([]);
-  let lotes = $state([]);
-  let productos = $state([]);
-  let modalAbierto = $state(null); // 'retiro' | 'aporte' | 'capital'
-  let formMov = $state({ tipo: '', monto: '', nota: '' });
-  let nuevoCapital = $state('');
+  <script>
+    import { onMount } from 'svelte';
+    import { getDB } from '../../core/db.js';
+    import { bus } from '../../core/bus.js';
+    import { avisar, confirmar, pedirPIN } from '../../core/store.svelte.js';
+    import { dinero, actualizarCfg, app } from '../../core/appstate.svelte.js';
+    import { n, fmt, fmtFecha } from '../../core/util.js';
+    import Icono from '../../core/Icono.svelte';
 
-  async function cargar() {
-    const db = getDB();
-    movs = (await db.patrimonioMov.toArray()).sort((a, b) => b.fecha - a.fecha);
-    cierres = (await db.cierresPeriodo.toArray()).sort((a, b) => b.fechaCierre - a.fechaCierre);
-    ventas = await db.ventas.toArray();
-    compras = await db.compras.toArray();
-    ajustesInv = await db.ajustesInv.toArray();
-    movsCaja = await db.movsCaja.toArray();
-    lotes = await db.lotes.toArray();
-    productos = await db.productos.toArray();
-  }
-
-  function valorInventario() {
-    return productos.filter(p => !p.archivado).reduce((a, p) => {
-      return a + lotes.filter(l => l.productoId === p.id)
-        .reduce((b, l) => b + Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida)) * n(l.costo), 0);
-    }, 0);
-  }
-
-  let saldoCaja = $derived.by(() => {
-    const cap = n(app.cfg?.capitalInicial);
-    const ap = movsCaja.filter(m => m.tipo === 'aporte').reduce((a, m) => a + n(m.monto), 0);
-    const re = movsCaja.filter(m => m.tipo === 'retiro').reduce((a, m) => a + n(m.monto), 0);
-    const vt = ventas.filter(v => v.estado === 'activa').reduce((a, v) => a + n(v.total), 0);
-    const co = compras.reduce((a, c) => a + n(c.total), 0);
-    const arq = movsCaja.filter(m => m.tipo === 'sobrante' || m.tipo === 'faltante')
-      .reduce((a, m) => a + (m.tipo === 'sobrante' ? n(m.monto) : -n(m.monto)), 0);
-    return cap + ap + vt - co - re + arq;
-  });
-
-  let periodoInicio = $derived(() => n(app.cfg?.periodoInicio) || 0);
-  let ventasPeriodo = $derived(() => ventas.filter(v => v.estado === 'activa' && n(v.fecha) >= periodoInicio()).reduce((a, v) => a + n(v.total), 0));
-  let comprasPeriodo = $derived(() => compras.filter(c => n(c.fecha) >= periodoInicio()).reduce((a, c) => a + n(c.total), 0));
-  let gananciaBrutaPeriodo = $derived(() => ventas.filter(v => v.estado === 'activa' && n(v.fecha) >= periodoInicio()).reduce((a, v) => a + n(v.ganancia), 0));
-  let gananciaNetaPeriodo = $derived(() => ventas.filter(v => v.estado === 'activa' && n(v.fecha) >= periodoInicio()).reduce((a, v) => a + n(v.ganancia), 0));
-  let gastosOpPeriodo = $derived(() => movs.filter(m => m.tipo === 'Retiro' && n(m.fecha) >= periodoInicio()).reduce((a, m) => a + n(m.monto), 0) + ajustesInv.filter(a => n(a.fecha) >= periodoInicio() && n(a.costoPerdida) > 0).reduce((a, x) => a + n(x.costoPerdida), 0));
-  let gananciasAcumuladas = $derived(() => movs.filter(m => m.tipo === 'Ganancia').reduce((a, m) => a + n(m.monto), 0) - movs.filter(m => m.tipo === 'Retiro').reduce((a, m) => a + n(m.monto), 0));
-  let capitalInicial = $derived(() => n(app.cfg?.capitalInicial));
-  let aportesPatrimonio = $derived(() => movs.filter(m => m.tipo === 'Aporte').reduce((a, m) => a + n(m.monto), 0));
-  let capitalTotal = $derived(() => capitalInicial() + aportesPatrimonio());
-  let patrimonioTotal = $derived(() => capitalTotal() + gananciasAcumuladas());
-  let gananciaDisponible = $derived(() => Math.max(0, gananciaNetaPeriodo() - gastosOpPeriodo()));
-
-  function abrirModal(tipo) {
-    if (tipo === 'capital') {
-      nuevoCapital = String(capitalInicial());
-    } else {
-      formMov = { tipo, monto: '', nota: '' };
-    }
-    modalAbierto = tipo;
-  }
-
-  async function guardarMov() {
-    if (n(formMov.monto) <= 0) { avisar('Monto inválido', 'dg'); return; }
-    const ok = await pedirPIN();
-    if (!ok) { avisar('PIN incorrecto', 'dg'); return; }
-    const db = getDB();
-    await db.patrimonioMov.add({
-      fecha: Date.now(),
-      tipo: formMov.tipo,
-      monto: n(formMov.monto),
-      nota: formMov.nota.trim()
-    });
-    if (formMov.tipo === 'Retiro') {
-      await db.movsCaja.add({
-        fecha: Date.now(),
-        tipo: 'retiro',
-        concepto: 'Retiro de ganancia' + (formMov.nota ? ': ' + formMov.nota : ''),
-        monto: n(formMov.monto)
-      });
-    }
-    bus.emitir('patrimonio:movimiento', { tipo: formMov.tipo });
-    avisar('Movimiento registrado', 'ok');
-    modalAbierto = null;
-    await cargar();
-  }
-
-  async function guardarCapital() {
-    const v = parseFloat(nuevoCapital);
-    if (isNaN(v) || v < 0) { avisar('Capital inválido', 'dg'); return; }
-    await actualizarCfg({ capitalInicial: v });
-    avisar('Capital inicial actualizado', 'ok');
-    modalAbierto = null;
-    await cargar();
-  }
-
-  async function cerrarPeriodo() {
-    const ok = await confirmar(
-      'Cerrar Período',
-      `Se registrará el período actual (ventas: ${dinero(ventasPeriodo())}, ganancia: ${dinero(gananciaNetaPeriodo())}) y se reiniciará el contador. El historial se conserva.`
-    );
-    if (!ok) return;
-    const pin = await pedirPIN();
-    if (!pin) { avisar('PIN incorrecto', 'dg'); return; }
-    const db = getDB();
-    const fechaInicio = new Date(periodoInicio());
-    const periodo = fechaInicio.toLocaleDateString('es', { month: 'short', year: '2-digit' });
-    await db.cierresPeriodo.add({
-      periodo,
-      fechaCierre: Date.now(),
-      totalVentas: ventasPeriodo(),
-      ganancia: gananciaNetaPeriodo()
-    });
-    await db.patrimonioMov.add({
-      fecha: Date.now(),
-      tipo: 'Ganancia',
-      monto: gananciaNetaPeriodo(),
-      nota: `Cierre de período ${periodo}`
-    });
-    await actualizarCfg({ periodoInicio: Date.now() });
-    bus.emitir('periodo:cerrado', { periodo });
-    avisar('Período cerrado', 'ok');
-    await cargar();
-  }
-
-  onMount(cargar);
-  bus.on('venta:registrada', cargar);
-  bus.on('venta:anulada', cargar);
-  bus.on('compra:registrada', cargar);
-  bus.on('compra:editada', cargar);
-  bus.on('merma:registrada', cargar);
-  bus.on('arqueo:registrado', cargar);
+    };
 </script>
 
 <div class="modulo">
