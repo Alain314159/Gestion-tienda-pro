@@ -184,7 +184,7 @@
     {#if productosFiltrados.length > 0 && !esNuevo}
       <div class="list" style="margin-bottom: 1rem; max-height: 150px; overflow-y: auto;">
         {#each productosFiltrados as p}
-          <button class="item" onclick={() => seleccionarProducto(p)}>
+          <button class="item" on:click={() => seleccionarProducto(p)}>
             <div class="t">{p.nombre}</div>
             <div class="s">Stock: {fmtCant(stock(p.id))} {p.unidad||'u'} · {dinero(p.precio)}</div>
           </button>
@@ -227,7 +227,7 @@
       Fecha
       <input class="inp" type="datetime-local" 
         value={toLocalISOString(form.fecha)} 
-        oninput={(e) => form.fecha = new Date(e.target.value).getTime()} 
+        on:input={(e) => form.fecha = new Date(e.target.value).getTime()} 
       />
     </div>
 
@@ -236,8 +236,8 @@
     </div>
 
     <div class="row">
-      <button class="btn sec" onclick={cerrarForm}>Cancelar</button>
-      <button class="btn ok" onclick={guardar}>
+      <button class="btn sec" on:click={cerrarForm}>Cancelar</button>
+      <button class="btn ok" on:click={guardar}>
         <Icono nombre="save" size={16} /> {form.editId ? 'Actualizar' : 'Registrar Compra'}
       </button>
     </div>
@@ -260,7 +260,7 @@
                 <div class="s">{fmtFH(c.fecha)} · {fmtCant(c.cantidad)} {c.unidad||'u'} × {dinero(c.costo)}</div>
               </div>
               <div class="item-acciones">
-                <button class="mini" title="Editar" onclick={() => abrirForm(c)}>
+                <button class="mini" title="Editar" on:click={() => abrirForm(c)}>
                   <Icono nombre="edit" size={16} />
                 </button>
               </div>
@@ -275,8 +275,8 @@
   </div>
 
   <datalist id="unidades-list">
-    <option value="kg" ></option><option value="lb" ></option><option value="gr" ></option>
-    <option value="litro" ></option><option value="u" ></option>
+    <option value="kg" /><option value="lb" /><option value="gr" />
+    <option value="litro" /><option value="u" />
   </datalist>
 
   <style>

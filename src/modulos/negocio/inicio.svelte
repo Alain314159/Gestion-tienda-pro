@@ -243,16 +243,16 @@
   <div class="card">
     <div class="tit">Accesos rápidos</div>
     <div class="row" style="flex-wrap:wrap;gap:0.5rem">
-      <button class="btn ok sm" onclick={() => irA('ventas')}>
+      <button class="btn ok sm" on:click={() => irA('ventas')}>
         <Icono nombre="cash" size={16} /> Nueva Venta
       </button>
-      <button class="btn sec sm" onclick={() => irA('compras')}>
+      <button class="btn sec sm" on:click={() => irA('compras')}>
         <Icono nombre="cart" size={16} /> Registrar Compra
       </button>
-      <button class="btn sec sm" onclick={() => irA('caja')}>
+      <button class="btn sec sm" on:click={() => irA('caja')}>
         <Icono nombre="check" size={16} /> Arqueo de Caja
       </button>
-      <button class="btn sec sm" onclick={() => irA('inventario')}>
+      <button class="btn sec sm" on:click={() => irA('inventario')}>
         <Icono nombre="layers" size={16} /> Ver Inventario
       </button>
     </div>

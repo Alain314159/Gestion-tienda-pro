@@ -198,7 +198,7 @@
     {#if resultados.length > 0}
       <div class="list" style="margin-top:0.5rem;max-height:200px;overflow-y:auto">
         {#each resultados as p}
-          <button class="item" onclick={() => agregarAlCarrito(p)}>
+          <button class="item" on:click={() => agregarAlCarrito(p)}>
             <div class="t">{p.nombre}</div>
             <div class="s">Stock {fmtCant(stock(p.id))} {p.unidad||''} · {dinero(p.precio)}</div>
           </button>
@@ -219,9 +219,9 @@
               <div class="item-info">
                 <div class="t">{it.nombre}</div>
                 <div class="s">
-                  <button class="mini" onclick={() => cambiarCant(it, -1)}><Icono nombre="minus" size={14}/></button>
+                  <button class="mini" on:click={() => cambiarCant(it, -1)}><Icono nombre="minus" size={14}/></button>
                   <span style="margin:0 0.4rem;font-weight:600">{fmtCant(it.cant)} {it.unidad||''}</span>
-                  <button class="mini" onclick={() => cambiarCant(it, 1)}><Icono nombre="plus" size={14}/></button>
+                  <button class="mini" on:click={() => cambiarCant(it, 1)}><Icono nombre="plus" size={14}/></button>
                   <span style="margin-left:0.5rem">@</span>
                   <input class="inp" type="number" step="0.01" style="width:80px;display:inline-block;margin-left:0.25rem"
                     bind:value={it.precio} />
@@ -242,10 +242,10 @@
         <span>{dinero(gananciaCarrito())}</span>
       </div>
       <div class="row" style="margin-top:0.5rem">
-        <button class="btn sec" onclick={limpiarCarrito}>
+        <button class="btn sec" on:click={limpiarCarrito}>
           <Icono nombre="trash" size={16} /> Limpiar
         </button>
-        <button class="btn ok" style="flex:1" onclick={abrirCobro}>
+        <button class="btn ok" style="flex:1" on:click={abrirCobro}>
           <Icono nombre="cash" size={16} /> {procesando ? 'Procesando...' : 'Cobrar Venta'}
         </button>
       </div>
@@ -277,7 +277,7 @@
                 <div class="pos" style="font-weight:600">{dinero(v.total)}</div>
                 <div class="mut" style="font-size:0.8rem">+{dinero(v.ganancia)}</div>
                 {#if v.estado !== 'anulada'}
-                  <button class="mini dg" style="margin-top:0.25rem" onclick={() => anularVenta(v)}>
+                  <button class="mini dg" style="margin-top:0.25rem" on:click={() => anularVenta(v)}>
                     <Icono nombre="trash" size={14} /> Anular
                   </button>
                 {/if}
@@ -290,8 +290,8 @@
   </div>
 
   {#if cobroAbierto}
-    <div class="mask cent" onclick={() => cobroAbierto = false} onkeydown={(e) => e.key === 'Escape' && (cobroAbierto = false)} role="dialog">
-      <div class="modal" onclick={(e) = onkeydown={(e) => (e.key === "Enter" || e.key === " ") && e.currentTarget.click()}> e.stopPropagation()} role="dialog">
+    <div class="mask cent" on:click={() => cobroAbierto = false} on:keydown={(e) => e.key === 'Escape' && (cobroAbierto = false)} role="dialog">
+      <div class="modal" on:click={(e) => e.stopPropagation()} role="dialog">
         <div class="tit"><Icono nombre="cash" size={20} /> Cobrar Venta</div>
         <div class="big" style="text-align:center;margin:0.5rem 0">{dinero(totalCarrito())}</div>
         <div class="mut" style="text-align:center;margin-bottom:1rem">Total a pagar</div>
@@ -300,15 +300,15 @@
           <input class="inp" type="number" step="0.01" bind:value={recibido} />
         </label>
         <div class="row" style="margin-top:0.5rem">
-          <button class="btn sec sm" onclick={pagarExacto}>Pagar exacto</button>
+          <button class="btn sec sm" on:click={pagarExacto}>Pagar exacto</button>
         </div>
         <div class="row" style="justify-content:space-between;margin-top:1rem;font-weight:700">
           <span>Vuelto</span>
           <span class="pos">{dinero(vuelto)}</span>
         </div>
         <div class="row" style="margin-top:1rem">
-          <button class="btn sec" onclick={() => cobroAbierto = false}>Cancelar</button>
-          <button class="btn ok" style="flex:1" onclick={confirmarPago} disabled={procesando}>
+          <button class="btn sec" on:click={() => cobroAbierto = false}>Cancelar</button>
+          <button class="btn ok" style="flex:1" on:click={confirmarPago} disabled={procesando}>
             <Icono nombre="check" size={16} /> Confirmar Pago
           </button>
         </div>

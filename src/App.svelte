@@ -84,7 +84,7 @@
 
 {#if masAbierto}
   <div class="mask" onclick={cerrarMas} onkeydown={(e) => e.key === 'Escape' && cerrarMas()} role="dialog">
-    <div class="sheet" onclick={(e) = onkeydown={(e) => (e.key === "Enter" || e.key === " ") && e.currentTarget.click()}> e.stopPropagation()} role="document">
+    <div class="sheet" onclick={(e) => e.stopPropagation()} role="document">
       <div class="tit">Más opciones</div>
       <div class="list">
         {#each modulos as m}
@@ -103,7 +103,7 @@
 
 {#if ui.confirm}
   <div class="mask cent" onclick={() => cerrarConfirm(false)} onkeydown={(e) => e.key === 'Escape' && cerrarConfirm(false)} role="dialog">
-    <div class="modal" onclick={(e) = onkeydown={(e) => (e.key === "Enter" || e.key === " ") && e.currentTarget.click()}> e.stopPropagation()} role="alertdialog">
+    <div class="modal" onclick={(e) => e.stopPropagation()} role="alertdialog">
       <div class="tit"><Icono nombre="alert" size={20} /> {ui.confirm.titulo}</div>
       <p class="mut" style="margin-bottom:16px">{ui.confirm.msg}</p>
       <div class="row">
@@ -116,7 +116,7 @@
 
 {#if ui.prompt}
   <div class="mask cent" onclick={() => cerrarPrompt(false)} onkeydown={(e) => e.key === 'Escape' && cerrarPrompt(false)} role="dialog">
-    <div class="modal" onclick={(e) = onkeydown={(e) => (e.key === "Enter" || e.key === " ") && e.currentTarget.click()}> e.stopPropagation()} role="dialog">
+    <div class="modal" onclick={(e) => e.stopPropagation()} role="dialog">
       <div class="tit"><Icono nombre="lock" size={20} /> {ui.prompt.titulo}</div>
       <p class="mut">{ui.prompt.msg}</p>
       <input

@@ -197,10 +197,10 @@
   </div>
 
   <div class="row">
-    <button class="btn ok" onclick={() => abrirSheet(null)}>
+    <button class="btn ok" on:click={() => abrirSheet(null)}>
       <Icono nombre="plus" size={16} /> Agregar
     </button>
-    <button class="btn sec" onclick={() => (mostrarArchivados = !mostrarArchivados)}>
+    <button class="btn sec" on:click={() => (mostrarArchivados = !mostrarArchivados)}>
       <Icono nombre={mostrarArchivados ? 'x' : 'archive'} size={16} />
       {mostrarArchivados ? 'Ocultar archivados' : 'Ver archivados'}
     </button>
@@ -235,14 +235,14 @@
             </div>
             <div class="item-acciones">
               {#if !p.archivado}
-                <button class="mini" title="Editar" onclick={() => abrirSheet(p)}>
+                <button class="mini" title="Editar" on:click={() => abrirSheet(p)}>
                   <Icono nombre="edit" size={16} />
                 </button>
-                <button class="mini dg" title="Archivar" onclick={() => archivar(p)}>
+                <button class="mini dg" title="Archivar" on:click={() => archivar(p)}>
                   <Icono nombre="archive" size={16} />
                 </button>
               {:else}
-                <button class="mini ok" title="Restaurar" onclick={() => restaurar(p)}>
+                <button class="mini ok" title="Restaurar" on:click={() => restaurar(p)}>
                   <Icono nombre="refresh" size={16} />
                 </button>
               {/if}
@@ -270,11 +270,11 @@
   {/if}
 
   {#if sheetAbierto}
-    <div class="mask" onclick={cerrarSheet} role="presentation" onkeydown={(e) => (e.key === "Enter" || e.key === " ") && e.currentTarget.click()}>
-    <div class="sheet" onclick={(e) = onkeydown={(e) => (e.key === "Enter" || e.key === " ") && e.currentTarget.click()}> e.stopPropagation()} role="dialog">
+    <div class="mask" on:click={cerrarSheet} role="presentation">
+    <div class="sheet" on:click={(e) => e.stopPropagation()} role="dialog">
       <div class="sheet-head">
         <div class="t">{editando ? 'Editar producto' : 'Nuevo producto'}</div>
-        <button class="mini" onclick={cerrarSheet}>
+        <button class="mini" on:click={cerrarSheet}>
           <Icono nombre="x" size={18} />
         </button>
       </div>
@@ -291,11 +291,11 @@
           Unidad
           <input class="inp" type="text" list="unidades-list" bind:value={formUnidad} placeholder="Selecciona o escribe" />
           <datalist id="unidades-list">
-            <option value="kg" ></option>
-            <option value="lb" ></option>
-            <option value="gr" ></option>
-            <option value="litro" ></option>
-            <option value="u" ></option>
+            <option value="kg" />
+            <option value="lb" />
+            <option value="gr" />
+            <option value="litro" />
+            <option value="u" />
           </datalist>
           <small class="mut">Unidad de medida para mostrar en ventas y stock (kg, lb, gr, litro, u).</small>
         </label>
@@ -306,8 +306,8 @@
       </div>
       <div class="sheet-foot">
         <div class="row">
-          <button class="btn sec" onclick={cerrarSheet}>Cancelar</button>
-          <button class="btn ok" onclick={guardar}>
+          <button class="btn sec" on:click={cerrarSheet}>Cancelar</button>
+          <button class="btn ok" on:click={guardar}>
             <Icono nombre="save" size={16} />
             {editando ? 'Actualizar' : 'Guardar'}
           </button>

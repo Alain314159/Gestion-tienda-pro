@@ -187,13 +187,13 @@
   <div class="card">
     <div class="tit">Acciones</div>
     <div class="row" style="flex-wrap:wrap;gap:0.5rem">
-      <button class="btn dgr sm" onclick={() => abrirModal('Retiro')}>
+      <button class="btn dgr sm" on:click={() => abrirModal('Retiro')}>
         <Icono nombre="minus" size={16} /> Retirar Ganancia
       </button>
-      <button class="btn ok sm" onclick={() => abrirModal('Aporte')}>
+      <button class="btn ok sm" on:click={() => abrirModal('Aporte')}>
         <Icono nombre="plus" size={16} /> Aportar Capital
       </button>
-      <button class="btn sec sm" onclick={() => abrirModal('capital')}>
+      <button class="btn sec sm" on:click={() => abrirModal('capital')}>
         <Icono nombre="edit" size={16} /> Capital Inicial
       </button>
     </div>
@@ -208,7 +208,7 @@
     <div class="mut" style="margin-top:0.25rem">
       Ventas {dinero(ventasPeriodo)} · Compras {dinero(comprasPeriodo)} · Ganancia {dinero(gananciaNetaPeriodo)}
     </div>
-    <button class="btn dgr" style="margin-top:0.75rem;width:100%" onclick={cerrarPeriodo}>
+    <button class="btn dgr" style="margin-top:0.75rem;width:100%" on:click={cerrarPeriodo}>
       <Icono nombre="check" size={16} /> Cerrar Período y Empezar Nuevo
     </button>
   </div>
@@ -251,8 +251,8 @@
   </div>
 
   {#if modalAbierto === 'retiro' || modalAbierto === 'aporte'}
-    <div class="mask cent" onclick={() => modalAbierto = null} onkeydown={(e) => e.key === 'Escape' && (modalAbierto = null)} role="dialog">
-      <div class="modal" onclick={(e) = onkeydown={(e) => (e.key === "Enter" || e.key === " ") && e.currentTarget.click()}> e.stopPropagation()} role="dialog">
+    <div class="mask cent" on:click={() => modalAbierto = null} on:keydown={(e) => e.key === 'Escape' && (modalAbierto = null)} role="dialog">
+      <div class="modal" on:click={(e) => e.stopPropagation()} role="dialog">
         <div class="tit">
           <Icono nombre={formMov.tipo === 'Retiro' ? 'minus' : 'plus'} size={20} />
           {formMov.tipo === 'Retiro' ? 'Retirar Ganancia' : 'Aportar Capital'}
@@ -266,16 +266,16 @@
           <input class="inp" type="text" bind:value={formMov.nota} placeholder="Ej: Retiro para gastos personales" />
         </label>
         <div class="row" style="margin-top:1rem">
-          <button class="btn sec" onclick={() => modalAbierto = null}>Cancelar</button>
-          <button class="btn ok" style="flex:1" onclick={guardarMov}>
+          <button class="btn sec" on:click={() => modalAbierto = null}>Cancelar</button>
+          <button class="btn ok" style="flex:1" on:click={guardarMov}>
             <Icono nombre="save" size={16} /> Guardar
           </button>
         </div>
       </div>
     </div>
   {:else if modalAbierto === 'capital'}
-    <div class="mask cent" onclick={() => modalAbierto = null} onkeydown={(e) => e.key === 'Escape' && (modalAbierto = null)} role="dialog">
-      <div class="modal" onclick={(e) = onkeydown={(e) => (e.key === "Enter" || e.key === " ") && e.currentTarget.click()}> e.stopPropagation()} role="dialog">
+    <div class="mask cent" on:click={() => modalAbierto = null} on:keydown={(e) => e.key === 'Escape' && (modalAbierto = null)} role="dialog">
+      <div class="modal" on:click={(e) => e.stopPropagation()} role="dialog">
         <div class="tit"><Icono nombre="edit" size={20} /> Capital Inicial</div>
         <div class="mut">Actual: {dinero(capitalInicial)}</div>
         <label class="lbl" style="margin-top:0.5rem">
@@ -283,8 +283,8 @@
           <input class="inp" type="number" step="0.01" bind:value={nuevoCapital} placeholder="0.00" />
         </label>
         <div class="row" style="margin-top:1rem">
-          <button class="btn sec" onclick={() => modalAbierto = null}>Cancelar</button>
-          <button class="btn ok" style="flex:1" onclick={guardarCapital}>
+          <button class="btn sec" on:click={() => modalAbierto = null}>Cancelar</button>
+          <button class="btn ok" style="flex:1" on:click={guardarCapital}>
             <Icono nombre="save" size={16} /> Guardar
           </button>
         </div>

@@ -141,13 +141,13 @@
   <div class="card">
     <div class="tit">Acciones</div>
     <div class="row">
-      <button class="btn ok sm" onclick={() => abrirMov('aporte')}>
+      <button class="btn ok sm" on:click={() => abrirMov('aporte')}>
         <Icono nombre="plus" size={16} /> Aporte
       </button>
-      <button class="btn dgr sm" onclick={() => abrirMov('retiro')}>
+      <button class="btn dgr sm" on:click={() => abrirMov('retiro')}>
         <Icono nombre="minus" size={16} /> Retiro
       </button>
-      <button class="btn sec sm" onclick={abrirArqueo}>
+      <button class="btn sec sm" on:click={abrirArqueo}>
         <Icono nombre="check" size={16} /> Arqueo
       </button>
     </div>
@@ -175,8 +175,8 @@
   </div>
 
   {#if arqueoAbierto}
-    <div class="mask cent" onclick={() => arqueoAbierto = false} onkeydown={(e) => e.key === 'Escape' && (arqueoAbierto = false)} role="dialog">
-      <div class="modal" onclick={(e) = onkeydown={(e) => (e.key === "Enter" || e.key === " ") && e.currentTarget.click()}> e.stopPropagation()} role="dialog">
+    <div class="mask cent" on:click={() => arqueoAbierto = false} on:keydown={(e) => e.key === 'Escape' && (arqueoAbierto = false)} role="dialog">
+      <div class="modal" on:click={(e) => e.stopPropagation()} role="dialog">
         <div class="tit"><Icono nombre="check" size={20} /> Arqueo de Caja</div>
         <p class="mut">Cuenta el dinero físico. Si es menor al sistema = faltante; si es mayor = sobrante.</p>
         <div class="lbl">
@@ -195,8 +195,8 @@
           </div>
         {/if}
         <div class="row" style="margin-top:1rem">
-          <button class="btn sec" onclick={() => arqueoAbierto = false}>Cancelar</button>
-          <button class="btn ok" style="flex:1" onclick={registrarArqueo}>
+          <button class="btn sec" on:click={() => arqueoAbierto = false}>Cancelar</button>
+          <button class="btn ok" style="flex:1" on:click={registrarArqueo}>
             <Icono nombre="save" size={16} /> Registrar Arqueo
           </button>
         </div>
@@ -205,8 +205,8 @@
   {/if}
 
   {#if movAbierto}
-    <div class="mask cent" onclick={() => movAbierto = false} onkeydown={(e) => e.key === 'Escape' && (movAbierto = false)} role="dialog">
-      <div class="modal" onclick={(e) = onkeydown={(e) => (e.key === "Enter" || e.key === " ") && e.currentTarget.click()}> e.stopPropagation()} role="dialog">
+    <div class="mask cent" on:click={() => movAbierto = false} on:keydown={(e) => e.key === 'Escape' && (movAbierto = false)} role="dialog">
+      <div class="modal" on:click={(e) => e.stopPropagation()} role="dialog">
         <div class="tit">
           <Icono nombre={movForm.tipo === 'aporte' ? 'plus' : 'minus'} size={20} />
           {movForm.tipo === 'aporte' ? 'Aportar Capital' : 'Retirar'}
@@ -220,8 +220,8 @@
           <input class="inp" type="number" step="0.01" bind:value={movForm.monto} placeholder="0.00" />
         </label>
         <div class="row" style="margin-top:1rem">
-          <button class="btn sec" onclick={() => movAbierto = false}>Cancelar</button>
-          <button class="btn ok" style="flex:1" onclick={guardarMov}>
+          <button class="btn sec" on:click={() => movAbierto = false}>Cancelar</button>
+          <button class="btn ok" style="flex:1" on:click={guardarMov}>
             <Icono nombre="save" size={16} /> Guardar
           </button>
         </div>
