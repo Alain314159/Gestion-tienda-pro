@@ -89,48 +89,11 @@
   }
 
 
-  async function restaurarBackup() {
-    const raw = localStorage.getItem('tp-backup-auto');
-    const ok = await confirmar('Restaurar', 'Se reemplazan TODOS los datos actuales con el backup automático');
-    const data = JSON.parse(raw);
-    const db = getDB();
-    for (const [nombre, filas] of Object.entries(data.tablas)) {
-      if (db[nombre]) await db[nombre].bulkPut(filas);
-    }
-    avisar('Backup restaurado', 'ok');
-    setTimeout(() => location.reload(), 1000);
-  }
+  
 
+  
 
-  async function restaurarBackup() {
-    const raw = localStorage.getItem("tp-backup-auto");
-    if (!raw) { avisar("No hay backup guardado", "dg"); return; }
-    const ok = await confirmar("Restaurar", "Se reemplazan TODOS los datos actuales con el backup automático");
-    if (!ok) return;
-    const data = JSON.parse(raw);
-    const db = getDB();
-    for (const [nombre, filas] of Object.entries(data.tablas)) {
-      if (db[nombre]) await db[nombre].bulkPut(filas);
-    }
-    avisar("Backup restaurado", "ok");
-    setTimeout(() => location.reload(), 1000);
-  }
-
-
-  async function restaurarBackup() {
-    const raw = localStorage.getItem("tp-backup-auto");
-    if (!raw) { avisar("No hay backup guardado", "dg"); return; }
-    const ok = await confirmar("Restaurar", "Se reemplazan TODOS los datos actuales con el backup automático");
-    if (!ok) return;
-    const data = JSON.parse(raw);
-    const db = getDB();
-    for (const [nombre, filas] of Object.entries(data.tablas)) {
-      if (db[nombre]) await db[nombre].bulkPut(filas);
-    }
-    avisar("Backup restaurado", "ok");
-    setTimeout(() => location.reload(), 1000);
-  }
-
+  
 
   async function restaurarBackup() {
     const raw = localStorage.getItem("tp-backup-auto");
