@@ -1,21 +1,21 @@
 <script module>
   export const manifiesto = {
-      id: 'ajustes',
-      nombre: 'Ajustes',
-      icono: 'ajustes',
-      grupo: 'utilidades',
-      orden: 9,
-      tablas: {}
-  </script>
+        id: 'ajustes',
+        nombre: 'Ajustes',
+        icono: 'ajustes',
+        grupo: 'utilidades',
+        orden: 9,
+        tablas: {}
+    </script>
 
-  <script>
-    import { onMount } from 'svelte';
-    import { getDB } from '../../core/db.js';
-    import { avisar, confirmar, preguntar, ui, alternarTema } from '../../core/store.svelte.js';
-    import { actualizarCfg, app } from '../../core/appstate.svelte.js';
-    import Icono from '../../core/Icono.svelte';
+    <script>
+      import { onMount } from 'svelte';
+      import { getDB } from '../../core/db.js';
+      import { avisar, confirmar, preguntar, ui, alternarTema } from '../../core/store.svelte.js';
+      import { actualizarCfg, app } from '../../core/appstate.svelte.js';
+      import Icono from '../../core/Icono.svelte';
 
-    };
+      };
 </script>
 
 <div class="modulo">

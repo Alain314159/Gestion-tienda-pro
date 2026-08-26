@@ -1,27 +1,27 @@
 <script module>
   export const manifiesto = {
-      id: 'productos',
-      nombre: 'Productos',
-      icono: 'box',
-      grupo: 'negocio',
-      orden: 5,
-      tablas: {
-        productos: '++id, nombre, codigo, archivado',
-        lotes: '++id, productoId, fecha'
-      }
-  </script>
+        id: 'productos',
+        nombre: 'Productos',
+        icono: 'box',
+        grupo: 'negocio',
+        orden: 5,
+        tablas: {
+          productos: '++id, nombre, codigo, archivado',
+          lotes: '++id, productoId, fecha'
+        }
+    </script>
 
-  <!-- src/modulos/negocio/productos.svelte -->
-  <script>
-    import { onMount } from 'svelte';
-    import { getDB } from '../../core/db.js';
-    import { bus } from '../../core/bus.js';
-    import { avisar, confirmar } from '../../core/store.svelte.js';
-    import { dinero } from '../../core/appstate.svelte.js';
-    import { fmtCant, fmtFH, n } from '../../core/util.js';
-    import Icono from '../../core/Icono.svelte';
+    <!-- src/modulos/negocio/productos.svelte -->
+    <script>
+      import { onMount } from 'svelte';
+      import { getDB } from '../../core/db.js';
+      import { bus } from '../../core/bus.js';
+      import { avisar, confirmar } from '../../core/store.svelte.js';
+      import { dinero } from '../../core/appstate.svelte.js';
+      import { fmtCant, fmtFH, n } from '../../core/util.js';
+      import Icono from '../../core/Icono.svelte';
 
-    };
+      };
 </script>
 
 <div class="modulo">

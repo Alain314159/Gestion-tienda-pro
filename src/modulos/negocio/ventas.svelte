@@ -1,23 +1,23 @@
 <script module>
   export const manifiesto = {
-      id: 'ventas',
-      nombre: 'Ventas',
-      icono: 'cash',
-      grupo: 'negocio',
-      orden: 1,
-      tablas: { ventas: '++id, fecha, estado' }
-  </script>
+        id: 'ventas',
+        nombre: 'Ventas',
+        icono: 'cash',
+        grupo: 'negocio',
+        orden: 1,
+        tablas: { ventas: '++id, fecha, estado' }
+    </script>
 
-  <script>
-    import { onMount } from 'svelte';
-    import { getDB } from '../../core/db.js';
-    import { bus } from '../../core/bus.js';
-    import { avisar, pedirPIN } from '../../core/store.svelte.js';
-    import { dinero } from '../../core/appstate.svelte.js';
-    import { n, fmtCant, fmtFH } from '../../core/util.js';
-    import Icono from '../../core/Icono.svelte';
+    <script>
+      import { onMount } from 'svelte';
+      import { getDB } from '../../core/db.js';
+      import { bus } from '../../core/bus.js';
+      import { avisar, pedirPIN } from '../../core/store.svelte.js';
+      import { dinero } from '../../core/appstate.svelte.js';
+      import { n, fmtCant, fmtFH } from '../../core/util.js';
+      import Icono from '../../core/Icono.svelte';
 
-    };
+      };
 </script>
 
 <div class="modulo">
