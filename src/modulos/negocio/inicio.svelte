@@ -12,8 +12,8 @@
       import { onMount, onDestroy } from 'svelte';
       import { getDB } from '../../core/db.js';
       import { bus } from '../../core/bus.js';
-      import { ui } from '../../core/store.svelte.js';
-      import { dinero, app } from '../../core/appstate.svelte.js';
+      import { ui } from ../../core/store.js';
+      import { dinero, app } from ../../core/appstate.js';
       import { n, fmt, fmtCant, fmtFH, fmtFecha } from '../../core/util.js';
       import Icono from '../../core/Icono.svelte';
 

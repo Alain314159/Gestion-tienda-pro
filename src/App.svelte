@@ -1,5 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
+import { get } from 'svelte/store';
   import Icono from './core/Icono.svelte';
   import { modulos } from './core/registro.js';
   import {
@@ -12,7 +13,7 @@
   onMount(async () => {
     aplicarTema();
     await iniciarCfg();
-    if (!ui.activo && modulos.length) ui.activo = modulos[0].id;
+    if (!ui.activo && modulos.length) setActivo(modulos[0].id);
   });
 
   $effect(() => {
@@ -33,7 +34,7 @@
   async function abrirMas() { masAbierto = true; }
   function cerrarMas() { masAbierto = false; }
   function irA(id) {
-    ui.activo = id;
+    setActivo(id);
     masAbierto = false;
   }
 </script>
@@ -47,7 +48,7 @@
     <Icono nombre={activo?.icono || 'home'} size={22} />
     <h1>{activo?.nombre || app.cfg?.nombre || 'Tienda Pro'}</h1>
     <button class="hbtn" onclick={alternarTema} aria-label="Tema">
-      <Icono nombre={ui.tema === 'dark' ? 'sun' : 'moon'} size={18} />
+      <Icono nombre={get(ui).tema === 'dark' ? 'sun' : 'moon'} size={18} />
     </button>
     <button class="hbtn" onclick={abrirMas} aria-label="Más">
       <Icono nombre="mas2" size={18} />
@@ -75,7 +76,7 @@
 
 <nav class="nav">
   {#each navMods as m}
-    <button class:on={ui.activo === m.id} onclick={() => irA(m.id)}>
+    <button class:on={get(ui).activo === m.id} onclick={() => irA(m.id)}>
       <Icono nombre={m.icono || 'home'} size={22} />
       <span>{m.nombre}</span>
     </button>
@@ -104,8 +105,8 @@
 {#if ui.confirm}
   <div class="mask cent" onclick={() => cerrarConfirm(false)} onkeydown={(e) => e.key === 'Escape' && cerrarConfirm(false)} role="dialog">
     <div class="modal" onclick={(e) => e.stopPropagation()} role="alertdialog">
-      <div class="tit"><Icono nombre="alert" size={20} /> {ui.confirm.titulo}</div>
-      <p class="mut" style="margin-bottom:16px">{ui.confirm.msg}</p>
+      <div class="tit"><Icono nombre="alert" size={20} /> {get(ui).confirm.titulo}</div>
+      <p class="mut" style="margin-bottom:16px">{get(ui).confirm.msg}</p>
       <div class="row">
         <button class="btn sec" onclick={() => cerrarConfirm(false)}>Cancelar</button>
         <button class="btn dgr" onclick={() => cerrarConfirm(true)}>Confirmar</button>
@@ -117,12 +118,12 @@
 {#if ui.prompt}
   <div class="mask cent" onclick={() => cerrarPrompt(false)} onkeydown={(e) => e.key === 'Escape' && cerrarPrompt(false)} role="dialog">
     <div class="modal" onclick={(e) => e.stopPropagation()} role="dialog">
-      <div class="tit"><Icono nombre="lock" size={20} /> {ui.prompt.titulo}</div>
-      <p class="mut">{ui.prompt.msg}</p>
+      <div class="tit"><Icono nombre="lock" size={20} /> {get(ui).prompt.titulo}</div>
+      <p class="mut">{get(ui).prompt.msg}</p>
       <input
         class="inp"
-        type={ui.prompt.titulo.toLowerCase().includes('pin') ? 'password' : 'text'}
-        bind:value={ui.prompt.valor}
+        type={get(ui).prompt.titulo.toLowerCase().includes('pin') ? 'password' : 'text'}
+        bind:value={get(ui).prompt.valor}
         onkeydown={(e) => e.key === 'Enter' && cerrarPrompt(true)}
         style="margin:12px 0"
       />
@@ -135,5 +136,5 @@
 {/if}
 
 {#if ui.toast}
-  <div class="toast" class:ok={ui.toast.tipo === 'ok'} class:dg={ui.toast.tipo === 'dg'}>{ui.toast.msg}</div>
+  <div class="toast" class:ok={get(ui).toast.tipo === 'ok'} class:dg={get(ui).toast.tipo === 'dg'}>{get(ui).toast.msg}</div>
 {/if}

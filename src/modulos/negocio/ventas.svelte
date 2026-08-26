@@ -12,8 +12,8 @@
       import { onMount } from 'svelte';
       import { getDB } from '../../core/db.js';
       import { bus } from '../../core/bus.js';
-      import { avisar, pedirPIN } from '../../core/store.svelte.js';
-      import { dinero } from '../../core/appstate.svelte.js';
+      import { avisar, pedirPIN } from ../../core/store.js';
+      import { dinero } from ../../core/appstate.js';
       import { n, fmtCant, fmtFH } from '../../core/util.js';
       import Icono from '../../core/Icono.svelte';
 

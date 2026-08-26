@@ -11,8 +11,8 @@
     <script>
       import { onMount } from 'svelte';
       import { getDB } from '../../core/db.js';
-      import { avisar } from '../../core/store.svelte.js';
-      import { dinero } from '../../core/appstate.svelte.js';
+      import { avisar } from ../../core/store.js';
+      import { dinero } from ../../core/appstate.js';
       import { n, fmt, fmtFecha } from '../../core/util.js';
       import Icono from '../../core/Icono.svelte';
 

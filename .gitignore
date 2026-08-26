@@ -3,3 +3,7 @@ dist
 .vite
 *.log
 .DS_Store
+
+# Scripts temporales de fix
+*.py
+backup_*/

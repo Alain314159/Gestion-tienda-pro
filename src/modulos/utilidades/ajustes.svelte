@@ -11,8 +11,8 @@
     <script>
       import { onMount } from 'svelte';
       import { getDB } from '../../core/db.js';
-      import { avisar, confirmar, preguntar, ui, alternarTema } from '../../core/store.svelte.js';
-      import { actualizarCfg, app } from '../../core/appstate.svelte.js';
+      import { avisar, confirmar, preguntar, ui, alternarTema } from ../../core/store.js';
+      import { actualizarCfg, app } from ../../core/appstate.js';
       import Icono from '../../core/Icono.svelte';
 
       };
