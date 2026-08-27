@@ -5,28 +5,33 @@ import { get } from 'svelte/store';
   import { modulos } from './core/registro.js';
   import {
     ui, avisar, aplicarTema, alternarTema, cerrarConfirm, cerrarPrompt
-  } from './core/store.svelte.js';
-  import { iniciarCfg, app } from './core/appstate.svelte.js';
+  } from './core/store.js';
+  import { iniciarCfg, app } from './core/appstate.js';
 
   let masAbierto = $state(false);
+  let promptValor = $state('');
+
+  $effect(() => {
+    promptValor = get(ui).prompt?.valor || '';
+  });
 
   onMount(async () => {
     aplicarTema();
     await iniciarCfg();
-    if (!ui.activo && modulos.length) setActivo(modulos[0].id);
+    if (!get(ui).activo && modulos.length) ui.update(u => ({ ...u, activo: modulos[0].id }));
   });
 
   $effect(() => {
-    const tit = (app.cfg?.nombre || 'Tienda Pro') + (ui.activo ? ' · ' + (modulos.find(m => m.id === ui.activo)?.nombre || '') : '');
+    const tit = (get(app).cfg?.nombre || 'Tienda Pro') + (get(ui).activo ? ' · ' + (modulos.find(m => m.id === get(ui).activo)?.nombre || '') : '');
     document.title = tit;
   });
 
-  let activo = $derived(modulos.find(m => m.id === ui.activo) || modulos[0] || null);
+  let activo = $derived(modulos.find(m => m.id === get(ui).activo) || modulos[0] || null);
   let navMods = $derived(modulos.filter(m => m.grupo !== 'utilidades' || m.id === 'ajustes'));
 
   async function actualizar() {
     if (typeof ui._updateSW === 'function') {
-      ui.actualizar = false;
+      ui.update(u => ({ ...u, actualizar: false }));
       ui._updateSW(true);
     }
   }
@@ -34,19 +39,19 @@ import { get } from 'svelte/store';
   async function abrirMas() { masAbierto = true; }
   function cerrarMas() { masAbierto = false; }
   function irA(id) {
-    setActivo(id);
+    ui.update(u => ({ ...u, activo: id }));
     masAbierto = false;
   }
 </script>
 
 <svelte:head>
-  <title>{app.cfg?.nombre || 'Tienda Pro'}</title>
+  <title>{get(app).cfg?.nombre || 'Tienda Pro'}</title>
 </svelte:head>
 
 <header class="hdr">
   <div class="hdr-in">
     <Icono nombre={activo?.icono || 'home'} size={22} />
-    <h1>{activo?.nombre || app.cfg?.nombre || 'Tienda Pro'}</h1>
+    <h1>{activo?.nombre || get(app).cfg?.nombre || 'Tienda Pro'}</h1>
     <button class="hbtn" onclick={alternarTema} aria-label="Tema">
       <Icono nombre={get(ui).tema === 'dark' ? 'sun' : 'moon'} size={18} />
     </button>
@@ -123,7 +128,7 @@ import { get } from 'svelte/store';
       <input
         class="inp"
         type={get(ui).prompt.titulo.toLowerCase().includes('pin') ? 'password' : 'text'}
-        bind:value={get(ui).prompt.valor}
+        bind:value={promptValor}
         onkeydown={(e) => e.key === 'Enter' && cerrarPrompt(true)}
         style="margin:12px 0"
       />
