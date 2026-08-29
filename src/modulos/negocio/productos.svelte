@@ -1,204 +1,293 @@
-<script module>
-  export const manifiesto = {
-        id: 'productos',
-        nombre: 'Productos',
-        icono: 'box',
-        grupo: 'negocio',
-        orden: 5,
-        tablas: {
-          productos: '++id, nombre, codigo, archivado',
-          lotes: '++id, productoId, fecha'
+<script>
+import { onMount } from 'svelte';
+import { getDB } from '../../core/db.js';
+import { dinero, fmtCant, fmtFH } from '../../core/appstate.js';
+import { n } from '../../core/util.js';
+import { avisar, preguntar, pedirPIN } from '../../core/store.js';
+
+let productos = [];
+let lotes = [];
+let mostrarArchivados = false;
+let busqueda = '';
+let sheetAbierto = false;
+let editando = null;
+let form = { nombre: '', codigo: '', unidad: 'u', precio: 0 };
+
+onMount(() => {
+    cargarDatos();
+});
+
+async function cargarDatos() {
+    try {
+        const db = getDB();
+        productos = await db.productos.toArray();
+        lotes = await db.lotes.toArray();
+    } catch (err) {
+        console.error('Error cargando datos:', err);
+        avisar('Error al cargar productos', 'error');
+    }
+}
+
+function productosFiltrados() {
+    let list = productos;
+    if (!mostrarArchivados) {
+        list = list.filter(p => !p.archivado);
+    }
+    if (busqueda.trim()) {
+        const q = busqueda.toLowerCase().trim();
+        list = list.filter(p =>
+            p.nombre.toLowerCase().includes(q) ||
+            (p.codigo && p.codigo.toLowerCase().includes(q))
+        );
+    }
+    return list;
+}
+
+function lotesActivosDe(id) {
+    return lotes.filter(l => l.productoId === id && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0);
+}
+
+function stock(id) {
+    return lotesActivosDe(id).reduce((sum, l) => sum + n(l.cantidadInicial) - n(l.cantidadVendida), 0);
+}
+
+function valorLotes(id) {
+    return lotesActivosDe(id).reduce((sum, l) => {
+        const restante = n(l.cantidadInicial) - n(l.cantidadVendida);
+        return sum + restante * n(l.costo);
+    }, 0);
+}
+
+function valorInventario() {
+    const ids = new Set(productos.map(p => p.id));
+    let total = 0;
+    for (const id of ids) {
+        total += valorLotes(id);
+    }
+    return total;
+}
+
+function unidadesTotal() {
+    const ids = new Set(productos.map(p => p.id));
+    let total = 0;
+    for (const id of ids) {
+        total += stock(id);
+    }
+    return total;
+}
+
+function lotesActivosCount() {
+    return lotes.filter(l => (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0).length;
+}
+
+function badgeInfo(id) {
+    const s = stock(id);
+    if (s <= 0) return { texto: 'Sin stock', clase: 'danger' };
+    if (s < 5) return { texto: 'Stock bajo', clase: 'warning' };
+    return { texto: 'OK', clase: 'success' };
+}
+
+function abrirSheet(p) {
+    if (p) {
+        editando = p.id;
+        form = { ...p };
+    } else {
+        editando = null;
+        form = { nombre: '', codigo: '', unidad: 'u', precio: 0 };
+    }
+    sheetAbierto = true;
+}
+
+async function guardarProducto() {
+    if (!form.nombre.trim()) {
+        avisar('El nombre es obligatorio', 'error');
+        return;
+    }
+    if (!form.precio || form.precio <= 0) {
+        avisar('El precio debe ser mayor a 0', 'error');
+        return;
+    }
+    try {
+        const db = getDB();
+        const data = { ...form, precio: n(form.precio) };
+        if (editando) {
+            await db.productos.update(editando, data);
+            avisar('Producto actualizado', 'ok');
+        } else {
+            data.id = Date.now();
+            await db.productos.add(data);
+            avisar('Producto creado', 'ok');
         }
-    </script>
+        await cargarDatos();
+        sheetAbierto = false;
+    } catch (err) {
+        console.error('Error guardando producto:', err);
+        avisar('Error al guardar', 'error');
+    }
+}
 
-    <!-- src/modulos/negocio/productos.svelte -->
-    <script>
-      import { onMount } from 'svelte';
-      import { getDB } from '../../core/db.js';
-      import { bus } from '../../core/bus.js';
-      import { avisar, confirmar } from ../../core/store.js';
-      import { dinero } from ../../core/appstate.js';
-      import { fmtCant, fmtFH, n } from '../../core/util.js';
-      import Icono from '../../core/Icono.svelte';
+async function archivar(p) {
+    if (!await pedirPIN()) return;
+    try {
+        const db = getDB();
+        await db.productos.update(p.id, { archivado: true });
+        await cargarDatos();
+        avisar('Producto archivado', 'ok');
+    } catch (err) {
+        console.error('Error archivando:', err);
+        avisar('Error al archivar', 'error');
+    }
+}
 
-      };
+async function restaurar(p) {
+    try {
+        const db = getDB();
+        await db.productos.update(p.id, { archivado: false });
+        await cargarDatos();
+        avisar('Producto restaurado', 'ok');
+    } catch (err) {
+        console.error('Error restaurando:', err);
+        avisar('Error al restaurar', 'error');
+    }
+}
 </script>
 
-<div class="modulo">
-  <div class="search">
-    <Icono nombre="search" size={18}/>
-    <input class="inp" type="text" placeholder="Buscar por nombre o código..." bind:value={busqueda} />
-  </div>
-
-  <div class="card">
-    <div class="tit">Valor del Inventario</div>
-    <div class="big">{dinero(valorInventario())}</div>
-    <div class="mut">{fmtCant(unidadesTotal())} unidades · {lotesActivosCount()} lotes</div>
-  </div>
-
-  <div class="row">
-    <button class="btn ok" on:click={() => abrirSheet(null)}>
-      <Icono nombre="plus" size={16} /> Agregar
-    </button>
-    <button class="btn sec" on:click={() => (mostrarArchivados = !mostrarArchivados)}>
-      <Icono nombre={mostrarArchivados ? 'x' : 'archive'} size={16} />
-      {mostrarArchivados ? 'Ocultar archivados' : 'Ver archivados'}
-    </button>
-  </div>
-
-  {#if productosFiltrados().length === 0}
-    <div class="empty">
-      <Icono nombre="box" size={48} />
-      <p>
-        {mostrarArchivados
-          ? 'No hay productos archivados'
-          : busqueda
-            ? 'Sin resultados para la búsqueda'
-            : 'No hay productos registrados. Agrega el primero.'}
-      </p>
-    </div>
-  {:else}
-    <div class="list">
-      {#each productosFiltrados() as p (p.id)}
-        {@const b = badgeInfo(p.id)}
-        {@const lotesAct = lotesActivosDe(p.id)}
-        {@const s = stock(p.id)}
-        <div class="item blk" class:archivado-item={p.archivado}>
-          <div class="item-row">
-            <div class="item-info">
-              <div class="t">
-                {p.nombre}
-                {#if p.codigo}<span class="s">({p.codigo})</span>{/if}
-                <span class="badge {b.clase}">{b.texto}</span>
-              </div>
-              <div class="s">Stock: {fmtCant(s)} {p.unidad || 'u'} · {dinero(p.precio || 0)}</div>
-            </div>
-            <div class="item-acciones">
-              {#if !p.archivado}
-                <button class="mini" title="Editar" on:click={() => abrirSheet(p)}>
-                  <Icono nombre="edit" size={16} />
-                </button>
-                <button class="mini dg" title="Archivar" on:click={() => archivar(p)}>
-                  <Icono nombre="archive" size={16} />
-                </button>
-              {:else}
-                <button class="mini ok" title="Restaurar" on:click={() => restaurar(p)}>
-                  <Icono nombre="refresh" size={16} />
-                </button>
-              {/if}
-            </div>
-          </div>
-          <div class="item-lotes">
-            {#if lotesAct.length > 0}
-              {#each lotesAct as l}
-                {@const restante = n(l.cantidadInicial) - n(l.cantidadVendida)}
-                <div class="mut">
-                  {fmtFH(l.fecha)} · Quedan {fmtCant(restante)} {p.unidad || 'u'}
-                  @{dinero(n(l.costo))} = {dinero(restante * n(l.costo))}
-                </div>
-              {/each}
-              <div class="pos">
-                Valor total: {dinero(valorLotes(p.id))}
-              </div>
-            {:else}
-              <div class="mut">Sin lotes activos (stock 0)</div>
-            {/if}
-          </div>
+<div class="productos-module">
+    <div class="header">
+        <h2>Productos</h2>
+        <div class="stats">
+            <span>Valor del Inventario: {dinero(valorInventario())}</span>
+            <span>{fmtCant(unidadesTotal())} unidades · {lotesActivosCount()} lotes</span>
         </div>
-      {/each}
     </div>
-  {/if}
 
-  {#if sheetAbierto}
-    <div class="mask" on:click={cerrarSheet} role="presentation">
-    <div class="sheet" on:click={(e) => e.stopPropagation()} role="dialog">
-      <div class="sheet-head">
-        <div class="t">{editando ? 'Editar producto' : 'Nuevo producto'}</div>
-        <button class="mini" on:click={cerrarSheet}>
-          <Icono nombre="x" size={18} />
+    <div class="toolbar">
+        <input type="text" placeholder="Buscar productos..." bind:value={busqueda} />
+        <button class="btn-primary" on:click={() => abrirSheet(null)}>+ Agregar</button>
+        <button class="btn-secondary" on:click={() => mostrarArchivados = !mostrarArchivados}>
+            {mostrarArchivados ? 'Ocultar archivados' : 'Ver archivados'}
         </button>
-      </div>
-      <div class="sheet-body">
-        <label class="lbl">
-          Nombre *
-          <input class="inp" type="text" bind:value={formNombre} placeholder="Nombre del producto" />
-        </label>
-        <label class="lbl">
-          Código
-          <input class="inp" type="text" bind:value={formCodigo} placeholder="Código o SKU" />
-        </label>
-        <label class="lbl">
-          Unidad
-          <input class="inp" type="text" list="unidades-list" bind:value={formUnidad} placeholder="Selecciona o escribe" />
-          <datalist id="unidades-list">
-            <option value="kg" />
-            <option value="lb" />
-            <option value="gr" />
-            <option value="litro" />
-            <option value="u" />
-          </datalist>
-          <small class="mut">Unidad de medida para mostrar en ventas y stock (kg, lb, gr, litro, u).</small>
-        </label>
-        <label class="lbl">
-          Precio *
-          <input class="inp" type="number" min="0" step="0.01" bind:value={formPrecio} placeholder="0.00" />
-        </label>
-      </div>
-      <div class="sheet-foot">
-        <div class="row">
-          <button class="btn sec" on:click={cerrarSheet}>Cancelar</button>
-          <button class="btn ok" on:click={guardar}>
-            <Icono nombre="save" size={16} />
-            {editando ? 'Actualizar' : 'Guardar'}
-          </button>
+    </div>
+
+    <div class="product-list">
+        {#if productosFiltrados().length === 0}
+            <div class="empty">
+                {mostrarArchivados ? 'No hay productos archivados' :
+                 busqueda ? 'Sin resultados para la búsqueda' :
+                 'No hay productos registrados. Agrega el primero.'}
+            </div>
+        {:else}
+            {#each productosFiltrados() as p (p.id)}
+                {@const b = badgeInfo(p.id)}
+                {@const lotesAct = lotesActivosDe(p.id)}
+                {@const s = stock(p.id)}
+                <div class="product-card">
+                    <div class="product-header">
+                        <span class="name">{p.nombre}</span>
+                        {#if p.codigo}<span class="code">({p.codigo})</span>{/if}
+                        <span class="badge {b.clase}">{b.texto}</span>
+                    </div>
+                    <div class="product-body">
+                        <span>Stock: {fmtCant(s)} {p.unidad || 'u'}</span>
+                        <span>Precio: {dinero(p.precio || 0)}</span>
+                    </div>
+                    <div class="product-actions">
+                        {#if !p.archivado}
+                            <button class="btn-small" on:click={() => abrirSheet(p)}>✎ Editar</button>
+                            <button class="btn-small danger" on:click={() => archivar(p)}>Archivar</button>
+                        {:else}
+                            <button class="btn-small" on:click={() => restaurar(p)}>↻ Restaurar</button>
+                        {/if}
+                    </div>
+                    {#if lotesAct.length > 0}
+                        <div class="lotes">
+                            {#each lotesAct as l}
+                                {@const restante = n(l.cantidadInicial) - n(l.cantidadVendida)}
+                                <div class="lote">
+                                    <span>{fmtFH(l.fecha)}</span>
+                                    <span>Quedan {fmtCant(restante)} {p.unidad || 'u'}</span>
+                                    <span>@ {dinero(n(l.costo))} = {dinero(restante * n(l.costo))}</span>
+                                </div>
+                            {/each}
+                            <div class="lote-total">Valor total: {dinero(valorLotes(p.id))}</div>
+                        </div>
+                    {:else}
+                        <div class="no-lotes">Sin lotes activos (stock 0)</div>
+                    {/if}
+                </div>
+            {/each}
+        {/if}
+    </div>
+
+    {#if sheetAbierto}
+        <div class="modal-overlay" on:click={() => sheetAbierto = false}>
+            <div class="modal-content" on:click|stopPropagation>
+                <h3>{editando ? 'Editar producto' : 'Nuevo producto'}</h3>
+                <div class="form-group">
+                    <label>Nombre *</label>
+                    <input type="text" bind:value={form.nombre} />
+                </div>
+                <div class="form-group">
+                    <label>Código</label>
+                    <input type="text" bind:value={form.codigo} />
+                </div>
+                <div class="form-group">
+                    <label>Unidad</label>
+                    <input type="text" bind:value={form.unidad} placeholder="kg, lb, gr, litro, u" />
+                </div>
+                <div class="form-group">
+                    <label>Precio *</label>
+                    <input type="number" bind:value={form.precio} step="0.01" />
+                </div>
+                <div class="dialog-actions">
+                    <button class="btn-secondary" on:click={() => sheetAbierto = false}>Cancelar</button>
+                    <button class="btn-primary" on:click={guardarProducto}>{editando ? 'Actualizar' : 'Guardar'}</button>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-    </div>
-  {/if}
+    {/if}
 </div>
 
 <style>
-  .item.blk {
-    display: block;
-  }
-  .item.archivado-item {
-    opacity: 0.6;
-    border-style: dashed;
-  }
-  .item-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-  .item-info {
-    flex: 1;
-  }
-  .item-acciones {
-    display: flex;
-    gap: 0.35rem;
-  }
-  .item-lotes {
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px dashed var(--bd);
-  }
-  .mini {
-    background: none;
-    border: 1px solid var(--bd);
-    border-radius: 10px;
-    padding: 6px;
-    color: var(--txm);
-    cursor: pointer;
-  }
-  .mini.ok {
-    color: var(--ok);
-  }
-  .mini.dg {
-    color: var(--dg);
-  }
-  .sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-  .sheet-foot{margin-top:14px}
+.productos-module { padding: 16px; max-width: 800px; margin: 0 auto; }
+.header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.stats { font-size: 14px; color: #6b7280; }
+.toolbar { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+.toolbar input { flex: 1; min-width: 150px; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+.product-list { display: flex; flex-direction: column; gap: 12px; }
+.product-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; background: #f9fafb; }
+.product-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.name { font-weight: 600; }
+.code { color: #6b7280; font-size: 13px; }
+.badge { font-size: 11px; padding: 2px 10px; border-radius: 12px; }
+.badge.success { background: #d1fae5; color: #065f46; }
+.badge.warning { background: #fef3c7; color: #92400e; }
+.badge.danger { background: #fee2e2; color: #991b1b; }
+.product-body { display: flex; gap: 16px; font-size: 14px; color: #4b5563; margin: 6px 0; }
+.product-actions { display: flex; gap: 6px; margin: 6px 0; }
+.btn-small { padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; background: #e5e7eb; }
+.btn-small.danger { background: #fee2e2; color: #991b1b; }
+.lotes { margin-top: 8px; padding: 8px; background: #fff; border-radius: 4px; font-size: 13px; }
+.lote { display: flex; gap: 12px; padding: 4px 0; border-bottom: 1px solid #f3f4f6; }
+.lote-total { font-weight: 600; margin-top: 4px; }
+.no-lotes { color: #9ca3af; font-size: 13px; padding: 6px 0; }
+.empty { text-align: center; color: #9ca3af; padding: 40px 0; }
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+.form-group input { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+.btn-primary { background: #3b82f6; color: #fff; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; }
+.btn-secondary { background: #e5e7eb; color: #1f2937; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; }
+.dialog-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal-content { background: #fff; border-radius: 12px; padding: 24px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto; }
+.dark .stats { color: #9ca3af; }
+.dark .toolbar input { background: #1f2937; border-color: #374151; color: #e5e7eb; }
+.dark .product-card { background: #1f2937; border-color: #374151; }
+.dark .code { color: #9ca3af; }
+.dark .product-body { color: #9ca3af; }
+.dark .lotes { background: #111827; }
+.dark .lote { border-bottom-color: #1f2937; }
+.dark .btn-secondary { background: #374151; color: #e5e7eb; }
+.dark .modal-content { background: #1f2937; color: #e5e7eb; }
+.dark .form-group input { background: #1f2937; border-color: #374151; color: #e5e7eb; }
 </style>

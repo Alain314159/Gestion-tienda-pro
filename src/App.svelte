@@ -1,145 +1,134 @@
 <script>
-  import { onMount, onDestroy } from 'svelte';
 import { get } from 'svelte/store';
-  import Icono from './core/Icono.svelte';
-  import { modulos } from './core/registro.js';
-  import {
-    ui, avisar, aplicarTema, alternarTema, cerrarConfirm, cerrarPrompt
-  } from './core/store.js';
-  import { iniciarCfg, app } from './core/appstate.js';
+import { ui, setActivo, cerrarConfirm, cerrarPrompt } from './core/store.js';
+import { app } from './core/appstate.js';
+import { bus } from './core/bus.js';
+import { onMount } from 'svelte';
 
-  let masAbierto = $state(false);
-  let promptValor = $state('');
+export let modulos = [];
+export let navMods = [];
 
-  $effect(() => {
-    promptValor = get(ui).prompt?.valor || '';
-  });
+let activo = null;
+let masAbierto = false;
+let offline = false;
 
-  onMount(async () => {
-    aplicarTema();
-    await iniciarCfg();
-    if (!get(ui).activo && modulos.length) ui.update(u => ({ ...u, activo: modulos[0].id }));
-  });
+onMount(() => {
+    const unsubscribe = ui.subscribe(value => {
+        activo = value.activo;
+        masAbierto = value.masAbierto;
+        offline = value.offline;
+    });
+    return unsubscribe;
+});
 
-  $effect(() => {
-    const tit = (get(app).cfg?.nombre || 'Tienda Pro') + (get(ui).activo ? ' · ' + (modulos.find(m => m.id === get(ui).activo)?.nombre || '') : '');
-    document.title = tit;
-  });
-
-  let activo = $derived(modulos.find(m => m.id === get(ui).activo) || modulos[0] || null);
-  let navMods = $derived(modulos.filter(m => m.grupo !== 'utilidades' || m.id === 'ajustes'));
-
-  async function actualizar() {
-    if (typeof ui._updateSW === 'function') {
-      ui.update(u => ({ ...u, actualizar: false }));
-      ui._updateSW(true);
-    }
-  }
-
-  async function abrirMas() { masAbierto = true; }
-  function cerrarMas() { masAbierto = false; }
-  function irA(id) {
-    ui.update(u => ({ ...u, activo: id }));
+function irA(id) {
+    setActivo(id);
     masAbierto = false;
-  }
+}
+
+function cerrarMas() {
+    masAbierto = false;
+    ui.update(u => ({ ...u, masAbierto: false }));
+}
 </script>
 
-<svelte:head>
-  <title>{get(app).cfg?.nombre || 'Tienda Pro'}</title>
-</svelte:head>
-
-<header class="hdr">
-  <div class="hdr-in">
-    <Icono nombre={activo?.icono || 'home'} size={22} />
-    <h1>{activo?.nombre || get(app).cfg?.nombre || 'Tienda Pro'}</h1>
-    <button class="hbtn" onclick={alternarTema} aria-label="Tema">
-      <Icono nombre={get(ui).tema === 'dark' ? 'sun' : 'moon'} size={18} />
-    </button>
-    <button class="hbtn" onclick={abrirMas} aria-label="Más">
-      <Icono nombre="mas2" size={18} />
-    </button>
-  </div>
-</header>
-
-{#if ui.offline}
-  <div class="banner off">Sin conexión · trabajando con datos locales</div>
-{/if}
-{#if ui.actualizar}
-  <button class="banner upd" onclick={actualizar}>Nueva versión disponible · tocar para actualizar</button>
+{#if offline}
+    <div class="offline-banner">Sin conexión · trabajando con datos locales</div>
 {/if}
 
-<main>
-  {#if activo}
+{#if activo}
     {@const Activo = activo?.Componente}
     {#if Activo}
-      <Activo />
+        <svelte:component this={Activo} />
     {/if}
-  {:else}
-    <div class="empty">No hay módulos registrados.</div>
-  {/if}
-</main>
+{:else}
+    <div class="empty-state">No hay módulos registrados.</div>
+{/if}
 
-<nav class="nav">
-  {#each navMods as m}
-    <button class:on={get(ui).activo === m.id} onclick={() => irA(m.id)}>
-      <Icono nombre={m.icono || 'home'} size={22} />
-      <span>{m.nombre}</span>
+<nav class="main-nav">
+    {#each navMods as m}
+        <button class="nav-btn" on:click={() => irA(m.id)}>{m.nombre}</button>
+    {/each}
+    <button class="nav-btn more-btn" on:click={() => { masAbierto = !masAbierto; ui.update(u => ({ ...u, masAbierto })); }}>
+        ⋮
     </button>
-  {/each}
 </nav>
 
 {#if masAbierto}
-  <div class="mask" onclick={cerrarMas} onkeydown={(e) => e.key === 'Escape' && cerrarMas()} role="dialog">
-    <div class="sheet" onclick={(e) => e.stopPropagation()} role="document">
-      <div class="tit">Más opciones</div>
-      <div class="list">
-        {#each modulos as m}
-          <button class="item" onclick={() => irA(m.id)}>
-            <Icono nombre={m.icono || 'home'} size={20} />
-            <div>
-              <div class="t">{m.nombre}</div>
-              <div class="s">{m.grupo || 'negocio'}</div>
+    <div class="modal-overlay" on:click={cerrarMas} on:keydown={(e) => e.key === 'Escape' && cerrarMas()} role="dialog" tabindex="-1">
+        <div class="modal-content" on:click|stopPropagation>
+            <h3>Más opciones</h3>
+            {#each modulos as m}
+                <button class="modal-item" on:click={() => irA(m.id)}>
+                    {m.nombre}
+                    <span class="badge">{m.grupo || 'negocio'}</span>
+                </button>
+            {/each}
+        </div>
+    </div>
+{/if}
+
+{#if $ui.confirm}
+    <div class="modal-overlay" on:click={() => cerrarConfirm(false)} on:keydown={(e) => e.key === 'Escape' && cerrarConfirm(false)} role="dialog" tabindex="-1">
+        <div class="modal-content confirm-dialog" on:click|stopPropagation>
+            <h3>{$ui.confirm.titulo}</h3>
+            <p>{$ui.confirm.msg}</p>
+            <div class="dialog-actions">
+                <button class="btn-secondary" on:click={() => cerrarConfirm(false)}>Cancelar</button>
+                <button class="btn-primary" on:click={() => cerrarConfirm(true)}>Confirmar</button>
             </div>
-          </button>
-        {/each}
-      </div>
+        </div>
     </div>
-  </div>
 {/if}
 
-{#if ui.confirm}
-  <div class="mask cent" onclick={() => cerrarConfirm(false)} onkeydown={(e) => e.key === 'Escape' && cerrarConfirm(false)} role="dialog">
-    <div class="modal" onclick={(e) => e.stopPropagation()} role="alertdialog">
-      <div class="tit"><Icono nombre="alert" size={20} /> {get(ui).confirm.titulo}</div>
-      <p class="mut" style="margin-bottom:16px">{get(ui).confirm.msg}</p>
-      <div class="row">
-        <button class="btn sec" onclick={() => cerrarConfirm(false)}>Cancelar</button>
-        <button class="btn dgr" onclick={() => cerrarConfirm(true)}>Confirmar</button>
-      </div>
+{#if $ui.prompt}
+    <div class="modal-overlay" on:click={() => cerrarPrompt(false)} on:keydown={(e) => e.key === 'Escape' && cerrarPrompt(false)} role="dialog" tabindex="-1">
+        <div class="modal-content prompt-dialog" on:click|stopPropagation>
+            <h3>{$ui.prompt.titulo}</h3>
+            <p>{$ui.prompt.msg}</p>
+            <input type="text" bind:value={$ui.prompt.valor} on:keydown={(e) => e.key === 'Enter' && cerrarPrompt(true)} />
+            <div class="dialog-actions">
+                <button class="btn-secondary" on:click={() => cerrarPrompt(false)}>Cancelar</button>
+                <button class="btn-primary" on:click={() => cerrarPrompt(true)}>Aceptar</button>
+            </div>
+        </div>
     </div>
-  </div>
 {/if}
 
-{#if ui.prompt}
-  <div class="mask cent" onclick={() => cerrarPrompt(false)} onkeydown={(e) => e.key === 'Escape' && cerrarPrompt(false)} role="dialog">
-    <div class="modal" onclick={(e) => e.stopPropagation()} role="dialog">
-      <div class="tit"><Icono nombre="lock" size={20} /> {get(ui).prompt.titulo}</div>
-      <p class="mut">{get(ui).prompt.msg}</p>
-      <input
-        class="inp"
-        type={get(ui).prompt.titulo.toLowerCase().includes('pin') ? 'password' : 'text'}
-        bind:value={promptValor}
-        onkeydown={(e) => e.key === 'Enter' && cerrarPrompt(true)}
-        style="margin:12px 0"
-      />
-      <div class="row">
-        <button class="btn sec" onclick={() => cerrarPrompt(false)}>Cancelar</button>
-        <button class="btn ok" onclick={() => cerrarPrompt(true)}>Aceptar</button>
-      </div>
+{#if $ui.toast}
+    <div class="toast { $ui.toast.tipo }">
+        {$ui.toast.msg}
     </div>
-  </div>
 {/if}
 
-{#if ui.toast}
-  <div class="toast" class:ok={get(ui).toast.tipo === 'ok'} class:dg={get(ui).toast.tipo === 'dg'}>{get(ui).toast.msg}</div>
-{/if}
+<style>
+.offline-banner { background: #f59e0b; color: #fff; padding: 8px; text-align: center; font-size: 14px; }
+.empty-state { padding: 40px; text-align: center; color: #6b7280; }
+.main-nav { display: flex; gap: 4px; padding: 8px; background: #f3f4f6; overflow-x: auto; border-bottom: 1px solid #e5e7eb; }
+.nav-btn { padding: 8px 16px; border: none; background: transparent; border-radius: 6px; cursor: pointer; font-size: 14px; white-space: nowrap; }
+.nav-btn:hover { background: #e5e7eb; }
+.more-btn { margin-left: auto; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal-content { background: #fff; border-radius: 12px; padding: 24px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto; }
+.modal-item { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 10px 12px; border: none; background: transparent; border-radius: 6px; cursor: pointer; }
+.modal-item:hover { background: #f3f4f6; }
+.badge { font-size: 11px; background: #e5e7eb; padding: 2px 10px; border-radius: 12px; color: #4b5563; }
+.dialog-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.btn-primary { background: #3b82f6; color: #fff; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; }
+.btn-secondary { background: #e5e7eb; color: #1f2937; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; border-radius: 8px; color: #fff; z-index: 2000; animation: slideUp 0.3s ease; }
+.toast.info { background: #3b82f6; }
+.toast.ok { background: #10b981; }
+.toast.error { background: #ef4444; }
+@keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+.dark .offline-banner { background: #d97706; }
+.dark .main-nav { background: #1f2937; border-bottom-color: #374151; }
+.dark .nav-btn:hover { background: #374151; }
+.dark .modal-content { background: #1f2937; color: #e5e7eb; }
+.dark .modal-item:hover { background: #374151; }
+.dark .badge { background: #374151; color: #9ca3af; }
+.dark .btn-secondary { background: #374151; color: #e5e7eb; }
+.dark .toast.info { background: #2563eb; }
+.dark .toast.ok { background: #059669; }
+.dark .toast.error { background: #dc2626; }
+</style>
