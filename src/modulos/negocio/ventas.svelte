@@ -171,26 +171,26 @@
 </script>
 
 <div class="modulo">
-  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
-    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
       <Icono nombre="cart" size={18} />
       Nueva Venta
     </div>
-    <div class="relative mb-2">
+    <div class="relative mb-3">
       <Icono nombre="search" size={18} class="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-      <input class="w-full pl-10 pr-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]" type="text" placeholder="Buscar producto por nombre o codigo..." bind:value={busq} onfocus={() => focusBusq = true} />
+      <input class="w-full pl-10 pr-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]" type="text" placeholder="Buscar producto por nombre o codigo..." bind:value={busq} onfocus={() => focusBusq = true} />
     </div>
     {#if focusBusq}
-      <div class="border border-border rounded-[var(--radius-md)] bg-card max-h-64 overflow-y-auto mb-2 shadow-[var(--color-shadow)]">
-        <div class="flex justify-between items-center px-3 py-2 text-xs font-extrabold text-muted border-b border-border sticky top-0 bg-card">
+      <div class="border border-border rounded-[var(--radius-md)] bg-card max-h-64 overflow-y-auto mb-3 shadow-[var(--color-shadow)]">
+        <div class="flex justify-between items-center px-3 py-2.5 text-xs font-extrabold text-muted border-b border-border sticky top-0 bg-card">
           <span>{resultados().length} resultado(s)</span>
           <button class="bg-transparent border-none text-danger font-extrabold text-lg cursor-pointer leading-none" onclick={() => { focusBusq = false; busq = ''; }}>×</button>
         </div>
         {#if resultados().length === 0}
-          <div class="text-center text-muted py-4 text-sm">Sin coincidencias (o sin stock)</div>
+          <div class="text-center text-muted py-5 text-sm">Sin coincidencias (o sin stock)</div>
         {:else}
           {#each resultados() as p}
-            <button class="w-full flex justify-between items-center px-3.5 py-2.5 text-left border-b border-border last:border-0 text-sm cursor-pointer hover:bg-background active:bg-background" onclick={() => agregar(p)}>
+            <button class="w-full flex justify-between items-center px-3.5 py-3 text-left border-b border-border last:border-0 text-sm cursor-pointer hover:bg-background active:bg-background" onclick={() => agregar(p)}>
               <span>{p.nombre}</span>
               <span class="text-muted text-xs whitespace-nowrap">Stock {fmtCant(stockProducto(lotes, p.id))} {p.unidad || ''} · {fmt(p.precio)}</span>
             </button>
@@ -200,54 +200,54 @@
     {/if}
 
     {#if carrito.length > 0}
-      <div class="mt-2">
+      <div class="mt-3">
         {#each carrito as it, i}
-          <div class="bg-background rounded-[var(--radius-md)] p-2.5 mb-2">
+          <div class="bg-background rounded-[var(--radius-md)] p-3.5 mb-3">
             <div class="flex justify-between items-start gap-2">
               <div class="font-bold text-sm truncate flex-1">{it.nombre}</div>
-              <button class="w-7 h-7 rounded-full bg-danger text-white border-none flex items-center justify-center cursor-pointer flex-shrink-0" onclick={() => carrito.splice(i, 1)}><Icono nombre="x" size={14} color="#fff" /></button>
+              <button class="w-8 h-8 rounded-full bg-danger text-white border-none flex items-center justify-center cursor-pointer flex-shrink-0" onclick={() => carrito.splice(i, 1)}><Icono nombre="x" size={14} color="#fff" /></button>
             </div>
-            <div class="flex items-center gap-2 flex-wrap mt-2">
+            <div class="flex items-center gap-3 flex-wrap mt-3">
               <span class="text-xs text-muted w-10">Cant</span>
               <div class="flex items-center bg-card border border-border rounded-lg overflow-hidden">
-                <button class="w-8 h-8 bg-background border-none text-primary font-extrabold text-lg cursor-pointer flex items-center justify-center" onclick={() => cambiarCant(it, -1)}><Icono nombre="minus" size={14} /></button>
+                <button class="w-9 h-9 bg-background border-none text-primary font-extrabold text-lg cursor-pointer flex items-center justify-center" onclick={() => cambiarCant(it, -1)}><Icono nombre="minus" size={14} /></button>
                 <input class="w-16 text-center border-none bg-transparent text-sm py-1" type="text" bind:value={it.cant} onblur={() => validarCant(it)} />
-                <button class="w-8 h-8 bg-background border-none text-primary font-extrabold text-lg cursor-pointer flex items-center justify-center" onclick={() => cambiarCant(it, 1)}><Icono nombre="plus" size={14} /></button>
+                <button class="w-9 h-9 bg-background border-none text-primary font-extrabold text-lg cursor-pointer flex items-center justify-center" onclick={() => cambiarCant(it, 1)}><Icono nombre="plus" size={14} /></button>
               </div>
               <span class="text-xs text-muted ml-1">@</span>
-              <input class="w-20 text-center border border-border rounded-lg bg-card text-sm py-1 px-1" type="number" step="0.01" bind:value={it.precio} />
+              <input class="w-20 text-center border border-border rounded-lg bg-card text-sm py-1.5 px-1" type="number" step="0.01" bind:value={it.precio} />
             </div>
-            <div class="text-xs text-muted mt-1">{fmt(it.precio)} × {fmtCant(it.cant)} {it.unidad || ''} = <b class="text-primary">{fmt(subTotal(it))}</b></div>
+            <div class="text-xs text-muted mt-2">{fmt(it.precio)} × {fmtCant(it.cant)} {it.unidad || ''} = <b class="text-primary">{fmt(subTotal(it))}</b></div>
           </div>
         {/each}
-        <div class="flex justify-between items-center bg-success/10 border border-success rounded-[var(--radius-md)] p-3 my-3 font-extrabold text-success">
+        <div class="flex justify-between items-center bg-success/10 border border-success rounded-[var(--radius-md)] p-3.5 my-4 font-extrabold text-success">
           <span>TOTAL</span>
           <span>{fmt(totalCarrito)}</span>
         </div>
-        <div class="flex justify-between text-xs text-success mb-3 px-1">
+        <div class="flex justify-between text-xs text-success mb-4 px-1">
           <span>Ganancia estimada</span>
           <span>{fmt(gananciaCarrito)}</span>
         </div>
-        <button class="w-full py-3 rounded-[var(--radius-md)] bg-success text-white font-extrabold text-sm mb-2 active:scale-[0.97] transition-transform disabled:opacity-50" onclick={iniciarCobro} disabled={procesando}>
+        <button class="w-full py-3.5 rounded-[var(--radius-md)] bg-success text-white font-extrabold text-sm mb-3 active:scale-[0.97] transition-transform disabled:opacity-50" onclick={iniciarCobro} disabled={procesando}>
           <Icono nombre="check" size={16} color="#fff" />
           {procesando ? 'Procesando...' : 'Cobrar Venta'}
         </button>
-        <button class="w-full py-3 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={() => carrito = []}>
+        <button class="w-full py-3.5 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={() => carrito = []}>
           <Icono nombre="trash" size={14} />
           Limpiar carrito
         </button>
       </div>
     {:else if !focusBusq}
-      <div class="text-center text-muted py-6 text-sm">Toca el buscador y agrega productos al carrito</div>
+      <div class="text-center text-muted py-8 text-sm">Toca el buscador y agrega productos al carrito</div>
     {/if}
   </div>
 
-  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)]">
-    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)]">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
       <Icono nombre="history" size={18} />
       Historial de Ventas
     </div>
-    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="text" placeholder="Buscar en historial..." bind:value={busqHist} />
+    <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3" type="text" placeholder="Buscar en historial..." bind:value={busqHist} />
     {#if ventasFiltradas().length === 0}
       <div class="text-center text-muted py-6 text-sm">Sin ventas</div>
     {:else}

@@ -118,27 +118,27 @@
 </script>
 
 <div class="modulo">
-  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
-    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
+  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
       <Icono nombre="bag" size={18} />
       Registrar Compra
     </div>
     {#if !form.productoId}
-      <div class="relative mb-3">
+      <div class="relative mb-2">
         <Icono nombre="search" size={18} class="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-        <input class="w-full pl-10 pr-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]" type="text" placeholder="Buscar producto..." bind:value={busq} onfocus={() => focusBusq = true} />
+        <input class="w-full pl-10 pr-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]" type="text" placeholder="Buscar producto..." bind:value={busq} onfocus={() => focusBusq = true} />
       </div>
       {#if focusBusq}
-        <div class="border border-border rounded-[var(--radius-md)] bg-card max-h-64 overflow-y-auto mb-3 shadow-[var(--color-shadow)]">
-          <div class="flex justify-between items-center px-3 py-2.5 text-xs font-extrabold text-muted border-b border-border sticky top-0 bg-card">
+        <div class="border border-border rounded-[var(--radius-md)] bg-card max-h-64 overflow-y-auto mb-2 shadow-[var(--color-shadow)]">
+          <div class="flex justify-between items-center px-3 py-2 text-xs font-extrabold text-muted border-b border-border sticky top-0 bg-card">
             <span>{resultados().length} resultado(s)</span>
             <button class="bg-transparent border-none text-danger font-extrabold text-lg cursor-pointer leading-none" onclick={() => { focusBusq = false; busq = ''; }}>×</button>
           </div>
           {#if resultados().length === 0}
-            <div class="text-center text-muted py-5 text-sm">Sin coincidencias</div>
+            <div class="text-center text-muted py-4 text-sm">Sin coincidencias</div>
           {:else}
             {#each resultados() as p}
-              <button class="w-full flex justify-between items-center px-3.5 py-3 text-left border-b border-border last:border-0 text-sm cursor-pointer hover:bg-background active:bg-background" onclick={() => seleccionar(p)}>
+              <button class="w-full flex justify-between items-center px-3.5 py-2.5 text-left border-b border-border last:border-0 text-sm cursor-pointer hover:bg-background active:bg-background" onclick={() => seleccionar(p)}>
                 <span>{p.nombre}</span>
                 <span class="text-muted text-xs">Stock {fmtCant(stockProducto(lotes, p.id))} {p.unidad || ''}</span>
               </button>
@@ -147,35 +147,35 @@
         </div>
       {/if}
     {:else}
-      <div class="flex justify-between items-center py-1 mb-3 text-sm border-b-0">
+      <div class="flex justify-between items-center py-1 mb-2 text-sm border-b-0">
         <span class="text-muted">Producto</span>
         <b>{form.nombre}</b>
       </div>
-      <div class="grid grid-cols-2 gap-3 mb-3">
-        <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]" type="number" inputmode="decimal" step="0.001" placeholder="Cantidad" bind:value={form.cantidad} />
-        <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]" type="number" inputmode="decimal" step="0.01" placeholder="Costo unit." bind:value={form.costo} />
+      <div class="grid grid-cols-2 gap-2 mb-2">
+        <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]" type="number" inputmode="decimal" step="0.001" placeholder="Cantidad" bind:value={form.cantidad} />
+        <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]" type="number" inputmode="decimal" step="0.01" placeholder="Costo unit." bind:value={form.costo} />
       </div>
       {#if n(form.cantidad) > 0 && n(form.costo) >= 0}
-        <div class="text-danger font-extrabold text-sm my-2">Total: {fmt(n(form.cantidad) * n(form.costo))}</div>
+        <div class="text-danger font-extrabold text-sm my-1">Total: {fmt(n(form.cantidad) * n(form.costo))}</div>
       {/if}
-      <button class="w-full py-3.5 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm mb-3 active:scale-[0.97] transition-transform" onclick={guardarCompra}>
+      <button class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm mb-2 active:scale-[0.97] transition-transform" onclick={guardarCompra}>
         <Icono nombre="bag" size={16} color="#fff" />
         {form.editId ? 'Actualizar' : 'Registrar'} Compra
       </button>
-      <button class="w-full py-3.5 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={resetForm}>Cancelar</button>
+      <button class="w-full py-3 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={resetForm}>Cancelar</button>
     {/if}
   </div>
 
-  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)]">
-    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
+  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)]">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
       <Icono nombre="history" size={18} />
       Historial de Compras
     </div>
     {#if comprasOrdenadas.length === 0}
-      <div class="text-center text-muted py-8 text-sm">Sin compras</div>
+      <div class="text-center text-muted py-6 text-sm">Sin compras</div>
     {:else}
       {#each comprasOrdenadas as c}
-        <div class="flex justify-between items-center gap-2 py-3 border-b border-border">
+        <div class="flex justify-between items-center gap-2 py-2.5 border-b border-border">
           <div class="min-w-0 flex-1">
             <div class="font-bold text-sm"><Icono nombre="bag" size={14} /> {c.productoNombre}</div>
             <div class="text-xs text-muted">{fmtFH(c.fecha)} · {fmtCant(c.cantidad)} {c.unidad || ''} × {fmt(c.costo)}</div>

@@ -104,102 +104,102 @@
 </script>
 
 <div class="modulo">
-  <div class="bg-gradient-to-br from-purple to-[#5b21b6] text-white rounded-[var(--radius-lg)] p-5 text-center mb-3 shadow-[var(--color-shadow)]">
+  <div class="bg-gradient-to-br from-purple to-[#5b21b6] text-white rounded-[var(--radius-lg)] p-5 text-center mb-4 shadow-[var(--color-shadow)]">
     <div class="flex items-center justify-center gap-1.5 text-xs opacity-90 mb-1">
       <Icono nombre="diamond" size={14} color="#fff" />
       Patrimonio Total
     </div>
-    <div class="text-3xl font-extrabold my-0.5">{fmt(patrimonio)}</div>
+    <div class="text-3xl font-extrabold my-1">{fmt(patrimonio)}</div>
     <div class="text-xs opacity-85">Capital {fmt(capTotal)} · Gan. acum. {fmt(ganAcum)}</div>
   </div>
 
-  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
-    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
       <Icono nombre="chart" size={18} />
       Resumen contable
     </div>
-    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+    <div class="flex justify-between gap-2 py-2.5 border-b border-border text-sm">
       <span>Capital inicial</span><span>{fmt(cfg.capitalInicial || 0)}</span>
     </div>
-    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+    <div class="flex justify-between gap-2 py-2.5 border-b border-border text-sm">
       <span>Aportes</span><span class="text-success">+{fmt(capital.reduce((s, c) => s + n(c.monto), 0))}</span>
     </div>
-    <div class="flex justify-between gap-2 py-2 border-t border-text text-sm font-bold">
+    <div class="flex justify-between gap-2 py-2.5 border-t border-text text-sm font-bold">
       <span>= CAPITAL</span><span class="text-primary">{fmt(capTotal)}</span>
     </div>
-    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+    <div class="flex justify-between gap-2 py-2.5 border-b border-border text-sm">
       <span>Caja</span><span>{fmt(saldo)}</span>
     </div>
-    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+    <div class="flex justify-between gap-2 py-2.5 border-b border-border text-sm">
       <span>Inventario</span><span>{fmt(valInv)}</span>
     </div>
-    <div class="flex justify-between gap-2 py-2 border-t border-text text-sm font-bold">
+    <div class="flex justify-between gap-2 py-2.5 border-t border-text text-sm font-bold">
       <span>= ACTIVOS</span><span class="text-primary">{fmt(saldo + valInv)}</span>
     </div>
-    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+    <div class="flex justify-between gap-2 py-2.5 border-b border-border text-sm">
       <span>Ganancia bruta</span><span class="text-success">{fmt(ganBruta)}</span>
     </div>
-    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+    <div class="flex justify-between gap-2 py-2.5 border-b border-border text-sm">
       <span>Gastos operativos</span><span class="text-danger">-{fmt(gastosOp)}</span>
     </div>
-    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+    <div class="flex justify-between gap-2 py-2.5 border-b border-border text-sm">
       <span>= Ganancia neta (periodo)</span><span>{fmt(ganNeta)}</span>
     </div>
-    <div class="flex justify-between gap-2 py-3 bg-success/10 rounded-[var(--radius-md)] px-3 mt-2 text-sm font-extrabold">
+    <div class="flex justify-between gap-2 py-3.5 bg-success/10 rounded-[var(--radius-md)] px-3 mt-3 text-sm font-extrabold">
       <span>DISPONIBLE PARA RETIRO</span>
       <span class="text-success text-base">{fmt(disp)}</span>
     </div>
   </div>
 
-  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
-    <div class="flex items-center gap-2 font-extrabold text-warning mb-3">
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
+    <div class="flex items-center gap-2 font-extrabold text-warning mb-4">
       <Icono nombre="dollar" size={18} />
       Retirar Ganancia
     </div>
-    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="number" inputmode="decimal" step="0.01" placeholder="Monto" bind:value={retiroForm.monto} />
-    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="text" placeholder="Concepto" bind:value={retiroForm.concepto} />
-    <button class="w-full py-3 rounded-[var(--radius-md)] bg-warning text-white font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={registrarRetiro}>
+    <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3" type="number" inputmode="decimal" step="0.01" placeholder="Monto" bind:value={retiroForm.monto} />
+    <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3" type="text" placeholder="Concepto" bind:value={retiroForm.concepto} />
+    <button class="w-full py-3.5 rounded-[var(--radius-md)] bg-warning text-white font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={registrarRetiro}>
       <Icono nombre="dollar" size={16} color="#fff" />
       Retirar Ganancia
     </button>
   </div>
 
-  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
-    <div class="flex items-center gap-2 font-extrabold text-success mb-3">
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
+    <div class="flex items-center gap-2 font-extrabold text-success mb-4">
       <Icono nombre="plus" size={18} />
       Aportar Capital
     </div>
-    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="number" inputmode="decimal" step="0.01" placeholder="Monto" bind:value={aporteForm.monto} />
-    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="text" placeholder="Nota" bind:value={aporteForm.nota} />
-    <button class="w-full py-3 rounded-[var(--radius-md)] bg-success text-white font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={registrarAporte}>
+    <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3" type="number" inputmode="decimal" step="0.01" placeholder="Monto" bind:value={aporteForm.monto} />
+    <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3" type="text" placeholder="Nota" bind:value={aporteForm.nota} />
+    <button class="w-full py-3.5 rounded-[var(--radius-md)] bg-success text-white font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={registrarAporte}>
       <Icono nombre="plus" size={16} color="#fff" />
       Registrar Aporte
     </button>
   </div>
 
-  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
-    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
       <Icono nombre="wallet" size={18} />
       Capital Inicial
     </div>
-    <div class="text-xs text-muted mb-2">Actual: {fmt(cfg.capitalInicial || 0)}</div>
-    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="number" inputmode="decimal" step="0.01" placeholder="Monto de capital inicial" bind:value={capInicialStr} />
-    <button class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={guardarCapInicial}>
+    <div class="text-xs text-muted mb-3">Actual: {fmt(cfg.capitalInicial || 0)}</div>
+    <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3" type="number" inputmode="decimal" step="0.01" placeholder="Monto de capital inicial" bind:value={capInicialStr} />
+    <button class="w-full py-3.5 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={guardarCapInicial}>
       <Icono nombre="check" size={16} color="#fff" />
       Guardar Capital Inicial
     </button>
   </div>
 
-  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)]">
-    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)]">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
       <Icono nombre="history" size={18} />
       Historial
     </div>
     {#if movs().length === 0}
-      <div class="text-center text-muted py-6 text-sm">Sin movimientos</div>
+      <div class="text-center text-muted py-8 text-sm">Sin movimientos</div>
     {:else}
       {#each movs() as m}
-        <div class="flex justify-between items-center gap-2 py-2.5 border-b border-border">
+        <div class="flex justify-between items-center gap-2 py-3 border-b border-border">
           <div class="min-w-0 flex-1">
             <div class="font-bold text-sm">{m.tipo}</div>
             <div class="text-xs text-muted">{fmtFH(m.fecha)} {m.nota ? '· ' + m.nota : ''}</div>

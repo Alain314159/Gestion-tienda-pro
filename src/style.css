@@ -55,6 +55,36 @@ button, .touchable {
   touch-action: manipulation;
 }
 
+/* Espaciado generoso para modulos */
+.modulo .bg-card {
+  padding: 1.25rem;
+}
+
+.modulo input[type="text"],
+.modulo input[type="number"],
+.modulo input[type="search"],
+.modulo input[type="tel"],
+.modulo input[type="email"] {
+  margin-bottom: 0.75rem;
+  min-height: 48px;
+}
+
+.modulo button {
+  margin-bottom: 0.5rem;
+  min-height: 48px;
+}
+
+.modulo .grid {
+  gap: 0.75rem;
+}
+
+/* Ajuste para pantallas pequenas */
+@media (max-width: 400px) {
+  .modulo .bg-card {
+    padding: 1rem;
+  }
+}
+
 /* Scrollbar minimal */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }

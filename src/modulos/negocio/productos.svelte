@@ -93,38 +93,38 @@
 </script>
 
 <div class="modulo">
-  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
-    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
       <Icono nombre="tag" size={18} />
       {form.editId ? 'Editar' : 'Agregar'} Producto
     </div>
-    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="text" placeholder="Nombre del producto" bind:value={form.nombre} />
-    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="text" placeholder="Codigo (opcional)" bind:value={form.codigo} />
-    <div class="grid grid-cols-2 gap-2 mb-2">
-      <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]" type="number" inputmode="decimal" step="0.01" placeholder="Precio venta" bind:value={form.precio} />
-      <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]" type="number" inputmode="decimal" step="0.1" placeholder="Stock min." bind:value={form.stockMin} />
+    <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3" type="text" placeholder="Nombre del producto" bind:value={form.nombre} />
+    <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3" type="text" placeholder="Codigo (opcional)" bind:value={form.codigo} />
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]" type="number" inputmode="decimal" step="0.01" placeholder="Precio venta" bind:value={form.precio} />
+      <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]" type="number" inputmode="decimal" step="0.1" placeholder="Stock min." bind:value={form.stockMin} />
     </div>
-    <p class="text-xs text-primary mb-2 bg-primary/10 rounded p-2">Define la unidad si vendes por peso/volumen (ej: kg, lb, gr, litro). Si es unidad suelta, pon "u" o dejalo vacio.</p>
-    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3" type="text" placeholder="Unidad (kg, lb, gr, u, paq)" bind:value={form.unidad} list="unidades-list" />
+    <p class="text-xs text-primary mb-3 bg-primary/10 rounded-lg p-3 leading-relaxed">Define la unidad si vendes por peso/volumen (ej: kg, lb, gr, litro). Si es unidad suelta, pon "u" o dejalo vacio.</p>
+    <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-4" type="text" placeholder="Unidad (kg, lb, gr, u, paq)" bind:value={form.unidad} list="unidades-list" />
     <datalist id="unidades-list">
       <option value="u"><option value="kg"><option value="lb"><option value="gr"><option value="litro"><option value="m"><option value="caja"><option value="paq">
     </datalist>
-    <button class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm mb-2 active:scale-[0.97] transition-transform" onclick={guardarProducto}>
+    <button class="w-full py-3.5 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm mb-3 active:scale-[0.97] transition-transform" onclick={guardarProducto}>
       <Icono nombre="check" size={16} color="#fff" />
       {form.editId ? 'Actualizar' : 'Guardar'}
     </button>
     {#if form.editId}
-      <button class="w-full py-3 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={resetForm}>Cancelar</button>
+      <button class="w-full py-3.5 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={resetForm}>Cancelar</button>
     {/if}
   </div>
 
-  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)]">
-    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)]">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
       <Icono nombre="tag" size={18} />
       Productos
     </div>
-    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="text" placeholder="Buscar..." bind:value={busq} />
-    <div class="text-right mb-2">
+    <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3" type="text" placeholder="Buscar..." bind:value={busq} />
+    <div class="text-right mb-3">
       <button class="inline-block px-3 py-1.5 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-bold text-xs" onclick={() => mostrarArchivados = !mostrarArchivados}>
         {mostrarArchivados ? 'Ocultar archivados' : 'Ver archivados'}
       </button>
