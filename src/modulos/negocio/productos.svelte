@@ -1,293 +1,180 @@
-<script>
-import { onMount } from 'svelte';
-import { getDB } from '../../core/db.js';
-import { dinero, fmtCant, fmtFH } from '../../core/appstate.js';
-import { n } from '../../core/util.js';
-import { avisar, preguntar, pedirPIN } from '../../core/store.js';
-
-let productos = [];
-let lotes = [];
-let mostrarArchivados = false;
-let busqueda = '';
-let sheetAbierto = false;
-let editando = null;
-let form = { nombre: '', codigo: '', unidad: 'u', precio: 0 };
-
-onMount(() => {
-    cargarDatos();
-});
-
-async function cargarDatos() {
-    try {
-        const db = getDB();
-        productos = await db.productos.toArray();
-        lotes = await db.lotes.toArray();
-    } catch (err) {
-        console.error('Error cargando datos:', err);
-        avisar('Error al cargar productos', 'error');
-    }
-}
-
-function productosFiltrados() {
-    let list = productos;
-    if (!mostrarArchivados) {
-        list = list.filter(p => !p.archivado);
-    }
-    if (busqueda.trim()) {
-        const q = busqueda.toLowerCase().trim();
-        list = list.filter(p =>
-            p.nombre.toLowerCase().includes(q) ||
-            (p.codigo && p.codigo.toLowerCase().includes(q))
-        );
-    }
-    return list;
-}
-
-function lotesActivosDe(id) {
-    return lotes.filter(l => l.productoId === id && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0);
-}
-
-function stock(id) {
-    return lotesActivosDe(id).reduce((sum, l) => sum + n(l.cantidadInicial) - n(l.cantidadVendida), 0);
-}
-
-function valorLotes(id) {
-    return lotesActivosDe(id).reduce((sum, l) => {
-        const restante = n(l.cantidadInicial) - n(l.cantidadVendida);
-        return sum + restante * n(l.costo);
-    }, 0);
-}
-
-function valorInventario() {
-    const ids = new Set(productos.map(p => p.id));
-    let total = 0;
-    for (const id of ids) {
-        total += valorLotes(id);
-    }
-    return total;
-}
-
-function unidadesTotal() {
-    const ids = new Set(productos.map(p => p.id));
-    let total = 0;
-    for (const id of ids) {
-        total += stock(id);
-    }
-    return total;
-}
-
-function lotesActivosCount() {
-    return lotes.filter(l => (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0).length;
-}
-
-function badgeInfo(id) {
-    const s = stock(id);
-    if (s <= 0) return { texto: 'Sin stock', clase: 'danger' };
-    if (s < 5) return { texto: 'Stock bajo', clase: 'warning' };
-    return { texto: 'OK', clase: 'success' };
-}
-
-function abrirSheet(p) {
-    if (p) {
-        editando = p.id;
-        form = { ...p };
-    } else {
-        editando = null;
-        form = { nombre: '', codigo: '', unidad: 'u', precio: 0 };
-    }
-    sheetAbierto = true;
-}
-
-async function guardarProducto() {
-    if (!form.nombre.trim()) {
-        avisar('El nombre es obligatorio', 'error');
-        return;
-    }
-    if (!form.precio || form.precio <= 0) {
-        avisar('El precio debe ser mayor a 0', 'error');
-        return;
-    }
-    try {
-        const db = getDB();
-        const data = { ...form, precio: n(form.precio) };
-        if (editando) {
-            await db.productos.update(editando, data);
-            avisar('Producto actualizado', 'ok');
-        } else {
-            data.id = Date.now();
-            await db.productos.add(data);
-            avisar('Producto creado', 'ok');
-        }
-        await cargarDatos();
-        sheetAbierto = false;
-    } catch (err) {
-        console.error('Error guardando producto:', err);
-        avisar('Error al guardar', 'error');
-    }
-}
-
-async function archivar(p) {
-    if (!await pedirPIN()) return;
-    try {
-        const db = getDB();
-        await db.productos.update(p.id, { archivado: true });
-        await cargarDatos();
-        avisar('Producto archivado', 'ok');
-    } catch (err) {
-        console.error('Error archivando:', err);
-        avisar('Error al archivar', 'error');
-    }
-}
-
-async function restaurar(p) {
-    try {
-        const db = getDB();
-        await db.productos.update(p.id, { archivado: false });
-        await cargarDatos();
-        avisar('Producto restaurado', 'ok');
-    } catch (err) {
-        console.error('Error restaurando:', err);
-        avisar('Error al restaurar', 'error');
-    }
-}
+<script module>
+  export const manifiesto = {
+    id: 'productos',
+    nombre: 'Productos',
+    icono: 'tag',
+    grupo: 'negocio',
+    orden: 3,
+    tablas: { productos: '++id, nombre, codigo, archivado' }
+  };
 </script>
 
-<div class="productos-module">
-    <div class="header">
-        <h2>Productos</h2>
-        <div class="stats">
-            <span>Valor del Inventario: {dinero(valorInventario())}</span>
-            <span>{fmtCant(unidadesTotal())} unidades · {lotesActivosCount()} lotes</span>
-        </div>
-    </div>
+<script>
+  import { onMount } from 'svelte';
+  import { getDB, listar, guardar } from '../../core/db.js';
+  import { bus } from '../../core/bus.js';
+  import { avisar, confirmar } from '../../core/state.svelte.js';
+  import { n, m, fmt, fmtCant, genId, stockProducto, lotesDeProducto, valorLotesProducto, badgeStock } from '../../core/util.js';
+  import Icono from '../../core/Icono.svelte';
 
-    <div class="toolbar">
-        <input type="text" placeholder="Buscar productos..." bind:value={busqueda} />
-        <button class="btn-primary" on:click={() => abrirSheet(null)}>+ Agregar</button>
-        <button class="btn-secondary" on:click={() => mostrarArchivados = !mostrarArchivados}>
-            {mostrarArchivados ? 'Ocultar archivados' : 'Ver archivados'}
-        </button>
-    </div>
+  let productos = $state([]);
+  let lotes = $state([]);
+  let busq = $state('');
+  let mostrarArchivados = $state(false);
+  let expandido = $state({});
 
-    <div class="product-list">
-        {#if productosFiltrados().length === 0}
-            <div class="empty">
-                {mostrarArchivados ? 'No hay productos archivados' :
-                 busqueda ? 'Sin resultados para la búsqueda' :
-                 'No hay productos registrados. Agrega el primero.'}
-            </div>
-        {:else}
-            {#each productosFiltrados() as p (p.id)}
-                {@const b = badgeInfo(p.id)}
-                {@const lotesAct = lotesActivosDe(p.id)}
-                {@const s = stock(p.id)}
-                <div class="product-card">
-                    <div class="product-header">
-                        <span class="name">{p.nombre}</span>
-                        {#if p.codigo}<span class="code">({p.codigo})</span>{/if}
-                        <span class="badge {b.clase}">{b.texto}</span>
-                    </div>
-                    <div class="product-body">
-                        <span>Stock: {fmtCant(s)} {p.unidad || 'u'}</span>
-                        <span>Precio: {dinero(p.precio || 0)}</span>
-                    </div>
-                    <div class="product-actions">
-                        {#if !p.archivado}
-                            <button class="btn-small" on:click={() => abrirSheet(p)}>✎ Editar</button>
-                            <button class="btn-small danger" on:click={() => archivar(p)}>Archivar</button>
-                        {:else}
-                            <button class="btn-small" on:click={() => restaurar(p)}>↻ Restaurar</button>
-                        {/if}
-                    </div>
-                    {#if lotesAct.length > 0}
-                        <div class="lotes">
-                            {#each lotesAct as l}
-                                {@const restante = n(l.cantidadInicial) - n(l.cantidadVendida)}
-                                <div class="lote">
-                                    <span>{fmtFH(l.fecha)}</span>
-                                    <span>Quedan {fmtCant(restante)} {p.unidad || 'u'}</span>
-                                    <span>@ {dinero(n(l.costo))} = {dinero(restante * n(l.costo))}</span>
-                                </div>
-                            {/each}
-                            <div class="lote-total">Valor total: {dinero(valorLotes(p.id))}</div>
-                        </div>
-                    {:else}
-                        <div class="no-lotes">Sin lotes activos (stock 0)</div>
-                    {/if}
-                </div>
-            {/each}
-        {/if}
-    </div>
+  let form = $state({ editId: '', nombre: '', codigo: '', precio: '', stockMin: '5', unidad: '' });
 
-    {#if sheetAbierto}
-        <div class="modal-overlay" on:click={() => sheetAbierto = false}>
-            <div class="modal-content" on:click|stopPropagation>
-                <h3>{editando ? 'Editar producto' : 'Nuevo producto'}</h3>
-                <div class="form-group">
-                    <label>Nombre *</label>
-                    <input type="text" bind:value={form.nombre} />
-                </div>
-                <div class="form-group">
-                    <label>Código</label>
-                    <input type="text" bind:value={form.codigo} />
-                </div>
-                <div class="form-group">
-                    <label>Unidad</label>
-                    <input type="text" bind:value={form.unidad} placeholder="kg, lb, gr, litro, u" />
-                </div>
-                <div class="form-group">
-                    <label>Precio *</label>
-                    <input type="number" bind:value={form.precio} step="0.01" />
-                </div>
-                <div class="dialog-actions">
-                    <button class="btn-secondary" on:click={() => sheetAbierto = false}>Cancelar</button>
-                    <button class="btn-primary" on:click={guardarProducto}>{editando ? 'Actualizar' : 'Guardar'}</button>
-                </div>
-            </div>
-        </div>
+  let filtrados = $derived(() => {
+    let p = mostrarArchivados ? productos : productos.filter(x => !x.archivado);
+    const q = busq.toLowerCase().trim();
+    if (!q) return p;
+    return p.filter(x => x.nombre.toLowerCase().includes(q) || (x.codigo || '').toLowerCase().includes(q));
+  });
+
+  async function recargar() {
+    [productos, lotes] = await Promise.all([listar('productos'), listar('lotes')]);
+  }
+
+  onMount(() => {
+    recargar();
+    const off = bus.on('recargar', recargar);
+    return () => off();
+  });
+
+  async function guardarProducto() {
+    const nombre = (form.nombre || '').trim();
+    const precio = n(form.precio);
+    const min = n(form.stockMin);
+    const unidad = (form.unidad || '').trim();
+    if (!nombre) return avisar('Nombre obligatorio', 'bad');
+    if (precio <= 0) return avisar('Precio debe ser > 0', 'bad');
+    const dup = productos.find(x => x.nombre.toLowerCase() === nombre.toLowerCase() && x.id !== form.editId && !x.archivado);
+    if (dup) return avisar('Ya existe ese nombre', 'bad');
+
+    if (form.editId) {
+      const o = productos.find(x => x.id === form.editId);
+      await guardar('productos', { ...o, nombre, codigo: (form.codigo || '').trim(), precio, stockMinimo: min, unidad });
+      avisar('Producto actualizado');
+    } else {
+      await guardar('productos', { id: genId('p'), nombre, codigo: (form.codigo || '').trim(), precio, stockMinimo: min, archivado: false, unidad });
+      avisar('Producto agregado');
+    }
+    resetForm();
+    await recargar();
+    bus.emit('recargar');
+  }
+
+  function editar(p) {
+    form = { editId: p.id, nombre: p.nombre, codigo: p.codigo || '', precio: String(p.precio), stockMin: String(p.stockMinimo || 5), unidad: p.unidad || '' };
+    window.scrollTo(0, 0);
+  }
+
+  function resetForm() {
+    form = { editId: '', nombre: '', codigo: '', precio: '', stockMin: '5', unidad: '' };
+  }
+
+  async function archivar(p) {
+    if (stockProducto(lotes, p.id) > 0) return avisar('No archivar con stock > 0', 'bad');
+    const ok = await confirmar('Archivar producto', '¿Archivar "' + p.nombre + '"?');
+    if (!ok) return;
+    await guardar('productos', { ...p, archivado: true });
+    await recargar();
+    bus.emit('recargar');
+    avisar('Archivado');
+  }
+
+  async function restaurar(p) {
+    await guardar('productos', { ...p, archivado: false });
+    await recargar();
+    bus.emit('recargar');
+    avisar('Restaurado');
+  }
+</script>
+
+<div class="modulo">
+  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+      <Icono nombre="tag" size={18} />
+      {form.editId ? 'Editar' : 'Agregar'} Producto
+    </div>
+    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="text" placeholder="Nombre del producto" bind:value={form.nombre} />
+    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="text" placeholder="Codigo (opcional)" bind:value={form.codigo} />
+    <div class="grid grid-cols-2 gap-2 mb-2">
+      <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]" type="number" inputmode="decimal" step="0.01" placeholder="Precio venta" bind:value={form.precio} />
+      <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]" type="number" inputmode="decimal" step="0.1" placeholder="Stock min." bind:value={form.stockMin} />
+    </div>
+    <p class="text-xs text-primary mb-2 bg-primary/10 rounded p-2">Define la unidad si vendes por peso/volumen (ej: kg, lb, gr, litro). Si es unidad suelta, pon "u" o dejalo vacio.</p>
+    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3" type="text" placeholder="Unidad (kg, lb, gr, u, paq)" bind:value={form.unidad} list="unidades-list" />
+    <datalist id="unidades-list">
+      <option value="u"><option value="kg"><option value="lb"><option value="gr"><option value="litro"><option value="m"><option value="caja"><option value="paq">
+    </datalist>
+    <button class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm mb-2 active:scale-[0.97] transition-transform" onclick={guardarProducto}>
+      <Icono nombre="check" size={16} color="#fff" />
+      {form.editId ? 'Actualizar' : 'Guardar'}
+    </button>
+    {#if form.editId}
+      <button class="w-full py-3 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={resetForm}>Cancelar</button>
     {/if}
-</div>
+  </div>
 
-<style>
-.productos-module { padding: 16px; max-width: 800px; margin: 0 auto; }
-.header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-.stats { font-size: 14px; color: #6b7280; }
-.toolbar { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
-.toolbar input { flex: 1; min-width: 150px; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; }
-.product-list { display: flex; flex-direction: column; gap: 12px; }
-.product-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; background: #f9fafb; }
-.product-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.name { font-weight: 600; }
-.code { color: #6b7280; font-size: 13px; }
-.badge { font-size: 11px; padding: 2px 10px; border-radius: 12px; }
-.badge.success { background: #d1fae5; color: #065f46; }
-.badge.warning { background: #fef3c7; color: #92400e; }
-.badge.danger { background: #fee2e2; color: #991b1b; }
-.product-body { display: flex; gap: 16px; font-size: 14px; color: #4b5563; margin: 6px 0; }
-.product-actions { display: flex; gap: 6px; margin: 6px 0; }
-.btn-small { padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; background: #e5e7eb; }
-.btn-small.danger { background: #fee2e2; color: #991b1b; }
-.lotes { margin-top: 8px; padding: 8px; background: #fff; border-radius: 4px; font-size: 13px; }
-.lote { display: flex; gap: 12px; padding: 4px 0; border-bottom: 1px solid #f3f4f6; }
-.lote-total { font-weight: 600; margin-top: 4px; }
-.no-lotes { color: #9ca3af; font-size: 13px; padding: 6px 0; }
-.empty { text-align: center; color: #9ca3af; padding: 40px 0; }
-.form-group { margin-bottom: 12px; }
-.form-group label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px; }
-.form-group input { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; }
-.btn-primary { background: #3b82f6; color: #fff; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; }
-.btn-secondary { background: #e5e7eb; color: #1f2937; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; }
-.dialog-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.modal-content { background: #fff; border-radius: 12px; padding: 24px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto; }
-.dark .stats { color: #9ca3af; }
-.dark .toolbar input { background: #1f2937; border-color: #374151; color: #e5e7eb; }
-.dark .product-card { background: #1f2937; border-color: #374151; }
-.dark .code { color: #9ca3af; }
-.dark .product-body { color: #9ca3af; }
-.dark .lotes { background: #111827; }
-.dark .lote { border-bottom-color: #1f2937; }
-.dark .btn-secondary { background: #374151; color: #e5e7eb; }
-.dark .modal-content { background: #1f2937; color: #e5e7eb; }
-.dark .form-group input { background: #1f2937; border-color: #374151; color: #e5e7eb; }
-</style>
+  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)]">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+      <Icono nombre="tag" size={18} />
+      Productos
+    </div>
+    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="text" placeholder="Buscar..." bind:value={busq} />
+    <div class="text-right mb-2">
+      <button class="inline-block px-3 py-1.5 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-bold text-xs" onclick={() => mostrarArchivados = !mostrarArchivados}>
+        {mostrarArchivados ? 'Ocultar archivados' : 'Ver archivados'}
+      </button>
+    </div>
+    {#if filtrados().length === 0}
+      <div class="text-center text-muted py-6 text-sm">Sin productos</div>
+    {:else}
+      {#each filtrados() as p}
+        {@const badge = badgeStock(p, lotes)}
+        {@const s = stockProducto(lotes, p.id)}
+        {@const lotesP = lotesDeProducto(lotes, p.id)}
+        <div class="mb-1">
+          <div class="flex justify-between items-center gap-2 py-2.5 border-b border-border cursor-pointer" onclick={() => expandido[p.id] = !expandido[p.id]} style={p.archivado ? 'opacity:0.5' : ''}>
+            <div class="min-w-0 flex-1">
+              <div class="font-bold text-sm truncate">{p.nombre} {#if p.codigo}<span class="text-muted font-normal text-xs">({p.codigo})</span>{/if}</div>
+              <div class="flex items-center gap-2 flex-wrap mt-1">
+                <span class="inline-block px-2 py-0.5 rounded-full text-[0.6rem] font-extrabold text-white {badge.clase === 'ok' ? 'bg-success' : badge.clase === 'low' ? 'bg-warning' : badge.clase === 'out' ? 'bg-danger' : 'bg-muted'}">{badge.texto}</span>
+                <span class="text-primary font-extrabold text-sm">Stock: {fmtCant(s)} {p.unidad || ''}</span>
+                <span class="text-muted text-xs">{fmt(p.precio)}</span>
+                {#if lotesP.length > 0}
+                  <span class="transition-transform {expandido[p.id] ? 'rotate-180' : ''}"><Icono nombre="chevron" size={14} /></span>
+                {/if}
+              </div>
+            </div>
+            <div class="flex gap-1 flex-shrink-0" onclick={(e) => e.stopPropagation()}>
+              <button class="w-8 h-8 rounded-lg bg-background flex items-center justify-center border-none cursor-pointer" onclick={() => editar(p)}><Icono nombre="edit" size={15} /></button>
+              {#if !p.archivado}
+                <button class="w-8 h-8 rounded-lg bg-danger/10 flex items-center justify-center border-none cursor-pointer" onclick={() => archivar(p)}><Icono nombre="trash" size={15} color="#dc2626" /></button>
+              {:else}
+                <button class="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center border-none cursor-pointer" onclick={() => restaurar(p)}><Icono nombre="refresh" size={15} color="#16a34a" /></button>
+              {/if}
+            </div>
+          </div>
+          {#if expandido[p.id]}
+            <div class="bg-background rounded-b-lg px-3 py-2">
+              {#if lotesP.length === 0}
+                <div class="text-center text-muted text-xs py-2">Sin lotes activos (stock 0)</div>
+              {:else}
+                {#each lotesP as l}
+                  <div class="flex justify-between text-xs py-1 px-2 bg-card rounded mb-1">
+                    <span>{fmtFH(l.fecha)} · Quedan {fmtCant(n(l.cantidadInicial)-n(l.cantidadVendida))}/{fmtCant(l.cantidadInicial)} {p.unidad || ''}</span>
+                    <span>@{fmt(l.costo)} = <b>{fmt((n(l.cantidadInicial)-n(l.cantidadVendida))*n(l.costo))}</b></span>
+                  </div>
+                {/each}
+                <div class="text-right text-xs text-muted mt-1">Valor total: <b class="text-success">{fmt(valorLotesProducto(lotes, p.id))}</b></div>
+              {/if}
+            </div>
+          {/if}
+        </div>
+      {/each}
+    {/if}
+  </div>
+</div>

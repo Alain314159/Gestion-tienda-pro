@@ -1,166 +1,212 @@
 <script module>
   export const manifiesto = {
-        id: 'patrimonio',
-        nombre: 'Patrimonio',
-        icono: 'chart',
-        grupo: 'negocio',
-        orden: 6,
-        tablas: {
-          patrimonioMov: '++id, fecha, tipo',
-          cierresPeriodo: '++id, periodo, fechaCierre'
-        }
-    </script>
+    id: 'patrimonio',
+    nombre: 'Patrimonio',
+    icono: 'diamond',
+    grupo: 'negocio',
+    orden: 6,
+    tablas: { capital: '++id, fecha', retiros: '++id, fecha' }
+  };
+</script>
 
-    <script>
-      import { onMount } from 'svelte';
-      import { getDB } from '../../core/db.js';
-      import { bus } from '../../core/bus.js';
-      import { avisar, confirmar, pedirPIN } from ../../core/store.js';
-      import { dinero, actualizarCfg, app } from ../../core/appstate.js';
-      import { n, fmt, fmtFecha } from '../../core/util.js';
-      import Icono from '../../core/Icono.svelte';
+<script>
+  import { onMount } from 'svelte';
+  import { getDB, listar, guardar } from '../../core/db.js';
+  import { bus } from '../../core/bus.js';
+  import { avisar, pedirPIN } from '../../core/state.svelte.js';
+  import { n, m, fmt, fmtFH, genId, saldoCaja, valorInventario, gananciaDisponible } from '../../core/util.js';
+  import Icono from '../../core/Icono.svelte';
 
-      };
+  let cfg = $state({});
+  let capital = $state([]);
+  let ventas = $state([]);
+  let compras = $state([]);
+  let retiros = $state([]);
+  let movCaja = $state([]);
+  let ajustes = $state([]);
+  let cierres = $state([]);
+  let lotes = $state([]);
+
+  let retiroForm = $state({ monto: '', concepto: '' });
+  let aporteForm = $state({ monto: '', nota: '' });
+  let capInicialStr = $state('');
+
+  let periodoInicio = $derived(cfg.periodoInicio || new Date().toISOString());
+  let saldo = $derived(saldoCaja({ cfg, capital, ventas, compras, retiros, movCaja }));
+  let valInv = $derived(valorInventario(lotes));
+  let capTotal = $derived(m(n(cfg.capitalInicial || 0) + capital.reduce((s, c) => s + n(c.monto), 0)));
+  let ventasArr = $derived(ventas.filter(v => !v.anulada && new Date(v.fecha) >= new Date(periodoInicio)));
+  let ganBruta = $derived(m(ventasArr.reduce((s, v) => s + n(v.ganancia), 0)));
+  let gastosOp = $derived(m(ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= new Date(periodoInicio)).reduce((s, a) => s + n(a.costoPerdida), 0)));
+  let ganNeta = $derived(m(ganBruta - gastosOp));
+  let ganAcum = $derived(m(cierres.reduce((s, x) => s + n(x.ganancia), 0) + ganNeta - retiros.reduce((s, r) => s + n(r.monto), 0)));
+  let patrimonio = $derived(m(capTotal + ganAcum));
+  let disp = $derived(gananciaDisponible({ cfg, capital, ventas, compras, retiros, movCaja, ajustes, cierres, lotes, periodoInicio }));
+  let movs = $derived(() => {
+    const arr = [];
+    if (n(cfg.capitalInicial) > 0) arr.push({ id: 'ci', fecha: cfg.periodoInicio, tipo: 'Capital inicial', monto: n(cfg.capitalInicial), nota: '' });
+    capital.forEach(c => arr.push({ id: c.id, fecha: c.fecha, tipo: 'Aporte', monto: n(c.monto), nota: c.nota }));
+    retiros.forEach(r => arr.push({ id: r.id, fecha: r.fecha, tipo: 'Retiro', monto: n(r.monto), nota: r.concepto }));
+    return arr.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+  });
+
+  async function recargar() {
+    const db = getDB();
+    [capital, ventas, compras, retiros, movCaja, ajustes, cierres, lotes] = await Promise.all([
+      listar('capital'), listar('ventas'), listar('compras'), listar('retiros'),
+      listar('movCaja'), listar('ajustes'), listar('cierres'), listar('lotes')
+    ]);
+    const c = await db.config.get('cfg');
+    cfg = c?.value || { capitalInicial: 0, periodoInicio: new Date().toISOString() };
+  }
+
+  onMount(() => {
+    recargar();
+    const off = bus.on('recargar', recargar);
+    return () => off();
+  });
+
+  async function registrarRetiro() {
+    const monto = n(retiroForm.monto);
+    const c = (retiroForm.concepto || '').trim();
+    if (monto <= 0) return avisar('Monto invalido', 'bad');
+    if (!c) return avisar('Concepto obligatorio', 'bad');
+    if (monto > disp + 0.01) return avisar('Maximo ' + fmt(disp), 'bad');
+    const pinOk = await pedirPIN();
+    if (!pinOk) return;
+    await guardar('retiros', { id: genId('r'), fecha: new Date().toISOString(), monto, concepto: c });
+    await recargar();
+    bus.emit('recargar');
+    retiroForm = { monto: '', concepto: '' };
+    avisar('Retiro registrado');
+  }
+
+  async function registrarAporte() {
+    const monto = n(aporteForm.monto);
+    if (monto <= 0) return avisar('Monto invalido', 'bad');
+    await guardar('capital', { id: genId('k'), fecha: new Date().toISOString(), monto, nota: aporteForm.nota || '' });
+    await recargar();
+    bus.emit('recargar');
+    aporteForm = { monto: '', nota: '' };
+    avisar('Aporte registrado');
+  }
+
+  async function guardarCapInicial() {
+    const val = n(capInicialStr);
+    cfg.capitalInicial = val;
+    const db = getDB();
+    await db.config.put({ key: 'cfg', value: JSON.parse(JSON.stringify(cfg)) });
+    capInicialStr = '';
+    await recargar();
+    bus.emit('recargar');
+    avisar('Capital inicial guardado');
+  }
 </script>
 
 <div class="modulo">
-  <div class="card">
-    <div class="tit">Patrimonio Total</div>
-    <div class="big pos">{dinero(patrimonioTotal)}</div>
-    <div class="mut">Capital {dinero(capitalTotal)} · Gan. acum. {dinero(gananciasAcumuladas)}</div>
+  <div class="bg-gradient-to-br from-purple to-[#5b21b6] text-white rounded-[var(--radius-lg)] p-5 text-center mb-3 shadow-[var(--color-shadow)]">
+    <div class="flex items-center justify-center gap-1.5 text-xs opacity-90 mb-1">
+      <Icono nombre="diamond" size={14} color="#fff" />
+      Patrimonio Total
+    </div>
+    <div class="text-3xl font-extrabold my-0.5">{fmt(patrimonio)}</div>
+    <div class="text-xs opacity-85">Capital {fmt(capTotal)} · Gan. acum. {fmt(ganAcum)}</div>
   </div>
 
-  <div class="card">
-    <div class="tit">Resumen contable</div>
-    <div class="list">
-      <div class="item"><div class="t">Capital inicial</div><div>{dinero(capitalInicial)}</div></div>
-      <div class="item"><div class="t">Aportes</div><div class="pos">+{dinero(aportesPatrimonio)}</div></div>
-      <div class="item" style="font-weight:700"><div class="t">= CAPITAL</div><div>{dinero(capitalTotal)}</div></div>
-      <hr class="sep" />
-      <div class="item"><div class="t">Caja</div><div>{dinero(saldoCaja)}</div></div>
-      <div class="item"><div class="t">Inventario</div><div>{dinero(valorInventario())}</div></div>
-      <div class="item" style="font-weight:700"><div class="t">= ACTIVOS</div><div>{dinero(saldoCaja + valorInventario())}</div></div>
-      <hr class="sep" />
-      <div class="item"><div class="t">Ganancia bruta</div><div>{dinero(ventasPeriodo)}</div></div>
-      <div class="item"><div class="t">Gastos operativos</div><div class="neg">-{dinero(gastosOpPeriodo)}</div></div>
-      <div class="item" style="font-weight:700"><div class="t">= Ganancia neta (período)</div><div class="pos">{dinero(gananciaNetaPeriodo)}</div></div>
-      <hr class="sep" />
-      <div class="item" style="background:var(--sf);font-weight:700">
-        <div class="t">DISPONIBLE PARA RETIRO</div>
-        <div class="pos">{dinero(gananciaDisponible)}</div>
-      </div>
+  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+      <Icono nombre="chart" size={18} />
+      Resumen contable
+    </div>
+    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+      <span>Capital inicial</span><span>{fmt(cfg.capitalInicial || 0)}</span>
+    </div>
+    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+      <span>Aportes</span><span class="text-success">+{fmt(capital.reduce((s, c) => s + n(c.monto), 0))}</span>
+    </div>
+    <div class="flex justify-between gap-2 py-2 border-t border-text text-sm font-bold">
+      <span>= CAPITAL</span><span class="text-primary">{fmt(capTotal)}</span>
+    </div>
+    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+      <span>Caja</span><span>{fmt(saldo)}</span>
+    </div>
+    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+      <span>Inventario</span><span>{fmt(valInv)}</span>
+    </div>
+    <div class="flex justify-between gap-2 py-2 border-t border-text text-sm font-bold">
+      <span>= ACTIVOS</span><span class="text-primary">{fmt(saldo + valInv)}</span>
+    </div>
+    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+      <span>Ganancia bruta</span><span class="text-success">{fmt(ganBruta)}</span>
+    </div>
+    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+      <span>Gastos operativos</span><span class="text-danger">-{fmt(gastosOp)}</span>
+    </div>
+    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+      <span>= Ganancia neta (periodo)</span><span>{fmt(ganNeta)}</span>
+    </div>
+    <div class="flex justify-between gap-2 py-3 bg-success/10 rounded-[var(--radius-md)] px-3 mt-2 text-sm font-extrabold">
+      <span>DISPONIBLE PARA RETIRO</span>
+      <span class="text-success text-base">{fmt(disp)}</span>
     </div>
   </div>
 
-  <div class="card">
-    <div class="tit">Acciones</div>
-    <div class="row" style="flex-wrap:wrap;gap:0.5rem">
-      <button class="btn dgr sm" on:click={() => abrirModal('Retiro')}>
-        <Icono nombre="minus" size={16} /> Retirar Ganancia
-      </button>
-      <button class="btn ok sm" on:click={() => abrirModal('Aporte')}>
-        <Icono nombre="plus" size={16} /> Aportar Capital
-      </button>
-      <button class="btn sec sm" on:click={() => abrirModal('capital')}>
-        <Icono nombre="edit" size={16} /> Capital Inicial
-      </button>
+  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
+    <div class="flex items-center gap-2 font-extrabold text-warning mb-3">
+      <Icono nombre="dollar" size={18} />
+      Retirar Ganancia
     </div>
-  </div>
-
-  <div class="card">
-    <div class="tit">Cerrar Período</div>
-    <div class="mut" style="margin-bottom:0.5rem">
-      Al cerrar, los contadores del inicio se reinician. El historial se conserva y la ganancia se acumula.
-    </div>
-    <div class="mut">Período actual: desde {fmtFecha(periodoInicio)}</div>
-    <div class="mut" style="margin-top:0.25rem">
-      Ventas {dinero(ventasPeriodo)} · Compras {dinero(comprasPeriodo)} · Ganancia {dinero(gananciaNetaPeriodo)}
-    </div>
-    <button class="btn dgr" style="margin-top:0.75rem;width:100%" on:click={cerrarPeriodo}>
-      <Icono nombre="check" size={16} /> Cerrar Período y Empezar Nuevo
+    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="number" inputmode="decimal" step="0.01" placeholder="Monto" bind:value={retiroForm.monto} />
+    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="text" placeholder="Concepto" bind:value={retiroForm.concepto} />
+    <button class="w-full py-3 rounded-[var(--radius-md)] bg-warning text-white font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={registrarRetiro}>
+      <Icono nombre="dollar" size={16} color="#fff" />
+      Retirar Ganancia
     </button>
   </div>
 
-  <div class="card">
-    <div class="tit">Historial de Cierres</div>
-    {#if cierres.length === 0}
-      <div class="empty"><Icono nombre="archive" size={48} /><p>Sin cierres</p></div>
-    {:else}
-      <div class="list">
-        {#each cierres as c}
-          <div class="item">
-            <div class="t">{c.periodo}</div>
-            <div class="s">Cerrado {fmtFecha(c.fechaCierre)} · Vtas {dinero(c.totalVentas)} · Gan {dinero(c.ganancia)}</div>
-          </div>
-        {/each}
-      </div>
-    {/if}
+  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
+    <div class="flex items-center gap-2 font-extrabold text-success mb-3">
+      <Icono nombre="plus" size={18} />
+      Aportar Capital
+    </div>
+    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="number" inputmode="decimal" step="0.01" placeholder="Monto" bind:value={aporteForm.monto} />
+    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="text" placeholder="Nota" bind:value={aporteForm.nota} />
+    <button class="w-full py-3 rounded-[var(--radius-md)] bg-success text-white font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={registrarAporte}>
+      <Icono nombre="plus" size={16} color="#fff" />
+      Registrar Aporte
+    </button>
   </div>
 
-  <div class="card">
-    <div class="tit">Historial de Movimientos</div>
-    {#if movs.length === 0}
-      <div class="empty"><Icono nombre="archive" size={48} /><p>Sin movimientos</p></div>
-    {:else}
-      <div class="list">
-        {#each movs.slice(0, 30) as m}
-          <div class="item">
-            <div>
-              <div class="t">{m.tipo}</div>
-              <div class="s">{fmtFecha(m.fecha)}{m.nota ? ' · ' + m.nota : ''}</div>
-            </div>
-            <div class={m.tipo === 'Retiro' ? 'neg' : 'pos'} style="font-weight:600">
-              {m.tipo === 'Retiro' ? '-' : '+'}{dinero(m.monto)}
-            </div>
-          </div>
-        {/each}
-      </div>
-    {/if}
+  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+      <Icono nombre="wallet" size={18} />
+      Capital Inicial
+    </div>
+    <div class="text-xs text-muted mb-2">Actual: {fmt(cfg.capitalInicial || 0)}</div>
+    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="number" inputmode="decimal" step="0.01" placeholder="Monto de capital inicial" bind:value={capInicialStr} />
+    <button class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={guardarCapInicial}>
+      <Icono nombre="check" size={16} color="#fff" />
+      Guardar Capital Inicial
+    </button>
   </div>
 
-  {#if modalAbierto === 'retiro' || modalAbierto === 'aporte'}
-    <div class="mask cent" on:click={() => modalAbierto = null} on:keydown={(e) => e.key === 'Escape' && (modalAbierto = null)} role="dialog">
-      <div class="modal" on:click={(e) => e.stopPropagation()} role="dialog">
-        <div class="tit">
-          <Icono nombre={formMov.tipo === 'Retiro' ? 'minus' : 'plus'} size={20} />
-          {formMov.tipo === 'Retiro' ? 'Retirar Ganancia' : 'Aportar Capital'}
-        </div>
-        <label class="lbl">
-          Monto
-          <input class="inp" type="number" step="0.01" bind:value={formMov.monto} placeholder="0.00" />
-        </label>
-        <label class="lbl" style="margin-top:0.5rem">
-          Nota (opcional)
-          <input class="inp" type="text" bind:value={formMov.nota} placeholder="Ej: Retiro para gastos personales" />
-        </label>
-        <div class="row" style="margin-top:1rem">
-          <button class="btn sec" on:click={() => modalAbierto = null}>Cancelar</button>
-          <button class="btn ok" style="flex:1" on:click={guardarMov}>
-            <Icono nombre="save" size={16} /> Guardar
-          </button>
-        </div>
-      </div>
+  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)]">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+      <Icono nombre="history" size={18} />
+      Historial
     </div>
-  {:else if modalAbierto === 'capital'}
-    <div class="mask cent" on:click={() => modalAbierto = null} on:keydown={(e) => e.key === 'Escape' && (modalAbierto = null)} role="dialog">
-      <div class="modal" on:click={(e) => e.stopPropagation()} role="dialog">
-        <div class="tit"><Icono nombre="edit" size={20} /> Capital Inicial</div>
-        <div class="mut">Actual: {dinero(capitalInicial)}</div>
-        <label class="lbl" style="margin-top:0.5rem">
-          Nuevo capital inicial
-          <input class="inp" type="number" step="0.01" bind:value={nuevoCapital} placeholder="0.00" />
-        </label>
-        <div class="row" style="margin-top:1rem">
-          <button class="btn sec" on:click={() => modalAbierto = null}>Cancelar</button>
-          <button class="btn ok" style="flex:1" on:click={guardarCapital}>
-            <Icono nombre="save" size={16} /> Guardar
-          </button>
+    {#if movs().length === 0}
+      <div class="text-center text-muted py-6 text-sm">Sin movimientos</div>
+    {:else}
+      {#each movs() as m}
+        <div class="flex justify-between items-center gap-2 py-2.5 border-b border-border">
+          <div class="min-w-0 flex-1">
+            <div class="font-bold text-sm">{m.tipo}</div>
+            <div class="text-xs text-muted">{fmtFH(m.fecha)} {m.nota ? '· ' + m.nota : ''}</div>
+          </div>
+          <b class="flex-shrink-0 {m.tipo === 'Retiro' ? 'text-danger' : 'text-success'}">{m.tipo === 'Retiro' ? '-' : '+'}{fmt(m.monto)}</b>
         </div>
-      </div>
-    </div>
-  {/if}
+      {/each}
+    {/if}
+  </div>
 </div>
-
-<style>
-  .big.pos { color: var(--ok); }
-</style>

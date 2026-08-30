@@ -1,24 +1,31 @@
 import { abrirDB } from './db.js';
 
-import * as Inicio from '../modulos/negocio/inicio.svelte';
-import * as Ventas from '../modulos/negocio/ventas.svelte';
-import * as Compras from '../modulos/negocio/compras.svelte';
-import * as Caja from '../modulos/negocio/caja.svelte';
-import * as Productos from '../modulos/negocio/productos.svelte';
-import * as Inventario from '../modulos/negocio/inventario.svelte';
-import * as Patrimonio from '../modulos/negocio/patrimonio.svelte';
-import * as Reportes from '../modulos/utilidades/reportes.svelte';
-import * as Ajustes from '../modulos/utilidades/ajustes.svelte';
+/** Módulos con lazy loading */
+const modulosRaw = [
+  () => import('../modulos/negocio/inicio.svelte'),
+  () => import('../modulos/negocio/ventas.svelte'),
+  () => import('../modulos/negocio/compras.svelte'),
+  () => import('../modulos/negocio/caja.svelte'),
+  () => import('../modulos/negocio/productos.svelte'),
+  () => import('../modulos/negocio/inventario.svelte'),
+  () => import('../modulos/negocio/patrimonio.svelte'),
+  () => import('../modulos/utilidades/reportes.svelte'),
+  () => import('../modulos/utilidades/ajustes.svelte'),
+];
 
-const mods = [Inicio, Ventas, Compras, Caja, Productos, Inventario, Patrimonio, Reportes, Ajustes];
+export let modulos = [];
+export let navMods = [];
 
-export const modulos = mods
-  .map(mod => ({
-    ...(mod.manifiesto || {}),
-    Componente: mod.default
-  }))
-  .filter(m => m.id)
-  .sort((a, b) => (a.orden ?? 99) - (b.orden ?? 99));
+export async function cargarModulos() {
+  const cargados = await Promise.all(modulosRaw.map(fn => fn()));
+  modulos = cargados
+    .map(mod => ({ ...(mod.manifiesto || {}), Componente: mod.default }))
+    .filter(m => m.id)
+    .sort((a, b) => (a.orden ?? 99) - (b.orden ?? 99));
 
-export const grupos = [...new Set(modulos.map(m => m.grupo || 'negocio'))];
-abrirDB(modulos);
+  // Los 4 primeros van a la nav principal, el resto al menú "Más"
+  navMods = modulos.slice(0, 4);
+
+  abrirDB(modulos);
+  return modulos;
+}

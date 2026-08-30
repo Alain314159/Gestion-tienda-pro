@@ -1,152 +1,172 @@
 <script module>
   export const manifiesto = {
-        id: 'caja',
-        nombre: 'Caja',
-        icono: 'wallet',
-        grupo: 'negocio',
-        orden: 3,
-        tablas: {
-          movsCaja: '++id, fecha, tipo',
-          arqueos: '++id, fecha'
-        }
-    </script>
+    id: 'caja',
+    nombre: 'Caja',
+    icono: 'wallet',
+    grupo: 'negocio',
+    orden: 5,
+    tablas: { arqueos: '++id, fecha', movCaja: '++id, fecha, tipo' }
+  };
+</script>
 
-    <script>
-      import { onMount } from 'svelte';
-      import { getDB } from '../../core/db.js';
-      import { bus } from '../../core/bus.js';
-      import { avisar, confirmar, pedirPIN } from ../../core/store.js';
-      import { dinero, app } from ../../core/appstate.js';
-      import { n, fmtCant, fmtFH, fmtFecha } from '../../core/util.js';
-      import Icono from '../../core/Icono.svelte';
+<script>
+  import { onMount } from 'svelte';
+  import { getDB, listar, guardar } from '../../core/db.js';
+  import { bus } from '../../core/bus.js';
+  import { avisar } from '../../core/state.svelte.js';
+  import { n, m, fmt, fmtFH, genId, saldoCaja, movimientosCaja } from '../../core/util.js';
+  import Icono from '../../core/Icono.svelte';
 
-      };
+  let cfg = $state({});
+  let capital = $state([]);
+  let ventas = $state([]);
+  let compras = $state([]);
+  let retiros = $state([]);
+  let movCaja = $state([]);
+  let arqueos = $state([]);
+
+  let arqueoForm = $state({ monto: '', nota: '' });
+
+  let saldo = $derived(saldoCaja({ cfg, capital, ventas, compras, retiros, movCaja }));
+  let aportesTotal = $derived(m(capital.reduce((s, c) => s + n(c.monto), 0)));
+  let ventasTotal = $derived(m(ventas.filter(v => !v.anulada).reduce((s, v) => s + n(v.total), 0)));
+  let comprasTotal = $derived(m(compras.filter(c => !c.anulada).reduce((s, c) => s + n(c.total), 0)));
+  let retirosTotal = $derived(m(retiros.reduce((s, r) => s + n(r.monto), 0)));
+  let arqueoNeto = $derived(m(movCaja.filter(mv => mv.concepto && mv.concepto.toLowerCase().includes('arqueo')).reduce((s, mv) => mv.tipo === 'ingreso' ? s + n(mv.monto) : s - n(mv.monto), 0)));
+  let movs = $derived(movimientosCaja({ cfg, capital, ventas, compras, retiros, movCaja }).slice(0, 30));
+  let arqueoPreview = $derived(() => {
+    if (arqueoForm.monto === '' || arqueoForm.monto === null || arqueoForm.monto === undefined) return null;
+    const monto = n(arqueoForm.monto);
+    const sys = saldo;
+    const diff = monto - sys;
+    const tipo = Math.abs(diff) < 0.01 ? 'cuadre' : (diff > 0 ? 'sobrante' : 'faltante');
+    return { fisico: monto, sistema: sys, diff: Math.abs(diff), tipo };
+  });
+
+  async function recargar() {
+    const db = getDB();
+    [capital, ventas, compras, retiros, movCaja, arqueos] = await Promise.all([
+      listar('capital'), listar('ventas'), listar('compras'), listar('retiros'), listar('movCaja'), listar('arqueos')
+    ]);
+    const c = await db.config.get('cfg');
+    cfg = c?.value || { capitalInicial: 0 };
+  }
+
+  onMount(() => {
+    recargar();
+    const off = bus.on('recargar', recargar);
+    return () => off();
+  });
+
+  async function registrarArqueo() {
+    const monto = n(arqueoForm.monto);
+    if (monto < 0 || arqueoForm.monto === '') return avisar('Monto invalido', 'bad');
+    const diff = m(monto - saldo);
+    const arq = { id: genId('aq'), fecha: new Date().toISOString(), montoFisico: monto, saldoSistema: saldo, diferencia: diff, nota: arqueoForm.nota };
+    if (Math.abs(diff) > 0.01) {
+      const mov = { id: genId('mc'), fecha: new Date().toISOString(), tipo: diff > 0 ? 'ingreso' : 'egreso', monto: Math.abs(diff), concepto: (diff > 0 ? 'Sobrante' : 'Faltante') + ' de arqueo', nota: arqueoForm.nota };
+      const db = getDB();
+      await db.transaction('rw', db.arqueos, db.movCaja, async () => {
+        await guardar('arqueos', arq);
+        await guardar('movCaja', mov);
+      });
+      avisar((diff > 0 ? 'Sobrante ' : 'Faltante ') + fmt(Math.abs(diff)), diff > 0 ? 'warn' : 'bad');
+    } else {
+      await guardar('arqueos', arq);
+      avisar('Cuadre perfecto');
+    }
+    arqueoForm = { monto: '', nota: '' };
+    await recargar();
+    bus.emit('recargar');
+  }
 </script>
 
 <div class="modulo">
-  <div class="card">
-    <div class="tit">Saldo en Caja</div>
-    <div class="big" class:neg={saldoCaja < 0} class:pos={saldoCaja >= 0}>
-      {dinero(saldoCaja)}
+  <div class="{saldo < 0 ? 'bg-gradient-to-br from-danger to-[#7f1d1d]' : 'bg-gradient-to-br from-primary to-[#1e3a8a]'} text-white rounded-[var(--radius-lg)] p-5 text-center mb-3 shadow-[var(--color-shadow)]">
+    <div class="flex items-center justify-center gap-1.5 text-xs opacity-90 mb-1">
+      <Icono nombre="wallet" size={14} color="#fff" />
+      Saldo en Caja
     </div>
-    {#if saldoCaja < 0}
-      <div class="mut" style="color:var(--dg);margin-top:0.25rem">⚠ Caja en negativo</div>
+    <div class="text-3xl font-extrabold my-0.5">{fmt(saldo)}</div>
+    {#if saldo < 0}<div class="text-xs opacity-85">Caja en negativo</div>{/if}
+  </div>
+
+  <div class="bg-primary/10 border-l-4 border-primary rounded-[var(--radius-md)] p-3 mb-3 text-sm text-primary">
+    El saldo de caja es <b>acumulativo</b> (incluye todo el historial). El cierre de periodo solo reinicia los contadores de ventas, compras y ganancia del dashboard.
+  </div>
+
+  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+      <Icono nombre="chart" size={18} />
+      Desglose
+    </div>
+    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+      <span>Capital inicial</span><span class="text-success">+{fmt(cfg.capitalInicial || 0)}</span>
+    </div>
+    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+      <span>Aportes</span><span class="text-success">+{fmt(aportesTotal)}</span>
+    </div>
+    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+      <span>Ventas contado</span><span class="text-success">+{fmt(ventasTotal)}</span>
+    </div>
+    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+      <span>Compras</span><span class="text-danger">-{fmt(comprasTotal)}</span>
+    </div>
+    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+      <span>Retiros</span><span class="text-danger">-{fmt(retirosTotal)}</span>
+    </div>
+    <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
+      <span>Ajustes arqueo</span><span class={arqueoNeto >= 0 ? 'text-success' : 'text-danger'}>{arqueoNeto >= 0 ? '+' : ''}{fmt(arqueoNeto)}</span>
+    </div>
+    <div class="flex justify-between gap-2 py-3 border-t-2 border-text font-extrabold text-base">
+      <span>= SALDO</span><span class="text-primary">{fmt(saldo)}</span>
+    </div>
+  </div>
+
+  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+      <Icono nombre="search" size={18} />
+      Arqueo de Caja
+    </div>
+    <div class="bg-primary/10 border-l-4 border-primary rounded-[var(--radius-md)] p-3 mb-3 text-sm text-primary">
+      Cuenta el dinero fisico y escribe lo que tienes. Si es MENOR que el sistema = faltante; si es MAYOR = sobrante.
+    </div>
+    <div class="flex justify-between gap-2 py-1 text-sm mb-2">
+      <span>El sistema dice:</span><b class="text-primary">{fmt(saldo)}</b>
+    </div>
+    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="number" inputmode="decimal" step="0.01" placeholder="Monto que contaste fisicamente" bind:value={arqueoForm.monto} />
+    {#if arqueoPreview()}
+      <div class="rounded-[var(--radius-md)] p-3 mb-2 font-extrabold text-sm {arqueoPreview().tipo === 'cuadre' ? 'bg-success/10 text-success' : arqueoPreview().tipo === 'sobrante' ? 'bg-warning/10 text-warning' : 'bg-danger/10 text-danger'}">
+        Tu cuentas: {fmt(arqueoPreview().fisico)} · Diferencia:
+        {#if arqueoPreview().tipo === 'cuadre'}Cuadre perfecto ✓
+        {:else if arqueoPreview().tipo === 'sobrante'}SOBRANTE +{fmt(arqueoPreview().diff)}
+        {:else}FALTANTE -{fmt(arqueoPreview().diff)}{/if}
+      </div>
     {/if}
-    <div class="mut" style="margin-top:0.5rem;font-size:0.85rem">
-      El saldo de caja es <strong>acumulativo</strong> (incluye todo el historial). El cierre de período solo reinicia los contadores de ventas, compras y ganancia del dashboard.
-    </div>
+    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="text" placeholder="Nota (opcional)" bind:value={arqueoForm.nota} />
+    <button class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={registrarArqueo}>
+      <Icono nombre="check" size={16} color="#fff" />
+      Registrar Arqueo
+    </button>
   </div>
 
-  <div class="card">
-    <div class="tit">Desglose</div>
-    <div class="list">
-      <div class="item"><div class="t">Capital inicial</div><div class="pos">+{dinero(capitalInicial)}</div></div>
-      <div class="item"><div class="t">Aportes</div><div class="pos">+{dinero(aportesTotal)}</div></div>
-      <div class="item"><div class="t">Ventas</div><div class="pos">+{dinero(ventasContadoTotal)}</div></div>
-      <div class="item"><div class="t">Compras</div><div class="neg">-{dinero(comprasTotal)}</div></div>
-      <div class="item"><div class="t">Retiros</div><div class="neg">-{dinero(retirosTotal)}</div></div>
-      <div class="item"><div class="t">Ajustes de arqueo</div><div class={arqueoNeto >= 0 ? 'pos' : 'neg'}>{arqueoNeto >= 0 ? '+' : ''}{dinero(arqueoNeto)}</div></div>
+  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)]">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+      <Icono nombre="history" size={18} />
+      Movimientos recientes
     </div>
-    <hr class="sep" />
-    <div class="row" style="justify-content:space-between;font-weight:700;font-size:1.05rem">
-      <span>= SALDO</span>
-      <span class={saldoCaja >= 0 ? 'pos' : 'neg'}>{dinero(saldoCaja)}</span>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="tit">Acciones</div>
-    <div class="row">
-      <button class="btn ok sm" on:click={() => abrirMov('aporte')}>
-        <Icono nombre="plus" size={16} /> Aporte
-      </button>
-      <button class="btn dgr sm" on:click={() => abrirMov('retiro')}>
-        <Icono nombre="minus" size={16} /> Retiro
-      </button>
-      <button class="btn sec sm" on:click={abrirArqueo}>
-        <Icono nombre="check" size={16} /> Arqueo
-      </button>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="tit">Movimientos recientes</div>
     {#if movs.length === 0}
-      <div class="empty"><Icono nombre="archive" size={48} /><p>Sin movimientos</p></div>
+      <div class="text-center text-muted py-6 text-sm">Sin movimientos</div>
     {:else}
-      <div class="list">
-        {#each movs.slice(0, 20) as m}
-          <div class="item">
-            <div>
-              <div class="t">{m.concepto}</div>
-              <div class="s">{fmtFH(m.fecha)} · {m.tipo}</div>
-            </div>
-            <div class={m.tipo === 'aporte' || m.tipo === 'sobrante' ? 'pos' : 'neg'} style="font-weight:600">
-              {m.tipo === 'aporte' || m.tipo === 'sobrante' ? '+' : '-'}{dinero(m.monto)}
-            </div>
+      {#each movs as mv}
+        <div class="flex justify-between items-center gap-2 py-2.5 border-b border-border">
+          <div class="min-w-0 flex-1">
+            <div class="font-bold text-sm">{mv.concepto}</div>
+            <div class="text-xs text-muted">{fmtFH(mv.fecha)}</div>
           </div>
-        {/each}
-      </div>
+          <b class="flex-shrink-0 {mv.tipo === 'ingreso' ? 'text-success' : 'text-danger'}">{mv.tipo === 'ingreso' ? '+' : '-'}{fmt(mv.monto)}</b>
+        </div>
+      {/each}
     {/if}
   </div>
-
-  {#if arqueoAbierto}
-    <div class="mask cent" on:click={() => arqueoAbierto = false} on:keydown={(e) => e.key === 'Escape' && (arqueoAbierto = false)} role="dialog">
-      <div class="modal" on:click={(e) => e.stopPropagation()} role="dialog">
-        <div class="tit"><Icono nombre="check" size={20} /> Arqueo de Caja</div>
-        <p class="mut">Cuenta el dinero físico. Si es menor al sistema = faltante; si es mayor = sobrante.</p>
-        <div class="lbl">
-          El sistema dice: <strong>{dinero(saldoCaja)}</strong>
-        </div>
-        <label class="lbl">
-          Tú cuentas (físico)
-          <input class="inp" type="number" step="0.01" bind:value={fisico} placeholder="0.00" />
-        </label>
-        {#if fisico !== '' && !isNaN(n(fisico))}
-          <div class="row" style="justify-content:space-between;margin-top:0.5rem;font-weight:600">
-            <span>Diferencia</span>
-            <span class={diffArqueo === 0 ? 'pos' : diffArqueo > 0 ? 'pos' : 'neg'}>
-              {diffArqueo === 0 ? '✓ Cuadre perfecto' : diffArqueo > 0 ? `SOBRANTE +${dinero(diffArqueo)}` : `FALTANTE ${dinero(diffArqueo)}`}
-            </span>
-          </div>
-        {/if}
-        <div class="row" style="margin-top:1rem">
-          <button class="btn sec" on:click={() => arqueoAbierto = false}>Cancelar</button>
-          <button class="btn ok" style="flex:1" on:click={registrarArqueo}>
-            <Icono nombre="save" size={16} /> Registrar Arqueo
-          </button>
-        </div>
-      </div>
-    </div>
-  {/if}
-
-  {#if movAbierto}
-    <div class="mask cent" on:click={() => movAbierto = false} on:keydown={(e) => e.key === 'Escape' && (movAbierto = false)} role="dialog">
-      <div class="modal" on:click={(e) => e.stopPropagation()} role="dialog">
-        <div class="tit">
-          <Icono nombre={movForm.tipo === 'aporte' ? 'plus' : 'minus'} size={20} />
-          {movForm.tipo === 'aporte' ? 'Aportar Capital' : 'Retirar'}
-        </div>
-        <label class="lbl">
-          Concepto
-          <input class="inp" type="text" bind:value={movForm.concepto} placeholder="Ej: Aporte de socio / Pago proveedor" />
-        </label>
-        <label class="lbl">
-          Monto
-          <input class="inp" type="number" step="0.01" bind:value={movForm.monto} placeholder="0.00" />
-        </label>
-        <div class="row" style="margin-top:1rem">
-          <button class="btn sec" on:click={() => movAbierto = false}>Cancelar</button>
-          <button class="btn ok" style="flex:1" on:click={guardarMov}>
-            <Icono nombre="save" size={16} /> Guardar
-          </button>
-        </div>
-      </div>
-    </div>
-  {/if}
 </div>
-
-<style>
-  .big.neg { color: var(--dg); }
-  .big.pos { color: var(--ok); }
-</style>

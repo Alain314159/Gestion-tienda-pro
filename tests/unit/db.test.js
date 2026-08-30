@@ -1,24 +1,50 @@
-import { describe, it, expect, vi } from 'vitest';
-import { abrirDB, getDB } from '../../src/core/db.js';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import Dexie from 'dexie';
+import { abrirDB, getDB, cerrarDB, guardar, listar, eliminar, obtener, guardarBulk } from '../../src/core/db.js';
 
-describe('Base de datos', () => {
-  it('abrirDB crea instancia', () => {
-    const manifiestos = [{ tablas: { productos: '++id, nombre' } }];
-    const db = abrirDB(manifiestos);
-    expect(db).toBeDefined();
+// Mock crypto.randomUUID - jsdom tiene crypto como read-only
+if (!global.crypto?.randomUUID) {
+  vi.stubGlobal('crypto', {
+    ...global.crypto,
+    randomUUID: () => 'test-uuid-' + Math.random().toString(36).slice(2)
+  });
+}
+
+describe('db.js - Base de datos', () => {
+  beforeEach(async () => {
+    await cerrarDB();
+    // Usar nombre unico para evitar conflictos
+    const db = new Dexie('test-db-' + Date.now());
+    db.version(1).stores({ productos: '++id', ventas: '++id' });
+    await db.open();
+    // Reemplazar el singleton
+    const module = await import('../../src/core/db.js');
   });
 
-  it('getDB devuelve la misma instancia', () => {
-    const manifiestos = [{ tablas: { productos: '++id, nombre' } }];
-    abrirDB(manifiestos);
-    const db = getDB();
-    expect(db).toBeDefined();
+  afterEach(async () => {
+    await cerrarDB();
   });
 
-  it('abrirDB es singleton', () => {
-    const manifiestos = [{ tablas: {} }];
-    const db1 = abrirDB(manifiestos);
-    const db2 = abrirDB(manifiestos);
-    expect(db1).toBe(db2);
+  it('guardar y listar funciona', async () => {
+    const db = abrirDB([{ tablas: { productos: '++id' } }]);
+    await guardar('productos', { id: 'p1', nombre: 'Test' });
+    const items = await listar('productos');
+    expect(items.length).toBe(1);
+    expect(items[0].nombre).toBe('Test');
+  });
+
+  it('eliminar funciona', async () => {
+    const db = abrirDB([{ tablas: { productos: '++id' } }]);
+    await guardar('productos', { id: 'p1', nombre: 'Test' });
+    await eliminar('productos', 'p1');
+    const items = await listar('productos');
+    expect(items.length).toBe(0);
+  });
+
+  it('guardarBulk funciona', async () => {
+    const db = abrirDB([{ tablas: { productos: '++id' } }]);
+    await guardarBulk('productos', [{ id: 'p1', nombre: 'A' }, { id: 'p2', nombre: 'B' }]);
+    const items = await listar('productos');
+    expect(items.length).toBe(2);
   });
 });

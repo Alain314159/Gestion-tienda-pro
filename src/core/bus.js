@@ -1,34 +1,18 @@
-const canales = new Map();
+/** Event bus simple para comunicación entre módulos */
+const listeners = new Map();
 
 export const bus = {
-    on(ev, fn) {
-        if (!canales.has(ev)) {
-            canales.set(ev, new Set());
-        }
-        canales.get(ev).add(fn);
-        return () => {
-            const canal = canales.get(ev);
-            if (canal) {
-                canal.delete(fn);
-                if (canal.size === 0) {
-                    canales.delete(ev);
-                }
-            }
-        };
-    },
-    emitir(ev, dato) {
-        const canal = canales.get(ev);
-        if (canal) {
-            canal.forEach(fn => {
-                try {
-                    fn(dato);
-                } catch (err) {
-                    console.error(`Error en evento ${ev}:`, err);
-                }
-            });
-        }
-    },
-    limpiar() {
-        canales.clear();
-    }
+  on(event, cb) {
+    if (!listeners.has(event)) listeners.set(event, new Set());
+    listeners.get(event).add(cb);
+    return () => listeners.get(event)?.delete(cb);
+  },
+  emit(event, data) {
+    listeners.get(event)?.forEach(cb => {
+      try { cb(data); } catch (e) { console.error('Bus error:', e); }
+    });
+  },
+  off(event, cb) {
+    listeners.get(event)?.delete(cb);
+  }
 };

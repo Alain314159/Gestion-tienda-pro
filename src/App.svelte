@@ -1,134 +1,156 @@
 <script>
-import { get } from 'svelte/store';
-import { ui, setActivo, cerrarConfirm, cerrarPrompt } from './core/store.js';
-import { app } from './core/appstate.js';
-import { bus } from './core/bus.js';
-import { onMount } from 'svelte';
+  import { onMount } from 'svelte';
+  import { ui, alternarTema, cerrarConfirm, cerrarPrompt } from './core/state.svelte.js';
+  import { cargarModulos, navMods, modulos } from './core/registro.js';
+  import Icono from './core/Icono.svelte';
 
-export let modulos = [];
-export let navMods = [];
+  let cargando = $state(true);
+  let activo = $state(null);
 
-let activo = null;
-let masAbierto = false;
-let offline = false;
+  onMount(async () => {
+    await cargarModulos();
+    cargando = false;
+    // Activar inicio por defecto
+    const inicio = modulos.find(m => m.id === 'inicio');
+    if (inicio) activo = inicio;
+  });
 
-onMount(() => {
-    const unsubscribe = ui.subscribe(value => {
-        activo = value.activo;
-        masAbierto = value.masAbierto;
-        offline = value.offline;
-    });
-    return unsubscribe;
-});
+  function irA(mod) {
+    activo = mod;
+    ui.masAbierto = false;
+    try { history.pushState({ sec: mod.id }, '', '#' + mod.id); } catch (e) {}
+  }
 
-function irA(id) {
-    setActivo(id);
-    masAbierto = false;
-}
+  function esActivo(id) {
+    return activo?.id === id;
+  }
 
-function cerrarMas() {
-    masAbierto = false;
-    ui.update(u => ({ ...u, masAbierto: false }));
-}
+  $effect(() => {
+    if (ui.confirm || ui.prompt) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+  });
 </script>
 
-{#if offline}
-    <div class="offline-banner">Sin conexión · trabajando con datos locales</div>
+{#if ui.offline}
+  <div class="fixed top-0 left-0 right-0 z-[120] bg-danger text-white text-center text-xs font-bold py-1.5 no-print">
+    Sin conexion — los datos se guardan localmente
+  </div>
 {/if}
 
-{#if activo}
-    {@const Activo = activo?.Componente}
-    {#if Activo}
-        <svelte:component this={Activo} />
-    {/if}
+{#if cargando}
+  <div class="flex items-center justify-center h-screen text-muted">
+    <div class="flex flex-col items-center gap-3">
+      <Icono nombre="store" size={48} color="#2196F3" />
+      <p class="font-bold">Cargando Tienda Pro...</p>
+    </div>
+  </div>
 {:else}
-    <div class="empty-state">No hay módulos registrados.</div>
-{/if}
+  <header class="sticky top-0 z-50 mx-2.5 bg-primary text-white rounded-b-[var(--radius-lg)] px-4 py-3.5 flex justify-between items-center shadow-[0_4px_14px_rgba(33,150,243,0.35)] no-print">
+    <h1 class="text-lg font-extrabold flex items-center gap-1.5">
+      <Icono nombre="store" size={20} color="#fff" />
+      Tienda Pro
+    </h1>
+    <div class="flex gap-1.5">
+      <button class="flex items-center gap-1.5 bg-white/0 hover:bg-white/20 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors" onclick={alternarTema}>
+        <Icono nombre={ui.tema === 'dark' ? 'sun' : 'moon'} size={18} color="#fff" />
+        <span class="hidden sm:inline">{ui.tema === 'dark' ? 'Claro' : 'Oscuro'}</span>
+      </button>
+    </div>
+  </header>
 
-<nav class="main-nav">
+  <main class="px-4 pt-4 pb-28 max-w-2xl mx-auto">
+    {#if activo}
+      <div class="animate-fade-up">
+        <activo.Componente />
+      </div>
+    {:else}
+      <div class="text-center text-muted py-12">No hay modulos registrados.</div>
+    {/if}
+  </main>
+
+  <!-- Navegacion inferior -->
+  <nav class="fixed left-2.5 right-2.5 bottom-2.5 z-50 bg-card rounded-[var(--radius-lg)] shadow-[0_-2px_16px_rgba(0,0,0,0.12)] flex p-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))] no-print">
     {#each navMods as m}
-        <button class="nav-btn" on:click={() => irA(m.id)}>{m.nombre}</button>
+      <button
+        class="flex-1 flex flex-col items-center justify-center gap-0.5 bg-transparent border-none cursor-pointer py-2 rounded-xl font-bold text-xs transition-all min-w-0 {esActivo(m.id) ? 'text-primary bg-primary/10' : 'text-muted'}"
+        onclick={() => irA(m)}
+      >
+        <Icono nombre={m.icono} size={22} />
+        <span class="block text-[0.68rem] leading-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-full">{m.nombre}</span>
+      </button>
     {/each}
-    <button class="nav-btn more-btn" on:click={() => { masAbierto = !masAbierto; ui.update(u => ({ ...u, masAbierto })); }}>
-        ⋮
+    <button
+      class="flex-1 flex flex-col items-center justify-center gap-0.5 bg-transparent border-none cursor-pointer py-2 rounded-xl font-bold text-xs transition-all min-w-0 {ui.masAbierto ? 'text-primary bg-primary/10' : 'text-muted'}"
+      onclick={() => ui.masAbierto = true}
+    >
+      <Icono nombre="grid" size={22} />
+      <span class="block text-[0.68rem] leading-tight">Mas</span>
     </button>
-</nav>
+  </nav>
 
-{#if masAbierto}
-    <div class="modal-overlay" on:click={cerrarMas} on:keydown={(e) => e.key === 'Escape' && cerrarMas()} role="dialog" tabindex="-1">
-        <div class="modal-content" on:click|stopPropagation>
-            <h3>Más opciones</h3>
-            {#each modulos as m}
-                <button class="modal-item" on:click={() => irA(m.id)}>
-                    {m.nombre}
-                    <span class="badge">{m.grupo || 'negocio'}</span>
-                </button>
-            {/each}
+  <!-- Sheet "Mas" -->
+  {#if ui.masAbierto}
+    <div class="fixed inset-0 bg-black/50 z-[90] no-print" onclick={() => ui.masAbierto = false}></div>
+    <div class="fixed left-0 right-0 bottom-0 z-[95] bg-card rounded-t-[var(--radius-lg)] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.2)] animate-slide-up no-print">
+      <div class="w-10 h-1 bg-border rounded-full mx-auto mb-3"></div>
+      <div class="grid grid-cols-2 gap-3">
+        {#each modulos as m}
+          <button
+            class="flex items-center gap-3 bg-background border-none rounded-[var(--radius-md)] p-3.5 cursor-pointer text-text font-bold text-sm hover:bg-border/50 transition-colors"
+            onclick={() => irA(m)}
+          >
+            <Icono nombre={m.icono} size={22} />
+            {m.nombre}
+          </button>
+        {/each}
+      </div>
+    </div>
+  {/if}
+
+  <!-- Modal Confirm -->
+  {#if ui.confirm}
+    <div class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 no-print" onclick={() => cerrarConfirm(false)} role="dialog" tabindex="-1">
+      <div class="bg-card rounded-[var(--radius-lg)] p-5 w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-[0_10px_40px_rgba(0,0,0,0.3)] animate-pop" onclick={(e) => e.stopPropagation()}>
+        <h3 class="font-extrabold text-primary text-lg mb-2">{ui.confirm.titulo}</h3>
+        <p class="text-sm mb-4">{ui.confirm.msg}</p>
+        <div class="flex gap-2">
+          <button class="flex-1 py-2.5 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-bold text-sm" onclick={() => cerrarConfirm(false)}>Cancelar</button>
+          <button class="flex-1 py-2.5 rounded-[var(--radius-md)] bg-danger text-white font-bold text-sm" onclick={() => cerrarConfirm(true)}>Confirmar</button>
         </div>
+      </div>
     </div>
-{/if}
+  {/if}
 
-{#if $ui.confirm}
-    <div class="modal-overlay" on:click={() => cerrarConfirm(false)} on:keydown={(e) => e.key === 'Escape' && cerrarConfirm(false)} role="dialog" tabindex="-1">
-        <div class="modal-content confirm-dialog" on:click|stopPropagation>
-            <h3>{$ui.confirm.titulo}</h3>
-            <p>{$ui.confirm.msg}</p>
-            <div class="dialog-actions">
-                <button class="btn-secondary" on:click={() => cerrarConfirm(false)}>Cancelar</button>
-                <button class="btn-primary" on:click={() => cerrarConfirm(true)}>Confirmar</button>
-            </div>
+  <!-- Modal Prompt -->
+  {#if ui.prompt}
+    <div class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 no-print" onclick={() => cerrarPrompt(false)} role="dialog" tabindex="-1">
+      <div class="bg-card rounded-[var(--radius-lg)] p-5 w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-[0_10px_40px_rgba(0,0,0,0.3)] animate-pop" onclick={(e) => e.stopPropagation()}>
+        <h3 class="font-extrabold text-primary text-lg mb-1">{ui.prompt.titulo}</h3>
+        {#if ui.prompt.msg}
+          <p class="text-xs text-muted mb-3">{ui.prompt.msg}</p>
+        {/if}
+        <input
+          type="text"
+          class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3"
+          bind:value={ui.prompt.valor}
+          onkeydown={(e) => e.key === 'Enter' && cerrarPrompt(true)}
+        />
+        <div class="flex gap-2">
+          <button class="flex-1 py-2.5 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-bold text-sm" onclick={() => cerrarPrompt(false)}>Cancelar</button>
+          <button class="flex-1 py-2.5 rounded-[var(--radius-md)] bg-primary text-white font-bold text-sm" onclick={() => cerrarPrompt(true)}>Aceptar</button>
         </div>
+      </div>
     </div>
-{/if}
+  {/if}
 
-{#if $ui.prompt}
-    <div class="modal-overlay" on:click={() => cerrarPrompt(false)} on:keydown={(e) => e.key === 'Escape' && cerrarPrompt(false)} role="dialog" tabindex="-1">
-        <div class="modal-content prompt-dialog" on:click|stopPropagation>
-            <h3>{$ui.prompt.titulo}</h3>
-            <p>{$ui.prompt.msg}</p>
-            <input type="text" bind:value={$ui.prompt.valor} on:keydown={(e) => e.key === 'Enter' && cerrarPrompt(true)} />
-            <div class="dialog-actions">
-                <button class="btn-secondary" on:click={() => cerrarPrompt(false)}>Cancelar</button>
-                <button class="btn-primary" on:click={() => cerrarPrompt(true)}>Aceptar</button>
-            </div>
-        </div>
+  <!-- Toast -->
+  {#if ui.toast}
+    <div class="fixed bottom-20 left-1/2 -translate-x-1/2 z-[200] px-4 py-2.5 rounded-full text-white text-sm font-bold shadow-[0_4px_14px_rgba(0,0,0,0.3)] flex items-center gap-2 max-w-[90%] animate-fade-up no-print
+      {ui.toast.tipo === 'ok' ? 'bg-success' : ui.toast.tipo === 'bad' ? 'bg-danger' : ui.toast.tipo === 'warn' ? 'bg-warning' : 'bg-gray-900'}">
+      {ui.toast.msg}
     </div>
+  {/if}
 {/if}
-
-{#if $ui.toast}
-    <div class="toast { $ui.toast.tipo }">
-        {$ui.toast.msg}
-    </div>
-{/if}
-
-<style>
-.offline-banner { background: #f59e0b; color: #fff; padding: 8px; text-align: center; font-size: 14px; }
-.empty-state { padding: 40px; text-align: center; color: #6b7280; }
-.main-nav { display: flex; gap: 4px; padding: 8px; background: #f3f4f6; overflow-x: auto; border-bottom: 1px solid #e5e7eb; }
-.nav-btn { padding: 8px 16px; border: none; background: transparent; border-radius: 6px; cursor: pointer; font-size: 14px; white-space: nowrap; }
-.nav-btn:hover { background: #e5e7eb; }
-.more-btn { margin-left: auto; }
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.modal-content { background: #fff; border-radius: 12px; padding: 24px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto; }
-.modal-item { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 10px 12px; border: none; background: transparent; border-radius: 6px; cursor: pointer; }
-.modal-item:hover { background: #f3f4f6; }
-.badge { font-size: 11px; background: #e5e7eb; padding: 2px 10px; border-radius: 12px; color: #4b5563; }
-.dialog-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
-.btn-primary { background: #3b82f6; color: #fff; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; }
-.btn-secondary { background: #e5e7eb; color: #1f2937; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; }
-.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; border-radius: 8px; color: #fff; z-index: 2000; animation: slideUp 0.3s ease; }
-.toast.info { background: #3b82f6; }
-.toast.ok { background: #10b981; }
-.toast.error { background: #ef4444; }
-@keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
-.dark .offline-banner { background: #d97706; }
-.dark .main-nav { background: #1f2937; border-bottom-color: #374151; }
-.dark .nav-btn:hover { background: #374151; }
-.dark .modal-content { background: #1f2937; color: #e5e7eb; }
-.dark .modal-item:hover { background: #374151; }
-.dark .badge { background: #374151; color: #9ca3af; }
-.dark .btn-secondary { background: #374151; color: #e5e7eb; }
-.dark .toast.info { background: #2563eb; }
-.dark .toast.ok { background: #059669; }
-.dark .toast.error { background: #dc2626; }
-</style>

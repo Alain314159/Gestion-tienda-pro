@@ -1,9 +1,7 @@
 node_modules
 dist
 .vite
-*.log
+*.local
 .DS_Store
-
-# Scripts temporales de fix
-*.py
-backup_*/
+playwright-report
+test-results
