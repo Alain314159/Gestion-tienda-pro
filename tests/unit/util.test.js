@@ -62,7 +62,7 @@ describe('util.js - Motor matematico', () => {
     it('calcula FIFO correctamente', () => {
       const res = calcFIFO(lotes, 'p1', 12);
       expect(res.error).toBeUndefined();
-      expect(res.costoTotal).toBe(62); // 10*5 + 2*6
+      expect(res.costoTotal).toBe(62);
       expect(res.usados.length).toBe(2);
     });
 
@@ -88,7 +88,7 @@ describe('util.js - Motor matematico', () => {
         { id: 'l1', productoId: 'p1', cantidadInicial: 10, cantidadVendida: 3, costo: 5 },
         { id: 'l2', productoId: 'p1', cantidadInicial: 5, cantidadVendida: 0, costo: 6 },
       ];
-      expect(valorInventario(lotes)).toBe(65); // 7*5 + 5*6
+      expect(valorInventario(lotes)).toBe(65);
     });
   });
 
@@ -121,13 +121,12 @@ describe('util.js - Motor matematico', () => {
         retiros: [{ monto: 30 }],
         movCaja: []
       };
-      expect(saldoCaja(data)).toBe(240); // 100 + 50 + 200 - 80 - 30
+      expect(saldoCaja(data)).toBe(240);
     });
   });
 
   describe('generarReporte()', () => {
     it('genera reporte correcto', () => {
-      // Usar fecha fija para evitar race condition
       const fechaVenta = '2026-01-15T10:00:00.000Z';
       const ventas = [{
         fecha: fechaVenta,

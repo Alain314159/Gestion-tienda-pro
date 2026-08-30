@@ -1,25 +1,58 @@
 import { abrirDB } from './db.js';
 
-/** Módulos con lazy loading */
+/** Módulos con lazy loading — manifiestos inline para robustez en producción.
+ *  Vite en modo producción no siempre preserva exportaciones named de .svelte
+ *  en chunks dinámicos. Definimos los metadatos aquí y solo cargamos el componente.
+ */
 const modulosRaw = [
-  () => import('../modulos/negocio/inicio.svelte'),
-  () => import('../modulos/negocio/ventas.svelte'),
-  () => import('../modulos/negocio/compras.svelte'),
-  () => import('../modulos/negocio/caja.svelte'),
-  () => import('../modulos/negocio/productos.svelte'),
-  () => import('../modulos/negocio/inventario.svelte'),
-  () => import('../modulos/negocio/patrimonio.svelte'),
-  () => import('../modulos/utilidades/reportes.svelte'),
-  () => import('../modulos/utilidades/ajustes.svelte'),
+  {
+    manifiesto: { id: 'inicio', nombre: 'Inicio', icono: 'home', grupo: 'negocio', orden: 0, tablas: {} },
+    loader: () => import('../modulos/negocio/inicio.svelte')
+  },
+  {
+    manifiesto: { id: 'ventas', nombre: 'Ventas', icono: 'cart', grupo: 'negocio', orden: 1, tablas: { ventas: '++id, fecha, anulada', lotes: '++id, productoId, fecha, costo, compraId' } },
+    loader: () => import('../modulos/negocio/ventas.svelte')
+  },
+  {
+    manifiesto: { id: 'compras', nombre: 'Compras', icono: 'bag', grupo: 'negocio', orden: 2, tablas: { compras: '++id, fecha, productoId, anulada', lotes: '++id, productoId, fecha, costo, compraId' } },
+    loader: () => import('../modulos/negocio/compras.svelte')
+  },
+  {
+    manifiesto: { id: 'productos', nombre: 'Productos', icono: 'tag', grupo: 'negocio', orden: 3, tablas: { productos: '++id, nombre, codigo, archivado' } },
+    loader: () => import('../modulos/negocio/productos.svelte')
+  },
+  {
+    manifiesto: { id: 'inventario', nombre: 'Inventario', icono: 'package', grupo: 'negocio', orden: 4, tablas: { ajustes: '++id, fecha, productoId' } },
+    loader: () => import('../modulos/negocio/inventario.svelte')
+  },
+  {
+    manifiesto: { id: 'caja', nombre: 'Caja', icono: 'wallet', grupo: 'negocio', orden: 5, tablas: { arqueos: '++id, fecha', movCaja: '++id, fecha, tipo' } },
+    loader: () => import('../modulos/negocio/caja.svelte')
+  },
+  {
+    manifiesto: { id: 'patrimonio', nombre: 'Patrimonio', icono: 'diamond', grupo: 'negocio', orden: 6, tablas: { capital: '++id, fecha', retiros: '++id, fecha' } },
+    loader: () => import('../modulos/negocio/patrimonio.svelte')
+  },
+  {
+    manifiesto: { id: 'reportes', nombre: 'Reportes', icono: 'chart', grupo: 'utilidades', orden: 7, tablas: { cierres: '++id, fechaCierre' } },
+    loader: () => import('../modulos/utilidades/reportes.svelte')
+  },
+  {
+    manifiesto: { id: 'ajustes', nombre: 'Ajustes', icono: 'settings', grupo: 'utilidades', orden: 8, tablas: {} },
+    loader: () => import('../modulos/utilidades/ajustes.svelte')
+  },
 ];
 
 export let modulos = [];
 export let navMods = [];
 
 export async function cargarModulos() {
-  const cargados = await Promise.all(modulosRaw.map(fn => fn()));
+  const cargados = await Promise.all(modulosRaw.map(async cfg => {
+    const mod = await cfg.loader();
+    return { ...cfg.manifiesto, Componente: mod.default };
+  }));
+
   modulos = cargados
-    .map(mod => ({ ...(mod.manifiesto || {}), Componente: mod.default }))
     .filter(m => m.id)
     .sort((a, b) => (a.orden ?? 99) - (b.orden ?? 99));
 
