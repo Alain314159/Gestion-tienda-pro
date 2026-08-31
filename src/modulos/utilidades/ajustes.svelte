@@ -4,7 +4,7 @@
     nombre: 'Ajustes',
     icono: 'settings',
     grupo: 'utilidades',
-    orden: 8,
+    orden: 13,
     tablas: {}
   };
 </script>
@@ -15,24 +15,31 @@
   import { bus } from '../../core/bus.js';
   import { ui, alternarTema, avisar, confirmar, preguntar, pedirPIN } from '../../core/state.svelte.js';
   import { n, m, fmt, clean } from '../../core/util.js';
+  import { getWebhooks, setWebhooks, triggerAll } from '../../core/api.js';
+  import { BluetoothSync } from '../../core/bluetooth.js';
   import Icono from '../../core/Icono.svelte';
 
   let cfg = $state({});
-  let tablas = $state(['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'movCaja', 'capital', 'retiros', 'arqueos', 'cierres', 'config']);
+  let tablas = $state(['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'movCaja', 'capital', 'retiros', 'arqueos', 'cierres', 'socios', 'gastosOp', 'config']);
   let conteos = $state({});
   let pinStr = $state('');
   let pinActivo = $state(false);
+  let webhooks = $state([]);
+  let whUrl = $state('');
+  let bt = $state(null);
+  let btStatus = $state('');
 
   async function recargar() {
     const db = getDB();
     const c = await db.config.get('cfg');
-    cfg = c?.value || { nombre: 'Tienda Pro', moneda: '$' };
+    cfg = c?.value || { nombre: 'Tienda Pro', moneda: '$', periodoInicio: new Date().toISOString() };
     pinActivo = !!cfg.pinActivo;
     const counts = {};
     for (const t of tablas) {
       try { counts[t] = await db.table(t).count(); } catch (e) { counts[t] = 0; }
     }
     conteos = counts;
+    webhooks = getWebhooks();
   }
 
   onMount(() => {
@@ -110,7 +117,7 @@
   }
 
   async function borrarTodo() {
-    const ok = await confirmar('Borrar todo', '¿Eliminar TODOS los datos? No se puede deshacer.');
+    const ok = await confirmar('Borrar todo', 'Eliminar TODOS los datos? No se puede deshacer.');
     if (!ok) return;
     const db = getDB();
     await db.transaction('rw', db.tables, async () => {
@@ -119,6 +126,48 @@
     await recargar();
     bus.emit('recargar');
     avisar('Todos los datos eliminados');
+  }
+
+  function agregarWebhook() {
+    if (!whUrl.trim()) return;
+    webhooks = [...webhooks, { url: whUrl.trim(), activo: true }];
+    setWebhooks(webhooks);
+    whUrl = '';
+    avisar('Webhook agregado');
+  }
+
+  function toggleWebhook(i) {
+    webhooks[i].activo = !webhooks[i].activo;
+    setWebhooks(webhooks);
+    webhooks = [...webhooks];
+  }
+
+  function eliminarWebhook(i) {
+    webhooks.splice(i, 1);
+    setWebhooks(webhooks);
+    webhooks = [...webhooks];
+    avisar('Webhook eliminado');
+  }
+
+  async function probarWebhooks() {
+    const res = await triggerAll('test', { mensaje: 'Prueba desde Tienda Pro' });
+    const ok = res.filter(r => r.ok).length;
+    avisar(`${ok}/${res.length} webhooks OK`);
+  }
+
+  async function iniciarBT() {
+    bt = new BluetoothSync();
+    try {
+      btStatus = 'Escaneando...';
+      await bt.scan();
+      btStatus = 'Conectando...';
+      await bt.connect();
+      btStatus = 'Conectado!';
+      avisar('Bluetooth conectado');
+    } catch (e) {
+      btStatus = 'Error: ' + e.message;
+      avisar(e.message, 'bad');
+    }
   }
 </script>
 
@@ -135,6 +184,10 @@
     <div class="mb-3">
       <label class="text-xs text-muted font-bold mb-1.5 block">Simbolo de moneda</label>
       <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]" type="text" bind:value={cfg.moneda} onblur={guardarCfg} />
+    </div>
+    <div class="mb-3">
+      <label class="text-xs text-muted font-bold mb-1.5 block">Fecha de inicio del negocio</label>
+      <input type="date" class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base" bind:value={cfg.periodoInicio} onblur={guardarCfg} />
     </div>
     <div>
       <label class="text-xs text-muted font-bold mb-1.5 block">Tema</label>
@@ -160,6 +213,39 @@
         Activar PIN
       </button>
     {/if}
+  </div>
+
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
+      <Icono nombre="webhook" size={18} />
+      Webhooks (API abierta)
+    </div>
+    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base mb-2" type="url" placeholder="URL del webhook" bind:value={whUrl} />
+    <button class="w-full py-2 rounded-[var(--radius-md)] bg-primary text-white font-bold text-sm mb-3" onclick={agregarWebhook}>+ Agregar webhook</button>
+    {#each webhooks as wh, i}
+      <div class="flex justify-between items-center py-2 border-b border-border text-sm">
+        <div class="truncate flex-1 text-xs">{wh.url}</div>
+        <div class="flex gap-2">
+          <button class="text-xs {wh.activo ? 'text-success' : 'text-muted'}" onclick={() => toggleWebhook(i)}>{wh.activo ? 'ON' : 'OFF'}</button>
+          <button class="text-xs text-danger" onclick={() => eliminarWebhook(i)}>X</button>
+        </div>
+      </div>
+    {/each}
+    {#if webhooks.length > 0}
+      <button class="w-full py-2 mt-2 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-bold text-sm" onclick={probarWebhooks}>Probar webhooks</button>
+    {/if}
+  </div>
+
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
+      <Icono nombre="bluetooth" size={18} />
+      Sync Bluetooth (sin internet)
+    </div>
+    <div class="text-sm text-muted mb-3">{btStatus || 'Desconectado'}</div>
+    <button class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm" onclick={iniciarBT}>
+      <Icono nombre="bluetooth" size={16} color="#fff" />
+      Escanear dispositivos
+    </button>
   </div>
 
   <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
@@ -206,10 +292,10 @@
       Acerca de
     </div>
     <div class="text-sm text-muted">
-      <p class="mb-1"><b>Tienda Pro</b> v7.0.0</p>
-      <p class="mb-1">Punto de venta offline-first</p>
+      <p class="mb-1"><b>Tienda Pro</b> v8.0.0</p>
+      <p class="mb-1">Punto de venta offline-first con contabilidad</p>
       <p class="mb-1">Datos guardados localmente en tu dispositivo</p>
-      <p>Desarrollado con Svelte 5 + Dexie + Vite</p>
+      <p>Desarrollado con Svelte 5 + Dexie + Vite + Manrope</p>
     </div>
   </div>
 </div>

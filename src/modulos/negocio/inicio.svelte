@@ -18,6 +18,7 @@
     n, m, fmt, fmtCant, fmtFecha, fmtFH, valorInventario, stockProducto,
     datosChart6Meses, topRentables, saldoCaja, inventarioGrupos, badgeStock
   } from '../../core/util.js';
+  import { checkNotificaciones } from '../../core/notificaciones.js';
   import Icono from '../../core/Icono.svelte';
 
   let productos = $state([]);
@@ -29,6 +30,7 @@
   let cierres = $state([]);
   let capital = $state([]);
   let retiros = $state([]);
+  let arqueos = $state([]);
   let cfg = $state({});
   let chartCanvas = $state(null);
 
@@ -58,21 +60,22 @@
 
   async function recargar() {
     const db = getDB();
-    [productos, lotes, ventas, compras, ajustes, movCaja, cierres, capital, retiros] = await Promise.all([
+    [productos, lotes, ventas, compras, ajustes, movCaja, cierres, capital, retiros, arqueos] = await Promise.all([
       listar('productos'), listar('lotes'), listar('ventas'), listar('compras'),
-      listar('ajustes'), listar('movCaja'), listar('cierres'), listar('capital'), listar('retiros')
+      listar('ajustes'), listar('movCaja'), listar('cierres'), listar('capital'), listar('retiros'), listar('arqueos')
     ]);
     const c = await db.config.get('cfg');
     cfg = c?.value || { moneda: '$', nombre: 'Tienda Pro', periodoInicio: new Date().toISOString(), capitalInicial: 0 };
   }
 
   onMount(() => {
-    recargar();
+    recargar().then(() => {
+      checkNotificaciones({ productos, lotes, ventas, arqueos, cfg });
+    });
     const off = bus.on('recargar', recargar);
     return () => off();
   });
 
-  // Dibujar chart simple con canvas
   $effect(() => {
     if (!chartCanvas || chartData.length === 0) return;
     const ctx = chartCanvas.getContext('2d');

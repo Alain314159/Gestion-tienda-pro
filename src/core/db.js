@@ -1,6 +1,6 @@
 import Dexie from 'dexie';
 
-export const DB_NAME = 'tienda-pro-v7';
+export const DB_NAME = 'tienda-pro-v8';
 
 let db = null;
 
@@ -9,7 +9,14 @@ export function abrirDB(manifiestos = []) {
   if (db) return db;
 
   db = new Dexie(DB_NAME);
-  const tablas = { config: 'key' };
+  const tablas = {
+    config: 'key',
+    tiendas: '++id, nombre',
+    socios: '++id, tiendaId',
+    gastosOp: '++id, fecha, tiendaId',
+    contabilidad: '++id, fecha, tipo, tiendaId',
+    webhookLog: '++id, fecha'
+  };
 
   for (const m of manifiestos) {
     if (m.tablas) Object.assign(tablas, m.tablas);
