@@ -123,38 +123,38 @@
 </script>
 
 <div class="modulo">
-  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
-    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
       <Icono nombre="settings" size={18} />
       Configuracion
     </div>
-    <div class="mb-2">
-      <label class="text-xs text-muted font-bold mb-1 block">Nombre del negocio</label>
+    <div class="mb-3">
+      <label class="text-xs text-muted font-bold mb-1.5 block">Nombre del negocio</label>
       <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]" type="text" bind:value={cfg.nombre} onblur={guardarCfg} />
     </div>
-    <div class="mb-2">
-      <label class="text-xs text-muted font-bold mb-1 block">Simbolo de moneda</label>
+    <div class="mb-3">
+      <label class="text-xs text-muted font-bold mb-1.5 block">Simbolo de moneda</label>
       <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]" type="text" bind:value={cfg.moneda} onblur={guardarCfg} />
     </div>
-    <div class="mb-2">
-      <label class="text-xs text-muted font-bold mb-1 block">Tema</label>
-      <button class="w-full py-3 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-extrabold text-sm" onclick={alternarTema}>
+    <div>
+      <label class="text-xs text-muted font-bold mb-1.5 block">Tema</label>
+      <button class="inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={alternarTema}>
         <Icono nombre={ui.tema === 'dark' ? 'sun' : 'moon'} size={16} />
-        {ui.tema === 'dark' ? 'Cambiar a claro' : 'Cambiar a oscuro'}
+        {ui.tema === 'dark' ? 'Modo claro' : 'Modo oscuro'}
       </button>
     </div>
   </div>
 
-  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
-    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
       <Icono nombre="lock" size={18} />
       PIN de seguridad
     </div>
     {#if pinActivo}
-      <div class="text-sm text-success mb-2">PIN activo</div>
-      <button class="w-full py-3 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-extrabold text-sm" onclick={desactivarPIN}>Desactivar PIN</button>
+      <div class="text-sm text-success mb-3">PIN activo</div>
+      <button class="w-full py-3 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={desactivarPIN}>Desactivar PIN</button>
     {:else}
-      <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="password" inputmode="numeric" placeholder="PIN (minimo 4 digitos)" bind:value={pinStr} />
+      <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3" type="password" inputmode="numeric" placeholder="PIN (minimo 4 digitos)" bind:value={pinStr} />
       <button class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={guardarPIN}>
         <Icono nombre="lock" size={16} color="#fff" />
         Activar PIN
@@ -162,12 +162,12 @@
     {/if}
   </div>
 
-  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
-    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
       <Icono nombre="backup" size={18} />
       Backup y Restore
     </div>
-    <button class="w-full py-3 rounded-[var(--radius-md)] bg-success text-white font-extrabold text-sm mb-2 active:scale-[0.97] transition-transform" onclick={exportarJSON}>
+    <button class="w-full py-3 rounded-[var(--radius-md)] bg-success text-white font-extrabold text-sm mb-3 active:scale-[0.97] transition-transform" onclick={exportarJSON}>
       <Icono nombre="export" size={16} color="#fff" />
       Exportar datos (JSON)
     </button>
@@ -177,20 +177,20 @@
     </button>
   </div>
 
-  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
-    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
       <Icono nombre="database" size={18} />
       Estado de la base de datos
     </div>
     {#each tablas as t}
-      <div class="flex justify-between gap-2 py-1.5 border-b border-border text-sm">
+      <div class="flex justify-between gap-2 py-2 border-b border-border text-sm">
         <span>{t}</span><span class="text-muted">{conteos[t] || 0} registros</span>
       </div>
     {/each}
   </div>
 
-  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
-    <div class="flex items-center gap-2 font-extrabold text-danger mb-3">
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
+    <div class="flex items-center gap-2 font-extrabold text-danger mb-4">
       <Icono nombre="trash" size={18} />
       Zona peligrosa
     </div>
@@ -200,8 +200,8 @@
     </button>
   </div>
 
-  <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)]">
-    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)]">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
       <Icono nombre="info" size={18} />
       Acerca de
     </div>

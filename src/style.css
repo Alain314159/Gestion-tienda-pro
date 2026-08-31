@@ -64,13 +64,22 @@ button, .touchable {
 .modulo input[type="number"],
 .modulo input[type="search"],
 .modulo input[type="tel"],
-.modulo input[type="email"] {
+.modulo input[type="email"],
+.modulo input[type="password"] {
   margin-bottom: 0.75rem;
   min-height: 48px;
 }
 
 .modulo button {
   margin-bottom: 0.5rem;
+}
+
+/* Botones grandes: alinear icono + texto */
+.modulo button.w-full {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   min-height: 48px;
 }
 
