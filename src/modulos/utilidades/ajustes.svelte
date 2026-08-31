@@ -217,7 +217,7 @@
 
   <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
     <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
-      <Icono nombre="webhook" size={18} />
+      <Icono nombre="link" size={18} />
       Webhooks (API abierta)
     </div>
     <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base mb-2" type="url" placeholder="URL del webhook" bind:value={whUrl} />
@@ -238,12 +238,12 @@
 
   <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
     <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
-      <Icono nombre="bluetooth" size={18} />
+      <Icono nombre="wifi" size={18} />
       Sync Bluetooth (sin internet)
     </div>
     <div class="text-sm text-muted mb-3">{btStatus || 'Desconectado'}</div>
     <button class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm" onclick={iniciarBT}>
-      <Icono nombre="bluetooth" size={16} color="#fff" />
+      <Icono nombre="wifi" size={16} color="#fff" />
       Escanear dispositivos
     </button>
   </div>
