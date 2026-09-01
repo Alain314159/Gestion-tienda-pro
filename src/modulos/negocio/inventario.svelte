@@ -11,10 +11,11 @@
 
 <script>
   import { onMount } from 'svelte';
-  import { getDB, listar, guardar, guardarBulk } from '../../core/db.js';
+  import { listar } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
   import { avisar } from '../../core/state.svelte.js';
-  import { n, m, fmt, fmtCant, fmtFH, genId, calcFIFO, stockProducto, valorInventario, inventarioGrupos } from '../../core/util.js';
+  import { n, m, fmt, fmtCant, fmtFH, stockProducto, valorInventario, inventarioGrupos } from '../../core/util.js';
+  import { InventarioService } from '../../services/InventarioService.js';
   import Icono from '../../core/Icono.svelte';
 
   let productos = $state([]);
@@ -49,38 +50,28 @@
     const prod = productos.find(p => p.id === form.productoId);
     if (cant < 0 && Math.abs(cant) > stockProducto(lotes, form.productoId)) return avisar('Solo hay ' + stockProducto(lotes, form.productoId), 'bad');
 
-    if (cant < 0) {
-      const res = calcFIFO(lotes, form.productoId, Math.abs(cant));
-      if (res.error) return avisar(res.error, 'bad');
-      const aj = { id: genId('a'), fecha: new Date().toISOString(), productoId: form.productoId, productoNombre: prod.nombre, cantidad: cant, motivo: form.motivo, costoPerdida: res.costoTotal, lotesUsados: res.usados };
-      const db = getDB();
-      await db.transaction('rw', db.ajustes, db.lotes, async () => {
-        await guardar('ajustes', aj);
-        const lotesActualizados = [];
-        for (const u of res.usados) {
-          const l = lotes.find(x => x.id === u.loteId);
-          if (l) { l.cantidadVendida = q(n(l.cantidadVendida) + u.cantidad); lotesActualizados.push(l); }
-        }
-        if (lotesActualizados.length > 0) await guardarBulk('lotes', lotesActualizados);
-      });
-      await recargar();
-      bus.emit('recargar');
-      avisar('Merma registrada · perdida ' + fmt(res.costoTotal));
-    } else {
-      const cs = n(form.costoSobrante);
-      if (cs < 0) return avisar('Costo invalido', 'bad');
-      const aj = { id: genId('a'), fecha: new Date().toISOString(), productoId: form.productoId, productoNombre: prod.nombre, cantidad: cant, motivo: form.motivo, costoPerdida: 0 };
-      const lote = { id: genId('l'), compraId: 'aj-' + aj.id, productoId: form.productoId, productoNombre: prod.nombre, productoUnidad: prod.unidad || '', cantidadInicial: cant, cantidadVendida: 0, costo: cs, fecha: aj.fecha };
-      const db = getDB();
-      await db.transaction('rw', db.ajustes, db.lotes, async () => {
-        await guardar('ajustes', aj);
-        await guardar('lotes', lote);
-      });
-      await recargar();
-      bus.emit('recargar');
-      avisar('Sobrante registrado');
-    }
-    form = { productoId: '', cantidad: '', motivo: '', costoSobrante: '' };
+    try {
+      if (cant < 0) {
+        const { costoPerdida } = await InventarioService.ajustarNegativo({
+          productoId: form.productoId, productoNombre: prod.nombre,
+          cantidad: Math.abs(cant), motivo: form.motivo, lotes
+        });
+        await recargar();
+        bus.emit('recargar');
+        avisar('Merma registrada · perdida ' + fmt(costoPerdida));
+      } else {
+        const cs = n(form.costoSobrante);
+        if (cs < 0) return avisar('Costo invalido', 'bad');
+        await InventarioService.ajustarPositivo({
+          productoId: form.productoId, productoNombre: prod.nombre,
+          productoUnidad: prod.unidad, cantidad: cant, motivo: form.motivo, costo: cs
+        });
+        await recargar();
+        bus.emit('recargar');
+        avisar('Sobrante registrado');
+      }
+      form = { productoId: '', cantidad: '', motivo: '', costoSobrante: '' };
+    } catch (e) { avisar(e.message, 'bad'); }
   }
 </script>
 

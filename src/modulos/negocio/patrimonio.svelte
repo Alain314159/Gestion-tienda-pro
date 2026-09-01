@@ -14,7 +14,7 @@
   import { getDB, listar, guardar } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
   import { avisar, pedirPIN } from '../../core/state.svelte.js';
-  import { n, m, fmt, fmtFH, genId, saldoCaja, valorInventario, gananciaDisponible } from '../../core/util.js';
+  import { n, m, fmt, fmtFH, genId, saldoCaja, valorInventario, gananciaDisponible, clean, nowLocal } from '../../core/util.js';
   import Icono from '../../core/Icono.svelte';
 
   let cfg = $state({});
@@ -31,7 +31,7 @@
   let aporteForm = $state({ monto: '', nota: '' });
   let capInicialStr = $state('');
 
-  let periodoInicio = $derived(cfg.periodoInicio || new Date().toISOString());
+  let periodoInicio = $derived(cfg.periodoInicio || nowLocal().iso);
   let saldo = $derived(saldoCaja({ cfg, capital, ventas, compras, retiros, movCaja }));
   let valInv = $derived(valorInventario(lotes));
   let capTotal = $derived(m(n(cfg.capitalInicial || 0) + capital.reduce((s, c) => s + n(c.monto), 0)));
@@ -42,13 +42,13 @@
   let ganAcum = $derived(m(cierres.reduce((s, x) => s + n(x.ganancia), 0) + ganNeta - retiros.reduce((s, r) => s + n(r.monto), 0)));
   let patrimonio = $derived(m(capTotal + ganAcum));
   let disp = $derived(gananciaDisponible({ cfg, capital, ventas, compras, retiros, movCaja, ajustes, cierres, lotes, periodoInicio }));
-  let movs = $derived(() => {
+  let movs = $derived((() => {
     const arr = [];
     if (n(cfg.capitalInicial) > 0) arr.push({ id: 'ci', fecha: cfg.periodoInicio, tipo: 'Capital inicial', monto: n(cfg.capitalInicial), nota: '' });
     capital.forEach(c => arr.push({ id: c.id, fecha: c.fecha, tipo: 'Aporte', monto: n(c.monto), nota: c.nota }));
     retiros.forEach(r => arr.push({ id: r.id, fecha: r.fecha, tipo: 'Retiro', monto: n(r.monto), nota: r.concepto }));
     return arr.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-  });
+  })());
 
   async function recargar() {
     const db = getDB();
@@ -57,7 +57,7 @@
       listar('movCaja'), listar('ajustes'), listar('cierres'), listar('lotes')
     ]);
     const c = await db.config.get('cfg');
-    cfg = c?.value || { capitalInicial: 0, periodoInicio: new Date().toISOString() };
+    cfg = c?.value || { capitalInicial: 0, periodoInicio: nowLocal().iso };
   }
 
   onMount(() => {
@@ -74,7 +74,7 @@
     if (monto > disp + 0.01) return avisar('Maximo ' + fmt(disp), 'bad');
     const pinOk = await pedirPIN();
     if (!pinOk) return;
-    await guardar('retiros', { id: genId('r'), fecha: new Date().toISOString(), monto, concepto: c });
+    await guardar('retiros', { id: genId('r'), fecha: nowLocal().iso, fechaLocal: nowLocal().local, monto, concepto: c });
     await recargar();
     bus.emit('recargar');
     retiroForm = { monto: '', concepto: '' };
@@ -84,7 +84,7 @@
   async function registrarAporte() {
     const monto = n(aporteForm.monto);
     if (monto <= 0) return avisar('Monto invalido', 'bad');
-    await guardar('capital', { id: genId('k'), fecha: new Date().toISOString(), monto, nota: aporteForm.nota || '' });
+    await guardar('capital', { id: genId('k'), fecha: nowLocal().iso, fechaLocal: nowLocal().local, monto, nota: aporteForm.nota || '' });
     await recargar();
     bus.emit('recargar');
     aporteForm = { monto: '', nota: '' };
@@ -95,7 +95,7 @@
     const val = n(capInicialStr);
     cfg.capitalInicial = val;
     const db = getDB();
-    await db.config.put({ key: 'cfg', value: JSON.parse(JSON.stringify(cfg)) });
+    await db.config.put({ key: 'cfg', value: clean(cfg) });
     capInicialStr = '';
     await recargar();
     bus.emit('recargar');
@@ -195,10 +195,10 @@
       <Icono nombre="history" size={18} />
       Historial
     </div>
-    {#if movs().length === 0}
+    {#if movs.length === 0}
       <div class="text-center text-muted py-8 text-sm">Sin movimientos</div>
     {:else}
-      {#each movs() as m}
+      {#each movs as m}
         <div class="flex justify-between items-center gap-2 py-3 border-b border-border">
           <div class="min-w-0 flex-1">
             <div class="font-bold text-sm">{m.tipo}</div>

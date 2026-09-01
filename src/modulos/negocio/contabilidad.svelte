@@ -13,7 +13,7 @@
   import { onMount } from 'svelte';
   import { getDB, listar } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
-  import { n, m, fmt } from '../../core/util.js';
+  import { n, m, fmt, nowLocal } from '../../core/util.js';
   import { libroDiario, estadoPyG, balanceGeneral } from '../../core/contabilidad.js';
   import Icono from '../../core/Icono.svelte';
 
@@ -27,8 +27,8 @@
   let cierres = $state([]);
   let gastosOp = $state([]);
 
-  let fechaInicio = $state(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10));
-  let fechaFin = $state(new Date().toISOString().slice(0, 10));
+  let fechaInicio = $state(nowLocal().local.slice(0, 8) + '01');
+  let fechaFin = $state(nowLocal().local);
   let tab = $state('diario');
 
   let diario = $derived(libroDiario({ ventas, compras, retiros, capital, gastosOp, ajustes }, fechaInicio, fechaFin));

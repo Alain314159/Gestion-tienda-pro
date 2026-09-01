@@ -127,14 +127,15 @@ describe('util.js - Motor matematico', () => {
 
   describe('generarReporte()', () => {
     it('genera reporte correcto', () => {
+      const fechaBase = '2024-06-15T12:00:00.000Z';
       const ventas = [{
-        fecha: new Date().toISOString(),
+        fecha: fechaBase,
         anulada: false,
         total: 100,
         ganancia: 30,
         items: [{ nombre: 'Test', cantidad: 1, precio: 100, costo: 70, ganancia: 30 }]
       }];
-      const rep = generarReporte({ ventas, ajustes: [] }, new Date().toISOString(), new Date().toISOString());
+      const rep = generarReporte({ ventas, ajustes: [] }, fechaBase, fechaBase);
       expect(rep.error).toBeUndefined();
       expect(rep.ingresos).toBe(100);
       expect(rep.bruta).toBe(30);

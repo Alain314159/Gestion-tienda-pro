@@ -133,7 +133,8 @@
           <p class="text-xs text-muted mb-3">{ui.prompt.msg}</p>
         {/if}
         <input
-          type="text"
+          type="password"
+          inputmode="numeric"
           class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3"
           bind:value={ui.prompt.valor}
           onkeydown={(e) => e.key === 'Enter' && cerrarPrompt(true)}

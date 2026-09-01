@@ -14,7 +14,7 @@
   import { getDB, listar, guardar } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
   import { avisar, confirmar } from '../../core/state.svelte.js';
-  import { n, m, fmt, fmtFecha, genId, generarReporte, valorInventario } from '../../core/util.js';
+  import { n, m, fmt, fmtFecha, genId, generarReporte, valorInventario, clean, nowLocal } from '../../core/util.js';
   import Icono from '../../core/Icono.svelte';
 
   let cfg = $state({});
@@ -28,7 +28,7 @@
   let repFin = $state('');
   let rep = $state(null);
 
-  let periodoInicio = $derived(cfg.periodoInicio || new Date().toISOString());
+  let periodoInicio = $derived(cfg.periodoInicio || nowLocal().iso);
   let cierresOrdenados = $derived(cierres.slice().sort((a, b) => new Date(b.fechaCierre) - new Date(a.fechaCierre)));
 
   async function recargar() {
@@ -37,7 +37,7 @@
       listar('ventas'), listar('compras'), listar('ajustes'), listar('cierres'), listar('lotes')
     ]);
     const c = await db.config.get('cfg');
-    cfg = c?.value || { periodoInicio: new Date().toISOString() };
+    cfg = c?.value || { periodoInicio: nowLocal().iso };
   }
 
   onMount(() => {
@@ -77,13 +77,13 @@
     const mermas = m(ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= new Date(periodoInicio)).reduce((s, a) => s + n(a.costoPerdida), 0));
     const neta = m(bruta - mermas);
     const cierre = {
-      id: genId('cr'), fechaCierre: new Date().toISOString(), periodo: 'Del ' + fmtFecha(periodoInicio) + ' al ' + fmtFecha(new Date().toISOString()),
+      id: genId('cr'), fechaCierre: nowLocal().iso, fechaLocal: nowLocal().local, periodo: 'Del ' + fmtFecha(periodoInicio) + ' al ' + fmtFecha(nowLocal().iso),
       ingresos: ing, cogs, bruta, mermas, neta, numVentas: vta.length, margenB: ing > 0 ? ((bruta / ing) * 100).toFixed(1) : '0.0', margenN: ing > 0 ? ((neta / ing) * 100).toFixed(1) : '0.0'
     };
     await guardar('cierres', cierre);
-    cfg.periodoInicio = new Date().toISOString();
+    cfg.periodoInicio = nowLocal().iso;
     const db = getDB();
-    await db.config.put({ key: 'cfg', value: JSON.parse(JSON.stringify(cfg)) });
+    await db.config.put({ key: 'cfg', value: clean(cfg) });
     await recargar();
     bus.emit('recargar');
     avisar('Periodo cerrado');

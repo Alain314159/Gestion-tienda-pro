@@ -1,4 +1,6 @@
 import { getDB, guardar } from './db.js';
+import { clean } from './util.js';
+import { processQueue } from './api.js';
 
 /** Estado global de la UI usando Svelte 5 Runes */
 export const ui = $state({
@@ -33,7 +35,7 @@ export function avisar(msg, tipo = 'info') {
   toastTimeout = setTimeout(() => { ui.toast = null; }, 2600);
 }
 
-/** Confirmación modal */
+/** Confirmacion modal */
 export function confirmar(titulo, msg) {
   return new Promise(res => {
     ui.confirm = { titulo, msg, res };
@@ -57,14 +59,24 @@ export function cerrarPrompt(ok) {
   ui.prompt = null;
 }
 
-/** Pide PIN si está activo */
+/** Hashea un PIN con SHA-256 + salt */
+async function hashPin(pin) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pin + 'tienda-pro-salt-v1');
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** Pide PIN si esta activo */
 export async function pedirPIN() {
   try {
     const db = getDB();
     const c = await db.config.get('cfg');
-    if (!c?.value?.pinActivo || !c?.value?.pin) return true;
+    if (!c?.value?.pinActivo || !c?.value?.pinHash) return true;
     const v = await preguntar('Seguridad', 'Ingresa tu PIN');
-    return v === c.value.pin;
+    if (v === null || v === undefined) return false;
+    const hashed = await hashPin(v);
+    return hashed === c.value.pinHash;
   } catch (err) {
     console.error('Error al verificar PIN:', err);
     avisar('Error al verificar PIN', 'error');
@@ -72,14 +84,19 @@ export async function pedirPIN() {
   }
 }
 
-/** Guarda configuración en DB */
+/** Guarda configuracion en DB */
 export async function guardarCfg(cfg) {
   try {
-    await guardar('config', { key: 'cfg', value: JSON.parse(JSON.stringify(cfg)) });
+    const toSave = { ...cfg };
+    if (toSave.pin) {
+      toSave.pinHash = await hashPin(toSave.pin);
+      delete toSave.pin;
+    }
+    await guardar('config', { key: 'cfg', value: clean(toSave) });
   } catch (e) { console.error('guardarCfg', e); }
 }
 
-/** Carga configuración desde DB */
+/** Carga configuracion desde DB */
 export async function cargarCfg() {
   try {
     const db = getDB();
@@ -88,6 +105,16 @@ export async function cargarCfg() {
   } catch (e) { return {}; }
 }
 
-// Escuchar cambios de conexión
-window.addEventListener('online', () => { ui.offline = false; });
-window.addEventListener('offline', () => { ui.offline = true; });
+// Escuchar cambios de conexion: procesar cola de webhooks al volver online
+const onlineHandler = () => {
+  ui.offline = false;
+  processQueue().catch(() => {});
+};
+const offlineHandler = () => { ui.offline = true; };
+window.addEventListener('online', onlineHandler);
+window.addEventListener('offline', offlineHandler);
+
+// Procesar cola periodicamente cada 60s cuando hay conexion
+setInterval(() => {
+  if (!ui.offline) processQueue().catch(() => {});
+}, 60000);

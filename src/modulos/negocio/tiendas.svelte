@@ -13,7 +13,7 @@
   import { onMount } from 'svelte';
   import { getDB, listar, guardar } from '../../core/db.js';
   import { avisar, preguntar } from '../../core/state.svelte.js';
-  import { genId } from '../../core/util.js';
+  import { genId, nowLocal } from '../../core/util.js';
   import Icono from '../../core/Icono.svelte';
 
   let tiendas = $state([]);
@@ -31,7 +31,7 @@
 
   async function crearTienda() {
     if (!form.nombre.trim()) return avisar('Nombre obligatorio', 'bad');
-    const t = { id: genId('t'), nombre: form.nombre.trim(), clave: form.clave.trim(), creada: new Date().toISOString() };
+    const t = { id: genId('t'), nombre: form.nombre.trim(), clave: form.clave.trim(), creada: nowLocal().iso, fechaLocal: nowLocal().local };
     await guardar('tiendas', t);
     await activarTienda(t);
     form = { nombre: '', clave: '' };

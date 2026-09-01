@@ -26,7 +26,7 @@ describe('db.js - Base de datos', () => {
   });
 
   it('guardar y listar funciona', async () => {
-    const db = abrirDB([{ tablas: { productos: '++id' } }]);
+    const db = await abrirDB([{ tablas: { productos: '++id' } }]);
     await guardar('productos', { id: 'p1', nombre: 'Test' });
     const items = await listar('productos');
     expect(items.length).toBe(1);
@@ -34,7 +34,7 @@ describe('db.js - Base de datos', () => {
   });
 
   it('eliminar funciona', async () => {
-    const db = abrirDB([{ tablas: { productos: '++id' } }]);
+    const db = await abrirDB([{ tablas: { productos: '++id' } }]);
     await guardar('productos', { id: 'p1', nombre: 'Test' });
     await eliminar('productos', 'p1');
     const items = await listar('productos');
@@ -42,7 +42,7 @@ describe('db.js - Base de datos', () => {
   });
 
   it('guardarBulk funciona', async () => {
-    const db = abrirDB([{ tablas: { productos: '++id' } }]);
+    const db = await abrirDB([{ tablas: { productos: '++id' } }]);
     await guardarBulk('productos', [{ id: 'p1', nombre: 'A' }, { id: 'p2', nombre: 'B' }]);
     const items = await listar('productos');
     expect(items.length).toBe(2);

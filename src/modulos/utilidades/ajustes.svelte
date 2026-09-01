@@ -14,7 +14,7 @@
   import { getDB, listar, guardar, limpiar } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
   import { ui, alternarTema, avisar, confirmar, preguntar, pedirPIN } from '../../core/state.svelte.js';
-  import { n, m, fmt, clean } from '../../core/util.js';
+  import { n, m, fmt, clean, nowLocal } from '../../core/util.js';
   import { getWebhooks, setWebhooks, triggerAll } from '../../core/api.js';
   import { BluetoothSync } from '../../core/bluetooth.js';
   import Icono from '../../core/Icono.svelte';
@@ -32,7 +32,7 @@
   async function recargar() {
     const db = getDB();
     const c = await db.config.get('cfg');
-    cfg = c?.value || { nombre: 'Tienda Pro', moneda: '$', periodoInicio: new Date().toISOString() };
+    cfg = c?.value || { nombre: 'Tienda Pro', moneda: '$', periodoInicio: nowLocal().iso };
     pinActivo = !!cfg.pinActivo;
     const counts = {};
     for (const t of tablas) {
@@ -50,7 +50,7 @@
 
   async function guardarCfg() {
     const db = getDB();
-    await db.config.put({ key: 'cfg', value: JSON.parse(JSON.stringify(cfg)) });
+    await db.config.put({ key: 'cfg', value: clean(cfg) });
     bus.emit('recargar');
     avisar('Configuracion guardada');
   }
@@ -84,7 +84,7 @@
     const blob = new Blob([JSON.stringify(datos, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'tienda_pro_backup_' + new Date().toISOString().slice(0, 10) + '.json';
+    a.href = url; a.download = 'tienda_pro_backup_' + nowLocal().local + '.json';
     a.click();
     URL.revokeObjectURL(url);
     avisar('Backup descargado');
@@ -104,7 +104,7 @@
           for (const t of Object.keys(datos)) {
             if (db.tables.some(x => x.name === t)) {
               await db.table(t).clear();
-              if (datos[t]?.length > 0) await db.table(t).bulkPut(datos[t].map(o => JSON.parse(JSON.stringify(o))));
+              if (datos[t]?.length > 0) await db.table(t).bulkPut(datos[t].map(o => clean(o)));
             }
           }
         });

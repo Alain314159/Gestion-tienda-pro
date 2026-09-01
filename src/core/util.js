@@ -10,6 +10,16 @@ export function n(v) {
   return isNaN(num) ? 0 : num;
 }
 
+/** Convierte valor monetario a centavos enteros (para almacenamiento preciso) */
+export function toCents(v) {
+  return Math.round(n(v) * 100);
+}
+
+/** Convierte centavos enteros a valor monetario (para display/cálculos) */
+export function fromCents(cents) {
+  return (n(cents) / 100);
+}
+
 /** Redondea a 2 decimales (moneda) */
 export function m(v) {
   return Math.round(n(v) * 100) / 100;
@@ -20,7 +30,26 @@ export function q(v) {
   return Math.round(n(v) * 1000) / 1000;
 }
 
-/** Genera ID único */
+/** Genera fecha actual con informacion local y UTC
+ *  @returns { iso: string, local: string, offset: number }
+ */
+export function nowLocal() {
+  const d = new Date();
+  const offset = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - offset * 60000).toISOString().slice(0, 10);
+  return { iso: d.toISOString(), local, offset };
+}
+
+/** Extrae fecha local (YYYY-MM-DD) de un ISO string respetando zona horaria del usuario */
+export function isoToLocal(iso) {
+  const d = new Date(iso);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
+/** Compara si dos fechas ISO son el mismo dia en zona horaria local */
+export function mismoDiaLocal(iso1, iso2) {
+  return isoToLocal(iso1) === isoToLocal(iso2);
+}
 export function genId(p = '') {
   try {
     return p + crypto.randomUUID();
@@ -34,9 +63,23 @@ export function vib(ms = 20) {
   try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {}
 }
 
-/** Deep clone simple */
+/** Deep clone seguro usando structuredClone nativo (fallback a JSON) */
 export function clean(x) {
-  return JSON.parse(JSON.stringify(x));
+  if (x === null || typeof x !== 'object') return x;
+  try {
+    return structuredClone(x);
+  } catch {
+    return JSON.parse(JSON.stringify(x));
+  }
+}
+
+/** Debounce para inputs de busqueda */
+export function debounce(fn, ms = 200) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+  };
 }
 
 /** Formato de dinero */
@@ -240,6 +283,58 @@ export function datosChart6Meses(ventas) {
   return meses;
 }
 
+/** ================================================================
+ *  SCHEMA DE CAMPOS MONETARIOS (para migracion a centavos)
+ *  ================================================================ */
+
+export const MONEY_SCHEMA = {
+  productos: { fields: ['precio'] },
+  lotes: { fields: ['costo'] },
+  ventas: { fields: ['total', 'ganancia'], nested: { items: ['precio', 'costo', 'ganancia'] } },
+  compras: { fields: ['costo', 'total'] },
+  ajustes: { fields: ['costoPerdida'] },
+  movCaja: { fields: ['monto'] },
+  arqueos: { fields: ['montoFisico', 'saldoSistema', 'diferencia'] },
+  cierres: { fields: ['gananciaNeta', 'totalVentas', 'totalCompras', 'totalRetiros', 'totalGastos', 'totalAportes', 'totalAjustes', 'inventarioValor', 'capitalTotal'] },
+  retiros: { fields: ['monto'] },
+  capital: { fields: ['monto'] },
+  gastosOp: { fields: ['monto'] },
+  config: { fields: ['capitalInicial'] }
+};
+
+/** Convierte campos monetarios de un objeto a centavos (para guardar en DB) */
+export function toCentsDeep(obj, fields, nested = {}) {
+  if (!obj || typeof obj !== 'object') return obj;
+  const result = Array.isArray(obj) ? [...obj] : { ...obj };
+  for (const field of fields) {
+    if (field in result && result[field] !== null && result[field] !== undefined) {
+      result[field] = toCents(result[field]);
+    }
+  }
+  for (const [nestedPath, nestedFields] of Object.entries(nested)) {
+    if (nestedPath in result && Array.isArray(result[nestedPath])) {
+      result[nestedPath] = result[nestedPath].map(item => toCentsDeep(item, nestedFields));
+    }
+  }
+  return result;
+}
+
+/** Convierte campos monetarios de un objeto de centavos a float (para leer de DB) */
+export function fromCentsDeep(obj, fields, nested = {}) {
+  if (!obj || typeof obj !== 'object') return obj;
+  const result = Array.isArray(obj) ? [...obj] : { ...obj };
+  for (const field of fields) {
+    if (field in result && result[field] !== null && result[field] !== undefined) {
+      result[field] = fromCents(result[field]);
+    }
+  }
+  for (const [nestedPath, nestedFields] of Object.entries(nested)) {
+    if (nestedPath in result && Array.isArray(result[nestedPath])) {
+      result[nestedPath] = result[nestedPath].map(item => fromCentsDeep(item, nestedFields));
+    }
+  }
+  return result;
+}
 /** Reporte por período */
 export function generarReporte({ ventas, ajustes }, fechaInicio, fechaFin) {
   const i = new Date(fechaInicio), f = new Date(fechaFin);

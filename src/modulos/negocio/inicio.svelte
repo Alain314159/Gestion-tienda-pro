@@ -16,7 +16,7 @@
   import { ui, avisar } from '../../core/state.svelte.js';
   import {
     n, m, fmt, fmtCant, fmtFecha, fmtFH, valorInventario, stockProducto,
-    datosChart6Meses, topRentables, saldoCaja, inventarioGrupos, badgeStock
+    datosChart6Meses, topRentables, saldoCaja, inventarioGrupos, badgeStock, nowLocal
   } from '../../core/util.js';
   import { checkNotificaciones } from '../../core/notificaciones.js';
   import Icono from '../../core/Icono.svelte';
@@ -34,7 +34,7 @@
   let cfg = $state({});
   let chartCanvas = $state(null);
 
-  let periodoInicio = $derived(cfg.periodoInicio || new Date().toISOString());
+  let periodoInicio = $derived(cfg.periodoInicio || nowLocal().iso);
   let ventasPeriodoArr = $derived(ventas.filter(v => !v.anulada && new Date(v.fecha) >= new Date(periodoInicio)));
   let comprasPeriodoArr = $derived(compras.filter(c => !c.anulada && new Date(c.fecha) >= new Date(periodoInicio)));
   let ventasPeriodo = $derived(m(ventasPeriodoArr.reduce((s, v) => s + n(v.total), 0)));
@@ -50,13 +50,13 @@
   let bajoStock = $derived(prodsActivos.filter(p => { const s = stockProducto(lotes, p.id); return s > 0 && s <= n(p.stockMinimo); }));
   let topRent = $derived(topRentables(ventas));
   let chartData = $derived(datosChart6Meses(ventas));
-  let ultimaAct = $derived(() => {
+  let ultimaAct = $derived((() => {
     const v = ventas.filter(x => !x.anulada).sort((a, b) => new Date(b.fecha) - new Date(a.fecha))[0];
     const c = cierres.sort((a, b) => new Date(b.fechaCierre) - new Date(a.fechaCierre))[0];
     if (!v && !c) return 'Sin actividad';
     if (v && (!c || new Date(v.fecha) > new Date(c.fechaCierre))) return 'Venta ' + fmt(v.total) + ' el ' + fmtFH(v.fecha);
     return 'Cierre ' + (c?.periodo || '');
-  });
+  })());
 
   async function recargar() {
     const db = getDB();
@@ -65,7 +65,7 @@
       listar('ajustes'), listar('movCaja'), listar('cierres'), listar('capital'), listar('retiros'), listar('arqueos')
     ]);
     const c = await db.config.get('cfg');
-    cfg = c?.value || { moneda: '$', nombre: 'Tienda Pro', periodoInicio: new Date().toISOString(), capitalInicial: 0 };
+    cfg = c?.value || { moneda: '$', nombre: 'Tienda Pro', periodoInicio: nowLocal().iso, capitalInicial: 0 };
   }
 
   onMount(() => {
@@ -185,6 +185,6 @@
   </div>
 
   <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)]">
-    <div class="text-xs text-muted">Ultima actividad: <b class="text-text">{ultimaAct()}</b></div>
+    <div class="text-xs text-muted">Ultima actividad: <b class="text-text">{ultimaAct}</b></div>
   </div>
 </div>

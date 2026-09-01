@@ -20,17 +20,19 @@
   let productos = $state([]);
   let lotes = $state([]);
   let busq = $state('');
+  let busqDebounced = $state('');
+  $effect(() => { const t = setTimeout(() => busqDebounced = busq, 200); return () => clearTimeout(t); });
   let mostrarArchivados = $state(false);
   let expandido = $state({});
 
   let form = $state({ editId: '', nombre: '', codigo: '', precio: '', stockMin: '5', unidad: '' });
 
-  let filtrados = $derived(() => {
+  let filtrados = $derived((() => {
     let p = mostrarArchivados ? productos : productos.filter(x => !x.archivado);
-    const q = busq.toLowerCase().trim();
+    const q = busqDebounced.toLowerCase().trim();
     if (!q) return p;
     return p.filter(x => x.nombre.toLowerCase().includes(q) || (x.codigo || '').toLowerCase().includes(q));
-  });
+  })());
 
   async function recargar() {
     [productos, lotes] = await Promise.all([listar('productos'), listar('lotes')]);
@@ -129,10 +131,10 @@
         {mostrarArchivados ? 'Ocultar archivados' : 'Ver archivados'}
       </button>
     </div>
-    {#if filtrados().length === 0}
+    {#if filtrados.length === 0}
       <div class="text-center text-muted py-6 text-sm">Sin productos</div>
     {:else}
-      {#each filtrados() as p}
+      {#each filtrados as p}
         {@const badge = badgeStock(p, lotes)}
         {@const s = stockProducto(lotes, p.id)}
         {@const lotesP = lotesDeProducto(lotes, p.id)}

@@ -33,6 +33,6 @@ export async function cargarModulos() {
 
   navMods = modulos.slice(0, 4);
 
-  abrirDB(modulos);
+  await abrirDB(modulos);
   return modulos;
 }

@@ -14,7 +14,7 @@
   import { getDB, listar, guardar } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
   import { avisar, confirmar, preguntar } from '../../core/state.svelte.js';
-  import { n, m, fmt, genId, valorInventario, stockProducto } from '../../core/util.js';
+  import { n, m, fmt, genId, valorInventario, stockProducto, nowLocal } from '../../core/util.js';
   import { ventasDelDia } from '../../core/calendario.js';
   import { generarPDFCuadre } from '../../core/pdf.js';
   import Icono from '../../core/Icono.svelte';
@@ -27,7 +27,7 @@
   let socios = $state([]);
   let gastosOp = $state([]);
 
-  let fechaSel = $state(new Date().toISOString().slice(0, 10));
+  let fechaSel = $state(nowLocal().local);
   let chartCanvas = $state(null);
 
   let vDia = $derived(ventasDelDia(ventas, fechaSel));
@@ -39,11 +39,11 @@
   let invFisico = $derived(lotes.reduce((s, l) => s + Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida)), 0));
   let valInv = $derived(valorInventario(lotes));
 
-  let distribucion = $derived(() => {
+  let distribucion = $derived((() => {
     const totalS = socios.reduce((s, x) => s + n(x.porcentaje), 0);
     if (totalS === 0) return [];
     return socios.map(s => ({ ...s, monto: m(gananciaNeta * (n(s.porcentaje) / 100)) }));
-  });
+  })());
 
   async function recargar() {
     [productos, lotes, ventas, compras, ajustes, socios, gastosOp] = await Promise.all([
@@ -93,7 +93,7 @@
       await generarPDFCuadre({
         ventasTotal, costoVendido, gananciaBruta, gastosOp: gastosDia,
         gananciaNeta, inventarioFisico: invFisico, valorInventario: valInv,
-        socios: distribucion(), chartImage
+        socios: distribucion, chartImage
       });
       avisar('PDF descargado');
     } catch (e) { avisar('Error PDF: ' + e.message, 'bad'); }
@@ -190,7 +190,7 @@
       <Icono nombre="users" size={18} />
       Distribucion entre socios
     </div>
-    {#each distribucion() as s}
+    {#each distribucion as s}
       <div class="flex justify-between items-center py-2 border-b border-border text-sm">
         <div>
           <div class="font-bold">{s.nombre}</div>
