@@ -13,6 +13,14 @@ export function libroDiario({ ventas, compras, retiros, capital, gastosOp, ajust
     .forEach(r => movs.push({ fecha: r.fecha, cuenta: 'Retiros', debe: r.monto, haber: 0, doc: r.id }));
   gastosOp?.filter(g => new Date(g.fecha) >= i && new Date(g.fecha) <= f)
     .forEach(g => movs.push({ fecha: g.fecha, cuenta: g.concepto || 'Gasto', debe: g.monto, haber: 0, doc: g.id }));
+  ajustes?.filter(a => new Date(a.fecha) >= i && new Date(a.fecha) <= f)
+    .forEach(a => movs.push({
+      fecha: a.fecha,
+      cuenta: a.cantidad > 0 ? 'Ajuste positivo (sobrante)' : 'Ajuste negativo (merma)',
+      debe: a.cantidad > 0 ? a.costoPerdida : 0,
+      haber: a.cantidad < 0 ? a.costoPerdida : 0,
+      doc: a.id
+    }));
 
   return movs.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
 }
@@ -38,19 +46,25 @@ export function estadoPyG({ ventas, compras, ajustes, gastosOp }, fechaInicio, f
   };
 }
 
-export function balanceGeneral({ cfg, capital, retiros, ventas, compras, lotes, cierres }) {
+export function balanceGeneral({ cfg, capital, retiros, ventas, compras, lotes, cierres, movCaja, ajustes }) {
   const valInv = m(lotes.reduce((s, l) => {
     const disp = Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida));
     return s + (disp * n(l.costo));
   }, 0));
   const capTotal = m(n(cfg.capitalInicial || 0) + capital.reduce((s, c) => s + n(c.monto), 0));
+  const vtaTotal = m(ventas.filter(v => !v.anulada).reduce((s, v) => s + n(v.total), 0));
+  const compTotal = m(compras.filter(c => !c.anulada).reduce((s, c) => s + n(c.total), 0));
+  const retTotal = m(retiros.reduce((s, r) => s + n(r.monto), 0));
+  const ajusteTotal = m((ajustes || []).reduce((s, a) => a.cantidad > 0 ? s + n(a.costoPerdida) : s - n(a.costoPerdida), 0));
+  const cajaMovs = m((movCaja || []).reduce((s, m) => m.tipo === 'ingreso' ? s + n(m.monto) : s - n(m.monto), 0));
+  const cajaReal = m(capTotal + vtaTotal - compTotal - retTotal + ajusteTotal + cajaMovs);
   const ganAcum = m(cierres.reduce((s, x) => s + n(x.ganancia), 0));
 
   return {
     activos: {
-      caja: m(capTotal + ganAcum),
+      caja: cajaReal,
       inventario: valInv,
-      total: m(capTotal + ganAcum + valInv)
+      total: m(cajaReal + valInv)
     },
     patrimonio: {
       capital: capTotal,

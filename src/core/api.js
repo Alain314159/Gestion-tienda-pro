@@ -1,6 +1,6 @@
 // API abierta y webhooks con cola offline persistente (IndexedDB) + reintentos exponenciales
 
-import { getDB, guardar, eliminar, listar } from './db.js';
+import { getDB, guardar, eliminar, listar, leerConfig } from './db.js';
 import { validateWebhookUrl } from './util.js';
 
 const WEBHOOKS_KEY = 'webhooks_cfg';
@@ -31,8 +31,17 @@ export function setWebhooks(list) {
   localStorage.setItem(WEBHOOKS_KEY, JSON.stringify(list));
 }
 
+/** Verifica si los webhooks globales estan activados en config (por defecto: desactivados) */
+export async function areWebhooksEnabled() {
+  try {
+    const cfg = await leerConfig('cfg');
+    return !!cfg?.webhooksActivos;
+  } catch { return false; }
+}
+
 /** Encola un webhook en IndexedDB para envio garantizado */
 export async function enqueueWebhook(url, evento, payload) {
+  if (!(await areWebhooksEnabled())) return { queued: false, reason: 'webhooks desactivados' };
   const validation = validateWebhookUrl(url);
   if (!validation.ok) return { queued: false, reason: validation.error };
   if (isDuplicate(url, evento)) return { queued: false, reason: 'duplicate' };
@@ -72,6 +81,7 @@ export async function triggerWebhook(url, evento, payload) {
 
 /** Encola webhooks para TODAS las URLs activas configuradas */
 export async function triggerAll(evento, payload) {
+  if (!(await areWebhooksEnabled())) return [{ ok: false, error: 'webhooks desactivados' }];
   const hooks = getWebhooks();
   const results = [];
   for (const h of hooks) {
@@ -86,6 +96,7 @@ export async function triggerAll(evento, payload) {
 /** Procesa la cola de webhooks pendientes (llamar al volver online o periodicamente) */
 export async function processQueue() {
   try {
+    if (!(await areWebhooksEnabled())) return;
     const db = getDB();
     const pendientes = await db.webhookQueue
       .where('estado')

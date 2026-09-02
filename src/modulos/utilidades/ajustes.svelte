@@ -232,8 +232,15 @@
       <Icono nombre="link" size={18} />
       Webhooks (API abierta)
     </div>
-    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base mb-2" type="url" placeholder="URL del webhook" bind:value={whUrl} />
-    <button class="w-full py-2 rounded-[var(--radius-md)] bg-primary text-white font-bold text-sm mb-3" onclick={agregarWebhook}>+ Agregar webhook</button>
+    <div class="flex items-center justify-between mb-3">
+      <span class="text-sm">Activar webhooks</span>
+      <button class="px-3 py-1 rounded-full text-xs font-bold {cfg.webhooksActivos ? 'bg-success text-white' : 'bg-muted text-white'}" onclick={() => { cfg.webhooksActivos = !cfg.webhooksActivos; guardarCfg(); }}>
+        {cfg.webhooksActivos ? 'ON' : 'OFF'}
+      </button>
+    </div>
+    {#if cfg.webhooksActivos}
+      <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base mb-2" type="url" placeholder="URL del webhook" bind:value={whUrl} />
+      <button class="w-full py-2 rounded-[var(--radius-md)] bg-primary text-white font-bold text-sm mb-3" onclick={agregarWebhook}>+ Agregar webhook</button>
     {#each webhooks as wh, i}
       <div class="flex justify-between items-center py-2 border-b border-border text-sm">
         <div class="truncate flex-1 text-xs">{wh.url}</div>
@@ -245,6 +252,7 @@
     {/each}
     {#if webhooks.length > 0}
       <button class="w-full py-2 mt-2 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-bold text-sm" onclick={probarWebhooks}>Probar webhooks</button>
+    {/if}
     {/if}
   </div>
 

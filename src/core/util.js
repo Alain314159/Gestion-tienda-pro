@@ -61,19 +61,20 @@ export function validateWebhookUrl(url) {
 }
 
 /** Genera fecha actual con informacion local y UTC
+ *  Usa toLocaleDateString('sv-SE') para evitar bugs de DST y zona horaria
  *  @returns { iso: string, local: string, offset: number }
  */
 export function nowLocal() {
   const d = new Date();
   const offset = d.getTimezoneOffset();
-  const local = new Date(d.getTime() - offset * 60000).toISOString().slice(0, 10);
+  const local = d.toLocaleDateString('sv-SE', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
   return { iso: d.toISOString(), local, offset };
 }
 
 /** Extrae fecha local (YYYY-MM-DD) de un ISO string respetando zona horaria del usuario */
 export function isoToLocal(iso) {
   const d = new Date(iso);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  return d.toLocaleDateString('sv-SE', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
 }
 
 /** Compara si dos fechas ISO son el mismo dia en zona horaria local */

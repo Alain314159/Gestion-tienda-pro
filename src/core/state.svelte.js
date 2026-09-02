@@ -1,6 +1,6 @@
 import { getDB, guardar, leerConfig } from './db.js';
 import { clean } from './util.js';
-import { processQueue } from './api.js';
+import { processQueue, areWebhooksEnabled } from './api.js';
 
 /** Estado global de la UI usando Svelte 5 Runes */
 export const ui = $state({
@@ -181,16 +181,18 @@ export async function cargarCfg() {
   } catch (e) { return {}; }
 }
 
-// Escuchar cambios de conexion: procesar cola de webhooks al volver online
+// Escuchar cambios de conexion: procesar cola de webhooks al volver online (solo si activados)
 const onlineHandler = () => {
   ui.offline = false;
-  processQueue().catch(() => {});
+  areWebhooksEnabled().then(ok => { if (ok) processQueue().catch(() => {}); });
 };
 const offlineHandler = () => { ui.offline = true; };
 window.addEventListener('online', onlineHandler);
 window.addEventListener('offline', offlineHandler);
 
-// Procesar cola periodicamente cada 60s cuando hay conexion
+// Procesar cola periodicamente cada 60s cuando hay conexion (solo si activados)
 setInterval(() => {
-  if (!ui.offline) processQueue().catch(() => {});
+  if (!ui.offline) {
+    areWebhooksEnabled().then(ok => { if (ok) processQueue().catch(() => {}); });
+  }
 }, 60000);

@@ -26,6 +26,7 @@
   let lotes = $state([]);
   let cierres = $state([]);
   let gastosOp = $state([]);
+  let movCaja = $state([]);
 
   let fechaInicio = $state(nowLocal().local.slice(0, 8) + '01');
   let fechaFin = $state(nowLocal().local);
@@ -33,12 +34,12 @@
 
   let diario = $derived(libroDiario({ ventas, compras, retiros, capital, gastosOp, ajustes }, fechaInicio, fechaFin));
   let pyg = $derived(estadoPyG({ ventas, compras, ajustes, gastosOp }, fechaInicio, fechaFin));
-  let balance = $derived(balanceGeneral({ cfg, capital, retiros, ventas, compras, lotes, cierres }));
+  let balance = $derived(balanceGeneral({ cfg, capital, retiros, ventas, compras, lotes, cierres, movCaja, ajustes }));
 
   async function recargar() {
-    [ventas, compras, retiros, capital, ajustes, lotes, cierres, gastosOp] = await Promise.all([
+    [ventas, compras, retiros, capital, ajustes, lotes, cierres, gastosOp, movCaja] = await Promise.all([
       listar('ventas'), listar('compras'), listar('retiros'), listar('capital'),
-      listar('ajustes'), listar('lotes'), listar('cierres'), listar('gastosOp')
+      listar('ajustes'), listar('lotes'), listar('cierres'), listar('gastosOp'), listar('movCaja')
     ]);
     cfg = await leerConfig('cfg') || {};
   }
