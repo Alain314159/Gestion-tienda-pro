@@ -6,23 +6,36 @@ import { verificarPeriodoCerrado } from '../core/periodos.js';
  * Servicio de Compras
  * Encapsula logica de compras y lotes
  */
-export const CompraService = {
 
+export const CompraService = {
   /** Registra una compra existente (producto ya creado) + lote */
-  async registrarExistente({ productoId, nombre, unidad, cantidad, costo, total }) {
+  registrarExistente: async function ({ productoId, nombre, unidad, cantidad, costo, total }) {
     await verificarPeriodoCerrado(nowLocal().iso);
     const db = getDB();
     const compra = {
       id: genId('c'),
-      fecha: nowLocal().iso, fechaLocal: nowLocal().local,
-      productoId, productoNombre: nombre, productoUnidad: unidad,
-      cantidad, costo, total, anulada: false, unidad
+      fecha: nowLocal().iso,
+      fechaLocal: nowLocal().local,
+      productoId,
+      productoNombre: nombre,
+      productoUnidad: unidad,
+      cantidad,
+      costo,
+      total,
+      anulada: false,
+      unidad,
     };
     const lote = {
       id: genId('l'),
-      fecha: nowLocal().iso, fechaLocal: nowLocal().local,
-      productoId, productoNombre: nombre, productoUnidad: unidad,
-      cantidadInicial: cantidad, cantidadVendida: 0, costo, compraId: compra.id
+      fecha: nowLocal().iso,
+      fechaLocal: nowLocal().local,
+      productoId,
+      productoNombre: nombre,
+      productoUnidad: unidad,
+      cantidadInicial: cantidad,
+      cantidadVendida: 0,
+      costo,
+      compraId: compra.id,
     };
 
     await db.transaction('rw', db.compras, db.lotes, async (trans) => {
@@ -34,7 +47,8 @@ export const CompraService = {
   },
 
   /** Registra compra de producto nuevo: crea producto + compra + lote */
-  async registrarNuevo({ nombre, codigo, unidad, cantidad, costo, total, precio, stockMin }) {
+  registrarNuevo: async function ({ nombre, codigo, unidad, cantidad, costo, total, precio, stockMin }) {
+    await verificarPeriodoCerrado(nowLocal().iso);
     const db = getDB();
     const nombreLimpio = nombre.trim().toLowerCase();
     const existente = await db.productos.where('nombre').equals(nombreLimpio).first();
@@ -42,23 +56,37 @@ export const CompraService = {
 
     const producto = {
       id: genId('p'),
-      nombre: nombre.trim(), codigo: (codigo || '').trim(),
-      precio, stockMinimo: n(stockMin) || 5,
-      archivado: false, unidad: unidad || ''
+      nombre: nombre.trim(),
+      codigo: (codigo || '').trim(),
+      precio,
+      stockMinimo: n(stockMin) || 5,
+      archivado: false,
+      unidad: unidad || '',
     };
     const compra = {
       id: genId('c'),
-      fecha: nowLocal().iso, fechaLocal: nowLocal().local,
-      productoId: producto.id, productoNombre: producto.nombre,
-      productoUnidad: unidad, cantidad, costo, total,
-      anulada: false, unidad
+      fecha: nowLocal().iso,
+      fechaLocal: nowLocal().local,
+      productoId: producto.id,
+      productoNombre: producto.nombre,
+      productoUnidad: unidad,
+      cantidad,
+      costo,
+      total,
+      anulada: false,
+      unidad,
     };
     const lote = {
       id: genId('l'),
-      fecha: nowLocal().iso, fechaLocal: nowLocal().local,
-      productoId: producto.id, productoNombre: producto.nombre,
-      productoUnidad: unidad, cantidadInicial: cantidad,
-      cantidadVendida: 0, costo, compraId: compra.id
+      fecha: nowLocal().iso,
+      fechaLocal: nowLocal().local,
+      productoId: producto.id,
+      productoNombre: producto.nombre,
+      productoUnidad: unidad,
+      cantidadInicial: cantidad,
+      cantidadVendida: 0,
+      costo,
+      compraId: compra.id,
     };
 
     await db.transaction('rw', db.productos, db.compras, db.lotes, async (trans) => {
@@ -71,7 +99,7 @@ export const CompraService = {
   },
 
   /** Edita una compra y su lote asociado */
-  async editar(compra, lote, nuevosDatos) {
+  editar: async function (compra, lote, nuevosDatos) {
     await verificarPeriodoCerrado(compra.fecha);
     const db = getDB();
     const compActualizada = { ...compra, ...nuevosDatos.compra };
@@ -86,15 +114,16 @@ export const CompraService = {
   },
 
   /** Elimina compra y su lote (solo si no tiene ventas) */
-  async eliminar(compraId, loteId) {
+  eliminar: async function (compraId, loteId) {
+    const db = getDB();
+    const compra = await db.compras.get(compraId);
+    if (compra) await verificarPeriodoCerrado(compra.fecha);
     await eliminar('compras', compraId);
     await eliminar('lotes', loteId);
   },
 
-  async recargar() {
-    const [productos, lotes, compras] = await Promise.all([
-      listar('productos'), listar('lotes'), listar('compras')
-    ]);
+  recargar: async function () {
+    const [productos, lotes, compras] = await Promise.all([listar('productos'), listar('lotes'), listar('compras')]);
     return { productos, lotes, compras };
-  }
+  },
 };

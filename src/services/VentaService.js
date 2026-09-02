@@ -11,19 +11,20 @@ import { verificarPeriodoCerrado } from '../core/periodos.js';
  */
 
 export const VentaService = {
-
   /** Procesa una venta completa: calcula FIFO, guarda venta, actualiza lotes. Todo en una transaccion. */
-  async procesar(carrito, lotes) {
+  procesar: async function (carrito, lotes) {
     await verificarPeriodoCerrado(nowLocal().iso);
     const db = getDB();
 
     // 1. Calcular items, totales y lotes usados (fuera de la transaccion, es solo lectura)
     const items = [];
-    let total = 0, ganancia = 0;
+    let total = 0,
+      ganancia = 0;
     const lotesUsados = []; // { loteId, cantidad }
 
     for (const it of carrito) {
-      const cant = n(it.cant), precio = n(it.precio);
+      const cant = n(it.cant),
+        precio = n(it.precio);
       const fifo = calcFIFO(lotes, it.productoId, cant);
       if (fifo.error) throw new Error(fifo.error + ' en ' + it.nombre);
 
@@ -36,7 +37,7 @@ export const VentaService = {
         precio,
         costo: fifo.costoTotal,
         ganancia: m(subtotal - fifo.costoTotal),
-        lotesUsados: fifo.usados
+        lotesUsados: fifo.usados,
       });
       total = m(total + subtotal);
       ganancia = m(ganancia + (subtotal - fifo.costoTotal));
@@ -50,7 +51,7 @@ export const VentaService = {
       items,
       total,
       ganancia,
-      anulada: false
+      anulada: false,
     };
 
     // 2. Transaccion atomica: guardar venta + actualizar lotes
@@ -58,7 +59,7 @@ export const VentaService = {
       await trans.table('ventas').put(venta);
 
       for (const u of lotesUsados) {
-        const lote = lotes.find(l => l.id === u.loteId);
+        const lote = lotes.find((l) => l.id === u.loteId);
         if (lote) {
           lote.cantidadVendida = q(n(lote.cantidadVendida) + u.cantidad);
           await trans.table('lotes').put(lote);
@@ -73,7 +74,7 @@ export const VentaService = {
    *  Busca los lotes mas antiguos y reduce cantidadVendida.
    *  Devuelve array de {loteId, cantidad} para referencia futura.
    */
-  function restaurarStockSinLotesUsados(item, lotes) {
+  restaurarStockSinLotesUsados: function (item, lotes) {
     const lotesProd = lotesDeProducto(lotes, item.productoId);
     let rest = n(item.cantidad);
     const usados = [];
@@ -88,10 +89,10 @@ export const VentaService = {
       }
     }
     return usados;
-  }
+  },
 
   /** Anula una venta y restaura el stock. Transaccion atomica. */
-  async anular(venta, lotes) {
+  anular: async function (venta, lotes) {
     await verificarPeriodoCerrado(venta.fecha);
     const db = getDB();
 
@@ -100,14 +101,14 @@ export const VentaService = {
       await trans.table('ventas').put({
         ...venta,
         anulada: true,
-        fechaAnulacion: nowLocal().iso
+        fechaAnulacion: nowLocal().iso,
       });
 
       // Restaurar stock en lotes
       for (const item of venta.items) {
         if (item.lotesUsados && item.lotesUsados.length > 0) {
           for (const u of item.lotesUsados) {
-            const lote = lotes.find(l => l.id === u.loteId);
+            const lote = lotes.find((l) => l.id === u.loteId);
             if (lote) {
               lote.cantidadVendida = Math.max(0, q(n(lote.cantidadVendida) - u.cantidad));
               await trans.table('lotes').put(lote);
@@ -115,9 +116,9 @@ export const VentaService = {
           }
         } else {
           // Venta antigua sin lotesUsados: restaurar con FIFO inverso
-          const usados = restaurarStockSinLotesUsados(item, lotes);
+          const usados = VentaService.restaurarStockSinLotesUsados(item, lotes);
           for (const u of usados) {
-            const lote = lotes.find(l => l.id === u.loteId);
+            const lote = lotes.find((l) => l.id === u.loteId);
             if (lote) {
               await trans.table('lotes').put(lote);
             }
@@ -128,12 +129,8 @@ export const VentaService = {
   },
 
   /** Recarga datos desde DB (ya con conversion de centavos automatica) */
-  async recargar() {
-    const [productos, lotes, ventas] = await Promise.all([
-      listar('productos'),
-      listar('lotes'),
-      listar('ventas')
-    ]);
+  recargar: async function () {
+    const [productos, lotes, ventas] = await Promise.all([listar('productos'), listar('lotes'), listar('ventas')]);
     return { productos, lotes, ventas };
-  }
+  },
 };

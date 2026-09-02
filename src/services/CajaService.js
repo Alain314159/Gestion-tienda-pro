@@ -6,10 +6,10 @@ import { verificarPeriodoCerrado } from '../core/periodos.js';
  * Servicio de Caja
  * Encapsula arqueos, movimientos y calculos de saldo
  */
-export const CajaService = {
 
+export const CajaService = {
   /** Registra un arqueo y crea movimiento de ajuste si hay diferencia */
-  async registrarArqueo({ montoFisico, saldoSistema, nota }) {
+  registrarArqueo: async function ({ montoFisico, saldoSistema, nota }) {
     await verificarPeriodoCerrado(nowLocal().iso);
     const db = getDB();
     const diff = m(montoFisico - saldoSistema);
@@ -17,8 +17,12 @@ export const CajaService = {
 
     const arqueo = {
       id: genId('aq'),
-      fecha: nl.iso, fechaLocal: nl.local,
-      montoFisico, saldoSistema, diferencia: diff, nota
+      fecha: nl.iso,
+      fechaLocal: nl.local,
+      montoFisico,
+      saldoSistema,
+      diferencia: diff,
+      nota,
     };
 
     await db.transaction('rw', db.arqueos, db.movCaja, async (trans) => {
@@ -27,11 +31,12 @@ export const CajaService = {
       if (Math.abs(diff) > 0.01) {
         const mov = {
           id: genId('mc'),
-          fecha: nl.iso, fechaLocal: nl.local,
+          fecha: nl.iso,
+          fechaLocal: nl.local,
           tipo: diff > 0 ? 'ingreso' : 'egreso',
           monto: Math.abs(diff),
           concepto: (diff > 0 ? 'Sobrante' : 'Faltante') + ' de arqueo',
-          nota
+          nota,
         };
         await trans.table('movCaja').put(mov);
       }
@@ -41,21 +46,28 @@ export const CajaService = {
   },
 
   /** Calcula saldo actual de caja */
-  async calcularSaldo() {
+  calcularSaldo: async function () {
     const [cfg, capital, ventas, compras, retiros, movCaja] = await Promise.all([
-      listar('config').then(c => c.find(x => x.key === 'cfg')?.value || {}),
-      listar('capital'), listar('ventas'), listar('compras'),
-      listar('retiros'), listar('movCaja')
+      listar('config').then((c) => c.find((x) => x.key === 'cfg')?.value || {}),
+      listar('capital'),
+      listar('ventas'),
+      listar('compras'),
+      listar('retiros'),
+      listar('movCaja'),
     ]);
     return saldoCaja({ cfg, capital, ventas, compras, retiros, movCaja });
   },
 
-  async recargar() {
+  recargar: async function () {
     const [cfg, capital, ventas, compras, retiros, movCaja, arqueos] = await Promise.all([
-      listar('config').then(c => c.find(x => x.key === 'cfg')?.value || {}),
-      listar('capital'), listar('ventas'), listar('compras'),
-      listar('retiros'), listar('movCaja'), listar('arqueos')
+      listar('config').then((c) => c.find((x) => x.key === 'cfg')?.value || {}),
+      listar('capital'),
+      listar('ventas'),
+      listar('compras'),
+      listar('retiros'),
+      listar('movCaja'),
+      listar('arqueos'),
     ]);
     return { cfg, capital, ventas, compras, retiros, movCaja, arqueos };
-  }
+  },
 };
