@@ -267,26 +267,32 @@ export async function limpiar(tabla) {
 
 /** Suma un campo numerico de una tabla (en centavos, devuelve float). */
 export async function sumarCampo(tabla, campo, filtro = null) {
-  const db = getDB();
-  let coll = db.table(tabla);
-  if (filtro) coll = coll.filter(filtro);
-  const items = await coll.toArray();
-  return fromCentsArray(tabla, items).reduce((s, it) => s + (n(it[campo]) || 0), 0);
+  return conManejoError(`sumarCampo(${tabla})`, async () => {
+    const db = getDB();
+    let coll = db.table(tabla);
+    if (filtro) coll = coll.filter(filtro);
+    const items = await coll.toArray();
+    return fromCentsArray(tabla, items).reduce((s, it) => s + (n(it[campo]) || 0), 0);
+  });
 }
 
 /** Obtiene los N ultimos registros ordenados por fecha descendente. */
 export async function ultimos(tabla, n = 5) {
-  const db = getDB();
-  const items = await db.table(tabla).orderBy('fecha').reverse().limit(n).toArray();
-  return fromCentsArray(tabla, items);
+  return conManejoError(`ultimos(${tabla})`, async () => {
+    const db = getDB();
+    const items = await db.table(tabla).orderBy('fecha').reverse().limit(n).toArray();
+    return fromCentsArray(tabla, items);
+  });
 }
 
 /** Obtiene registros de una fecha especifica (comparando solo YYYY-MM-DD). */
 export async function porFecha(tabla, fechaIso) {
-  const db = getDB();
-  const fechaStr = fechaIso.slice(0, 10);
-  const items = await db.table(tabla).filter(it => it.fecha && it.fecha.slice(0, 10) === fechaStr).toArray();
-  return fromCentsArray(tabla, items);
+  return conManejoError(`porFecha(${tabla})`, async () => {
+    const db = getDB();
+    const fechaStr = fechaIso.slice(0, 10);
+    const items = await db.table(tabla).filter(it => it.fecha && it.fecha.slice(0, 10) === fechaStr).toArray();
+    return fromCentsArray(tabla, items);
+  });
 }
 
 /* ================================================================
@@ -325,11 +331,13 @@ export async function txToArray(tabla, trans) {
 
 /** Lee configuración por clave y convierte centavos → float. Devuelve el objeto value. */
 export async function leerConfig(key = 'cfg') {
-  const db = getDB();
-  const c = await db.config.get(key);
-  if (!c) return null;
-  const converted = fromCentsObj('config', deepClone(c));
-  return converted.value;
+  return conManejoError(`leerConfig(${key})`, async () => {
+    const db = getDB();
+    const c = await db.config.get(key);
+    if (!c) return null;
+    const converted = fromCentsObj('config', deepClone(c));
+    return converted.value;
+  });
 }
 
 /** Guarda configuración convirtiendo float → centavos en campos monetarios anidados. */
