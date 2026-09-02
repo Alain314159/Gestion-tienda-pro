@@ -30,6 +30,36 @@ export function q(v) {
   return Math.round(n(v) * 1000) / 1000;
 }
 
+/** ================================================================
+ *  UTILIDADES DE SEGURIDAD
+ *  ================================================================ */
+
+/** Escapa caracteres HTML para prevenir XSS */
+export function escapeHtml(str) {
+  if (typeof str !== 'string') return str;
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/** Valida que una URL de webhook sea segura (HTTPS, no localhost) */
+export function validateWebhookUrl(url) {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'https:') return { ok: false, error: 'Solo se permiten URLs HTTPS' };
+    const hostname = u.hostname.toLowerCase();
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.startsWith('172.')) {
+      return { ok: false, error: 'No se permiten URLs de red local' };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'URL invalida' };
+  }
+}
+
 /** Genera fecha actual con informacion local y UTC
  *  @returns { iso: string, local: string, offset: number }
  */

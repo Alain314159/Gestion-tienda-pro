@@ -12,7 +12,7 @@
 <script>
   import { onMount } from 'svelte';
   import { listar } from '../../core/db.js';
-  import { fmt } from '../../core/util.js';
+  import { fmt, escapeHtml } from '../../core/util.js';
   import Icono from '../../core/Icono.svelte';
 
   let productos = $state([]);
@@ -21,7 +21,7 @@
 
   let menuURL = $derived((() => {
     const prods = productos.filter(p => !p.archivado).map(p => ({ n: p.nombre, p: p.precio, u: p.unidad }));
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Menu</title><style>body{font-family:system-ui,sans-serif;padding:1rem;max-width:400px;margin:0 auto;background:#f8fafc}h1{color:#2196F3;text-align:center}.item{display:flex;justify-content:space-between;padding:.8rem 0;border-bottom:1px solid #e2e8f0}.price{color:#16a34a;font-weight:800}</style></head><body><h1>🍽️ Nuestro Menu</h1>${prods.map(p => `<div class="item"><span>${p.n}</span><span class="price">$${p.p.toFixed(2)}${p.u ? ' /' + p.u : ''}</span></div>`).join('')}</body></html>`;
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Menu</title><style>body{font-family:system-ui,sans-serif;padding:1rem;max-width:400px;margin:0 auto;background:#f8fafc}h1{color:#2196F3;text-align:center}.item{display:flex;justify-content:space-between;padding:.8rem 0;border-bottom:1px solid #e2e8f0}.price{color:#16a34a;font-weight:800}</style></head><body><h1>🍽️ Nuestro Menu</h1>${prods.map(p => `<div class="item"><span>${escapeHtml(p.n)}</span><span class="price">$${p.p.toFixed(2)}${p.u ? ' /' + escapeHtml(p.u) : ''}</span></div>`).join('')}</body></html>`;
     return `data:text/html;base64,${btoa(html)}`;
   })());
 </script>

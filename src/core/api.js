@@ -1,6 +1,7 @@
 // API abierta y webhooks con cola offline persistente (IndexedDB) + reintentos exponenciales
 
 import { getDB, guardar, eliminar, listar } from './db.js';
+import { validateWebhookUrl } from './util.js';
 
 const WEBHOOKS_KEY = 'webhooks_cfg';
 const MAX_RETRIES = 5;
@@ -32,6 +33,8 @@ export function setWebhooks(list) {
 
 /** Encola un webhook en IndexedDB para envio garantizado */
 export async function enqueueWebhook(url, evento, payload) {
+  const validation = validateWebhookUrl(url);
+  if (!validation.ok) return { queued: false, reason: validation.error };
   if (isDuplicate(url, evento)) return { queued: false, reason: 'duplicate' };
   const db = getDB();
   const item = {
@@ -51,6 +54,8 @@ export async function enqueueWebhook(url, evento, payload) {
 
 /** Envia un webhook directo (para uso manual/testing). No encola. */
 export async function triggerWebhook(url, evento, payload) {
+  const validation = validateWebhookUrl(url);
+  if (!validation.ok) return { ok: false, error: validation.error };
   const body = JSON.stringify({ evento, payload, timestamp: new Date().toISOString() });
   try {
     const res = await fetch(url, {

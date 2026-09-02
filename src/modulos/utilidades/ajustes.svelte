@@ -14,7 +14,7 @@
   import { getDB, listar, guardar, limpiar, leerConfig } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
   import { ui, alternarTema, avisar, confirmar, preguntar, pedirPIN } from '../../core/state.svelte.js';
-  import { n, m, fmt, clean, nowLocal } from '../../core/util.js';
+  import { n, m, fmt, clean, nowLocal, validateWebhookUrl, escapeHtml } from '../../core/util.js';
   import { getWebhooks, setWebhooks, triggerAll } from '../../core/api.js';
   import { BluetoothSync } from '../../core/bluetooth.js';
   import Icono from '../../core/Icono.svelte';
@@ -96,6 +96,14 @@
       try {
         const text = await file.text();
         const datos = JSON.parse(text);
+        if (!datos || typeof datos !== 'object' || Array.isArray(datos)) {
+          throw new Error('El archivo no contiene un objeto JSON valido');
+        }
+        const tablasValidas = new Set(tablas);
+        for (const t of Object.keys(datos)) {
+          if (!tablasValidas.has(t)) throw new Error(`Tabla desconocida en backup: "${t}"`);
+          if (!Array.isArray(datos[t])) throw new Error(`La tabla "${t}" debe ser un array`);
+        }
         const db = getDB();
         await db.transaction('rw', db.tables, async () => {
           for (const t of Object.keys(datos)) {
@@ -114,8 +122,12 @@
   }
 
   async function borrarTodo() {
+    const pinOk = await pedirPIN();
+    if (!pinOk) return;
     const ok = await confirmar('Borrar todo', 'Eliminar TODOS los datos? No se puede deshacer.');
     if (!ok) return;
+    const confirmText = await preguntar('Confirmacion final', 'Escribe BORRAR para eliminar todos los datos');
+    if (confirmText !== 'BORRAR') return avisar('Cancelado', 'bad');
     const db = getDB();
     await db.transaction('rw', db.tables, async () => {
       for (const t of db.tables) await t.clear();
@@ -126,8 +138,11 @@
   }
 
   function agregarWebhook() {
-    if (!whUrl.trim()) return;
-    webhooks = [...webhooks, { url: whUrl.trim(), activo: true }];
+    const url = whUrl.trim();
+    if (!url) return;
+    const validation = validateWebhookUrl(url);
+    if (!validation.ok) return avisar(validation.error, 'bad');
+    webhooks = [...webhooks, { url, activo: true }];
     setWebhooks(webhooks);
     whUrl = '';
     avisar('Webhook agregado');
