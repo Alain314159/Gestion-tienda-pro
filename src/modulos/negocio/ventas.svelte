@@ -5,7 +5,7 @@
     icono: 'cart',
     grupo: 'negocio',
     orden: 1,
-    tablas: { ventas: '++id, fecha, anulada', lotes: '++id, productoId, fecha, costo, compraId' }
+    tablas: { ventas: '++id, fecha, anulada', lotes: '++id, productoId, fecha, costo, compraId' },
   };
 </script>
 
@@ -13,7 +13,14 @@
   import { onMount } from 'svelte';
   import { listar } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
-  import { avisar, confirmar, preguntar, pedirPIN } from '../../core/state.svelte.js';
+  import {
+    avisar,
+    confirmar,
+    preguntar,
+    pedirPIN,
+    marcarCambiosSinGuardar,
+    limpiarCambiosSinGuardar,
+  } from '../../core/state.svelte.js';
   import { n, m, q, fmt, fmtCant, fmtFH, stockProducto, calcFIFO } from '../../core/util.js';
   import { VentaService } from '../../services/VentaService.js';
   import { obtenerPeriodosCerrados } from '../../core/periodos.js';
@@ -34,41 +41,71 @@
   let busqHistDebounced = $state('');
   let paginaHist = $state(1);
   const itemsPorPagina = 20;
-  $effect(() => { const t = setTimeout(() => busqDebounced = busq, 200); return () => clearTimeout(t); });
-  $effect(() => { const t = setTimeout(() => busqHistDebounced = busqHist, 200); return () => clearTimeout(t); });
-  $effect(() => { busqHistDebounced; paginaHist = 1; });
+  $effect(() => {
+    const t = setTimeout(() => (busqDebounced = busq), 200);
+    return () => clearTimeout(t);
+  });
+  $effect(() => {
+    const t = setTimeout(() => (busqHistDebounced = busqHist), 200);
+    return () => clearTimeout(t);
+  });
+  $effect(() => {
+    busqHistDebounced;
+    paginaHist = 1;
+  });
+  $effect(() => {
+    if (carrito.length > 0) marcarCambiosSinGuardar();
+    else limpiarCambiosSinGuardar();
+  });
 
-  let prodsActivos = $derived(productos.filter(p => !p.archivado));
-  let resultados = $derived((() => {
-    const qry = busqDebounced.toLowerCase().trim();
-    const base = qry ? prodsActivos.filter(p => p.nombre.toLowerCase().includes(qry) || (p.codigo || '').toLowerCase().includes(qry)) : prodsActivos;
-    return base.filter(p => stockProducto(lotes, p.id) > 0).slice(0, 12);
-  })());
-  let ventasFiltradas = $derived((() => {
-    let v = ventas.slice().sort((a, b) => { if (a.anulada !== b.anulada) return a.anulada ? 1 : -1; return new Date(b.fecha) - new Date(a.fecha); });
-    const qry = busqHistDebounced.toLowerCase().trim();
-    if (qry) v = v.filter(x => x.items.some(i => i.nombre.toLowerCase().includes(qry)));
-    return v;
-  })());
-  let ventasPaginadas = $derived(ventasFiltradas.slice((paginaHist - 1) * itemsPorPagina, paginaHist * itemsPorPagina));
-  let totalPaginas = $derived(Math.max(1, Math.ceil(ventasFiltradas.length / itemsPorPagina)));
-  let totalCarrito = $derived(m(carrito.reduce((s, it) => s + (n(it.precio) * n(it.cant)), 0)));
-  let gananciaCarrito = $derived(m((() => {
-    const cache = new Map();
-    return carrito.reduce((s, it) => {
-      const key = it.productoId + '|' + n(it.cant);
-      let costoTotal;
-      if (cache.has(key)) {
-        costoTotal = cache.get(key);
-      } else {
-        const f = calcFIFO(lotes, it.productoId, n(it.cant));
-        if (f.error) return s;
-        costoTotal = f.costoTotal;
-        cache.set(key, costoTotal);
-      }
-      return s + ((n(it.precio) * n(it.cant)) - costoTotal);
-    }, 0);
-  })()));
+  const prodsActivos = $derived(productos.filter((p) => !p.archivado));
+  const resultados = $derived(
+    (() => {
+      const qry = busqDebounced.toLowerCase().trim();
+      const base = qry
+        ? prodsActivos.filter(
+            (p) => p.nombre.toLowerCase().includes(qry) || (p.codigo || '').toLowerCase().includes(qry)
+          )
+        : prodsActivos;
+      return base.filter((p) => stockProducto(lotes, p.id) > 0).slice(0, 12);
+    })()
+  );
+  const ventasFiltradas = $derived(
+    (() => {
+      let v = ventas.slice().sort((a, b) => {
+        if (a.anulada !== b.anulada) return a.anulada ? 1 : -1;
+        return new Date(b.fecha) - new Date(a.fecha);
+      });
+      const qry = busqHistDebounced.toLowerCase().trim();
+      if (qry) v = v.filter((x) => x.items.some((i) => i.nombre.toLowerCase().includes(qry)));
+      return v;
+    })()
+  );
+  const ventasPaginadas = $derived(
+    ventasFiltradas.slice((paginaHist - 1) * itemsPorPagina, paginaHist * itemsPorPagina)
+  );
+  const totalPaginas = $derived(Math.max(1, Math.ceil(ventasFiltradas.length / itemsPorPagina)));
+  const totalCarrito = $derived(m(carrito.reduce((s, it) => s + n(it.precio) * n(it.cant), 0)));
+  const gananciaCarrito = $derived(
+    m(
+      (() => {
+        const cache = new Map();
+        return carrito.reduce((s, it) => {
+          const key = it.productoId + '|' + n(it.cant);
+          let costoTotal;
+          if (cache.has(key)) {
+            costoTotal = cache.get(key);
+          } else {
+            const f = calcFIFO(lotes, it.productoId, n(it.cant));
+            if (f.error) return s;
+            costoTotal = f.costoTotal;
+            cache.set(key, costoTotal);
+          }
+          return s + (n(it.precio) * n(it.cant) - costoTotal);
+        }, 0);
+      })()
+    )
+  );
 
   async function recargar() {
     [productos, lotes, ventas] = await Promise.all([listar('productos'), listar('lotes'), listar('ventas')]);
@@ -77,7 +114,7 @@
 
   function esCerrado(fechaIso) {
     const f = new Date(fechaIso);
-    return periodosCerrados.some(p => new Date(p.inicio) <= f && f <= new Date(p.fin));
+    return periodosCerrados.some((p) => new Date(p.inicio) <= f && f <= new Date(p.fin));
   }
 
   onMount(() => {
@@ -89,7 +126,7 @@
   function agregar(p) {
     const s = stockProducto(lotes, p.id);
     if (s <= 0) return avisar('Sin stock', 'bad');
-    const ex = carrito.find(i => i.productoId === p.id);
+    const ex = carrito.find((i) => i.productoId === p.id);
     if (ex) {
       if (n(ex.cant) < s) ex.cant = String(n(ex.cant) + 1);
       else return avisar('Stock maximo', 'warn');
@@ -103,7 +140,7 @@
   function cambiarCant(it, dir) {
     let val = n(it.cant) + dir;
     if (it.unidad && ['kg', 'lb', 'gr', 'litro', 'm'].includes(it.unidad)) {
-      val = n(it.cant) + (dir * 0.5);
+      val = n(it.cant) + dir * 0.5;
     }
     const max = stockProducto(lotes, it.productoId);
     if (val > max) return avisar('Stock maximo alcanzado', 'warn');
@@ -114,7 +151,10 @@
   function validarCant(it) {
     let val = n(it.cant);
     const max = stockProducto(lotes, it.productoId);
-    if (val > max) { val = max; avisar('Cantidad ajustada al stock disponible', 'warn'); }
+    if (val > max) {
+      val = max;
+      avisar('Cantidad ajustada al stock disponible', 'warn');
+    }
     if (val < 0) val = 0;
     it.cant = String(val);
   }
@@ -124,7 +164,7 @@
   }
 
   function iniciarCobro() {
-    const inv = carrito.filter(it => n(it.cant) <= 0);
+    const inv = carrito.filter((it) => n(it.cant) <= 0);
     if (inv.length) return avisar('Todas las cantidades deben ser > 0', 'bad');
     cobro = { activo: true, total: totalCarrito, recibido: '', vuelto: 0 };
   }
@@ -171,21 +211,54 @@
     </div>
     <div class="relative mb-3">
       <Icono nombre="search" size={18} class="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-      <input class="w-full pl-10 pr-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]" type="text" placeholder="Buscar producto por nombre o codigo..." bind:value={busq} onfocus={() => focusBusq = true} />
+      <input
+        class="w-full pl-10 pr-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]"
+        type="text"
+        placeholder="Buscar producto por nombre o codigo..."
+        bind:value={busq}
+        onfocus={() => (focusBusq = true)}
+      />
     </div>
     {#if focusBusq}
-      <div class="border border-border rounded-[var(--radius-md)] bg-card max-h-64 overflow-y-auto mb-3 shadow-[var(--color-shadow)]">
-        <div class="flex justify-between items-center px-3 py-2.5 text-xs font-extrabold text-muted border-b border-border sticky top-0 bg-card">
+      <!-- Backdrop para cerrar dropdown al tocar fuera -->
+      <button
+        class="fixed inset-0 z-[5] bg-transparent border-none cursor-default"
+        onclick={() => {
+          focusBusq = false;
+        }}
+        ontouchstart={() => {
+          focusBusq = false;
+        }}
+        aria-hidden="true"
+        tabindex="-1"
+      ></button>
+      <div
+        class="border border-border rounded-[var(--radius-md)] bg-card max-h-64 overflow-y-auto mb-3 shadow-[var(--color-shadow)] relative z-10"
+      >
+        <div
+          class="flex justify-between items-center px-3 py-2.5 text-xs font-extrabold text-muted border-b border-border sticky top-0 bg-card"
+        >
           <span>{resultados.length} resultado(s)</span>
-          <button class="bg-transparent border-none text-danger font-extrabold text-lg cursor-pointer leading-none" onclick={() => { focusBusq = false; busq = ''; }}>×</button>
+          <button
+            class="bg-transparent border-none text-danger font-extrabold text-lg cursor-pointer leading-none"
+            onclick={() => {
+              focusBusq = false;
+              busq = '';
+            }}>×</button
+          >
         </div>
         {#if resultados.length === 0}
           <div class="text-center text-muted py-5 text-sm">Sin coincidencias (o sin stock)</div>
         {:else}
           {#each resultados as p}
-            <button class="w-full flex justify-between items-center px-3.5 py-3 text-left border-b border-border last:border-0 text-sm cursor-pointer hover:bg-background active:bg-background" onclick={() => agregar(p)}>
+            <button
+              class="w-full flex justify-between items-center px-3.5 py-3 text-left border-b border-border last:border-0 text-sm cursor-pointer hover:bg-background active:bg-background"
+              onclick={() => agregar(p)}
+            >
               <span>{p.nombre}</span>
-              <span class="text-muted text-xs whitespace-nowrap">Stock {fmtCant(stockProducto(lotes, p.id))} {p.unidad || ''} · {fmt(p.precio)}</span>
+              <span class="text-muted text-xs whitespace-nowrap"
+                >Stock {fmtCant(stockProducto(lotes, p.id))} {p.unidad || ''} · {fmt(p.precio)}</span
+              >
             </button>
           {/each}
         {/if}
@@ -198,22 +271,49 @@
           <div class="bg-background rounded-[var(--radius-md)] p-3.5 mb-3">
             <div class="flex justify-between items-start gap-2">
               <div class="font-bold text-sm truncate flex-1">{it.nombre}</div>
-              <button class="w-8 h-8 rounded-full bg-danger text-white border-none flex items-center justify-center cursor-pointer flex-shrink-0" aria-label="Eliminar del carrito" onclick={() => carrito.splice(i, 1)}><Icono nombre="x" size={14} color="#fff" /></button>
+              <button
+                class="w-11 h-11 rounded-full bg-danger text-white border-none flex items-center justify-center cursor-pointer flex-shrink-0 active:scale-[0.92] transition-transform"
+                aria-label="Eliminar del carrito"
+                onclick={() => carrito.splice(i, 1)}><Icono nombre="x" size={16} color="#fff" /></button
+              >
             </div>
             <div class="flex items-center gap-3 flex-wrap mt-3">
               <span class="text-xs text-muted w-10">Cant</span>
               <div class="flex items-center bg-card border border-border rounded-lg overflow-hidden">
-                <button class="w-9 h-9 bg-background border-none text-primary font-extrabold text-lg cursor-pointer flex items-center justify-center" aria-label="Disminuir cantidad" onclick={() => cambiarCant(it, -1)}><Icono nombre="minus" size={14} /></button>
-                <input class="w-16 text-center border-none bg-transparent text-sm py-1" type="text" bind:value={it.cant} onblur={() => validarCant(it)} />
-                <button class="w-9 h-9 bg-background border-none text-primary font-extrabold text-lg cursor-pointer flex items-center justify-center" onclick={() => cambiarCant(it, 1)}><Icono nombre="plus" size={14} /></button>
+                <button
+                  class="w-11 h-11 bg-background border-none text-primary font-extrabold text-lg cursor-pointer flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation"
+                  aria-label="Disminuir cantidad"
+                  onclick={() => cambiarCant(it, -1)}><Icono nombre="minus" size={16} /></button
+                >
+                <input
+                  class="w-16 text-center border-none bg-transparent text-sm py-1"
+                  type="text"
+                  bind:value={it.cant}
+                  onblur={() => validarCant(it)}
+                />
+                <button
+                  class="w-11 h-11 bg-background border-none text-primary font-extrabold text-lg cursor-pointer flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation"
+                  aria-label="Aumentar cantidad"
+                  onclick={() => cambiarCant(it, 1)}><Icono nombre="plus" size={16} /></button
+                >
               </div>
               <span class="text-xs text-muted ml-1">@</span>
-              <input class="w-20 text-center border border-border rounded-lg bg-card text-sm py-1.5 px-1" type="number" step="0.01" bind:value={it.precio} />
+              <input
+                class="w-20 text-center border border-border rounded-lg bg-card text-sm py-1.5 px-1"
+                type="number"
+                step="0.01"
+                bind:value={it.precio}
+              />
             </div>
-            <div class="text-xs text-muted mt-2">{fmt(it.precio)} × {fmtCant(it.cant)} {it.unidad || ''} = <b class="text-primary">{fmt(subTotal(it))}</b></div>
+            <div class="text-xs text-muted mt-2">
+              {fmt(it.precio)} × {fmtCant(it.cant)}
+              {it.unidad || ''} = <b class="text-primary">{fmt(subTotal(it))}</b>
+            </div>
           </div>
         {/each}
-        <div class="flex justify-between items-center bg-success/10 border border-success rounded-[var(--radius-md)] p-3.5 my-4 font-extrabold text-success">
+        <div
+          class="flex justify-between items-center bg-success/10 border border-success rounded-[var(--radius-md)] p-3.5 my-4 font-extrabold text-success"
+        >
           <span>TOTAL</span>
           <span>{fmt(totalCarrito)}</span>
         </div>
@@ -221,11 +321,18 @@
           <span>Ganancia estimada</span>
           <span>{fmt(gananciaCarrito)}</span>
         </div>
-        <button class="w-full py-3.5 rounded-[var(--radius-md)] bg-success text-white font-extrabold text-sm mb-3 active:scale-[0.97] transition-transform disabled:opacity-50" onclick={iniciarCobro} disabled={procesando}>
+        <button
+          class="w-full py-3.5 rounded-[var(--radius-md)] bg-success text-white font-extrabold text-sm mb-3 active:scale-[0.97] transition-transform disabled:opacity-50"
+          onclick={iniciarCobro}
+          disabled={procesando}
+        >
           <Icono nombre="check" size={16} color="#fff" />
           {procesando ? 'Procesando...' : 'Cobrar Venta'}
         </button>
-        <button class="w-full py-3.5 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={() => carrito = []}>
+        <button
+          class="w-full py-3.5 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-extrabold text-sm active:scale-[0.97] transition-transform"
+          onclick={() => (carrito = [])}
+        >
           <Icono nombre="trash" size={14} />
           Limpiar carrito
         </button>
@@ -240,30 +347,62 @@
       <Icono nombre="history" size={18} />
       Historial de Ventas
     </div>
-    <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3" type="text" placeholder="Buscar en historial..." bind:value={busqHist} />
+    <input
+      class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3"
+      type="text"
+      placeholder="Buscar en historial..."
+      bind:value={busqHist}
+    />
     {#if ventasPaginadas.length === 0}
       <div class="text-center text-muted py-6 text-sm">Sin ventas</div>
     {:else}
       {#each ventasPaginadas as v}
-        <div class="flex justify-between items-center gap-2 py-2.5 border-b border-border {v.anulada ? 'opacity-50' : ''}">
+        <div
+          class="flex justify-between items-center gap-2 py-2.5 border-b border-border {v.anulada ? 'opacity-50' : ''}"
+        >
           <div class="min-w-0 flex-1">
-            <div class="font-bold text-sm {v.anulada ? 'line-through' : ''}">{v.items.map(x => x.nombre + ' ×' + fmtCant(x.cantidad) + (x.unidad ? (' ' + x.unidad) : '')).join(', ')}</div>
-            <div class="text-xs text-muted">{fmtFH(v.fecha)} · <b class="text-primary">{fmt(v.total)}</b> · <span class="text-success">+{fmt(v.ganancia)}</span></div>
+            <div class="font-bold text-sm {v.anulada ? 'line-through' : ''}">
+              {v.items.map((x) => x.nombre + ' ×' + fmtCant(x.cantidad) + (x.unidad ? ' ' + x.unidad : '')).join(', ')}
+            </div>
+            <div class="text-xs text-muted">
+              {fmtFH(v.fecha)} · <b class="text-primary">{fmt(v.total)}</b> ·
+              <span class="text-success">+{fmt(v.ganancia)}</span>
+            </div>
           </div>
           {#if !v.anulada && !esCerrado(v.fecha)}
-            <button class="bg-transparent border-none text-danger text-xs underline cursor-pointer" onclick={() => anularVenta(v)}>Anular</button>
+            <button
+              class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-danger/10 text-danger text-xs font-extrabold border-none cursor-pointer active:scale-[0.92] transition-transform"
+              aria-label="Anular venta"
+              onclick={() => anularVenta(v)}
+            >
+              <Icono nombre="x" size={12} color="#dc2626" />
+              Anular
+            </button>
           {:else if esCerrado(v.fecha)}
-            <span class="inline-block px-2 py-0.5 rounded-full text-[0.6rem] font-extrabold text-white bg-warning" title="Periodo cerrado">🔒 CERRADO</span>
+            <span
+              class="inline-block px-2 py-0.5 rounded-full text-[0.6rem] font-extrabold text-white bg-warning"
+              title="Periodo cerrado">🔒 CERRADO</span
+            >
           {:else}
-            <span class="inline-block px-2 py-0.5 rounded-full text-[0.6rem] font-extrabold text-white bg-muted">ANULADA</span>
+            <span class="inline-block px-2 py-0.5 rounded-full text-[0.6rem] font-extrabold text-white bg-muted"
+              >ANULADA</span
+            >
           {/if}
         </div>
       {/each}
       {#if totalPaginas > 1}
         <div class="flex justify-center items-center gap-2 mt-3 text-sm">
-          <button class="px-3 py-1 rounded-md border border-border bg-card disabled:opacity-30" onclick={() => paginaHist--} disabled={paginaHist <= 1}>←</button>
+          <button
+            class="px-3 py-1 rounded-md border border-border bg-card disabled:opacity-30"
+            onclick={() => paginaHist--}
+            disabled={paginaHist <= 1}>←</button
+          >
           <span class="text-muted">{paginaHist} / {totalPaginas}</span>
-          <button class="px-3 py-1 rounded-md border border-border bg-card disabled:opacity-30" onclick={() => paginaHist++} disabled={paginaHist >= totalPaginas}>→</button>
+          <button
+            class="px-3 py-1 rounded-md border border-border bg-card disabled:opacity-30"
+            onclick={() => paginaHist++}
+            disabled={paginaHist >= totalPaginas}>→</button
+          >
         </div>
       {/if}
     {/if}
@@ -272,23 +411,61 @@
 
 <!-- Modal Cobro -->
 {#if cobro.activo}
-  <div class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 no-print" role="dialog">
-    <div class="bg-card rounded-[var(--radius-lg)] p-5 w-full max-w-sm shadow-[0_10px_40px_rgba(0,0,0,0.3)] animate-pop">
+  <div
+    class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 no-print"
+    role="dialog"
+    tabindex="-1"
+    aria-modal="true"
+    aria-labelledby="cobro-title"
+    onkeydown={(e) => e.key === 'Escape' && (cobro.activo = false)}
+  >
+    <button
+      class="absolute inset-0 w-full h-full bg-transparent border-none cursor-default"
+      onclick={() => (cobro.activo = false)}
+      aria-label="Cerrar dialogo"
+    ></button>
+    <div
+      class="bg-card rounded-[var(--radius-lg)] p-5 w-full max-w-sm shadow-[0_10px_40px_rgba(0,0,0,0.3)] animate-pop relative z-10"
+      role="document"
+    >
       <div class="flex items-center gap-2 font-extrabold text-primary text-lg mb-3">
         <Icono nombre="wallet" size={20} />
         Cobrar Venta
       </div>
       <div class="text-center text-xl font-extrabold my-2">Total a Pagar: {fmt(cobro.total)}</div>
-      <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="number" inputmode="decimal" step="0.01" placeholder="Efectivo recibido (opcional)" bind:value={cobro.recibido} oninput={calcVuelto} />
-      <button class="w-full py-2 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-bold text-sm mb-3" onclick={() => { cobro.recibido = cobro.total.toFixed(2); calcVuelto(); }}>Pagar Exacto</button>
+      <input
+        class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2"
+        type="number"
+        inputmode="decimal"
+        step="0.01"
+        placeholder="Efectivo recibido (opcional)"
+        bind:value={cobro.recibido}
+        oninput={calcVuelto}
+      />
+      <button
+        class="w-full py-2 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-bold text-sm mb-3"
+        onclick={() => {
+          cobro.recibido = cobro.total.toFixed(2);
+          calcVuelto();
+        }}>Pagar Exacto</button
+      >
       {#if cobro.recibido && cobro.vuelto >= 0}
-        <div class="text-center text-2xl font-extrabold text-success my-2 p-4 bg-success/10 rounded-[var(--radius-md)]">Vuelto: {fmt(cobro.vuelto)}</div>
+        <div class="text-center text-2xl font-extrabold text-success my-2 p-4 bg-success/10 rounded-[var(--radius-md)]">
+          Vuelto: {fmt(cobro.vuelto)}
+        </div>
       {/if}
-      <button class="w-full py-3 rounded-[var(--radius-md)] bg-success text-white font-extrabold text-sm mb-2 active:scale-[0.97] transition-transform disabled:opacity-50" onclick={procesarVenta} disabled={procesando}>
+      <button
+        class="w-full py-3 rounded-[var(--radius-md)] bg-success text-white font-extrabold text-sm mb-2 active:scale-[0.97] transition-transform disabled:opacity-50"
+        onclick={procesarVenta}
+        disabled={procesando}
+      >
         <Icono nombre="check" size={16} color="#fff" />
         {procesando ? 'Procesando...' : 'Confirmar Pago'}
       </button>
-      <button class="w-full py-3 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={() => cobro.activo = false}>Cancelar</button>
+      <button
+        class="w-full py-3 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-extrabold text-sm active:scale-[0.97] transition-transform"
+        onclick={() => (cobro.activo = false)}>Cancelar</button
+      >
     </div>
   </div>
 {/if}

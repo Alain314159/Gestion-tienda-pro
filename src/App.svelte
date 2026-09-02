@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { ui, alternarTema, cerrarConfirm, cerrarPrompt } from './core/state.svelte.js';
+  import { ui, alternarTema, cerrarConfirm, cerrarPrompt, hayCambiosSinGuardar } from './core/state.svelte.js';
   import { cargarModulos, navMods, modulos, cargarModuloLazy } from './core/registro.js';
   import { checkNotificacionesGlobales } from './core/notificaciones.js';
   import Icono from './core/Icono.svelte';
@@ -30,7 +30,21 @@
       }
     };
     window.addEventListener('popstate', handlePopstate);
-    return () => window.removeEventListener('popstate', handlePopstate);
+
+    // Advertir antes de recargar si hay cambios sin guardar
+    const handleBeforeUnload = (e) => {
+      if (hayCambiosSinGuardar()) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopstate);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   });
 
   async function irA(mod) {

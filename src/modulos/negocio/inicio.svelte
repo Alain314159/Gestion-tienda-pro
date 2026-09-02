@@ -5,7 +5,7 @@
     icono: 'home',
     grupo: 'negocio',
     orden: 0,
-    tablas: {}
+    tablas: {},
   };
 </script>
 
@@ -15,8 +15,19 @@
   import { bus } from '../../core/bus.js';
   import { ui, avisar } from '../../core/state.svelte.js';
   import {
-    n, m, fmt, fmtCant, fmtFecha, fmtFH, valorInventario, stockProducto,
-    datosChart6Meses, topRentables, saldoCaja, badgeStock, nowLocal
+    n,
+    m,
+    fmt,
+    fmtCant,
+    fmtFecha,
+    fmtFH,
+    valorInventario,
+    stockProducto,
+    datosChart6Meses,
+    topRentables,
+    saldoCaja,
+    badgeStock,
+    nowLocal,
   } from '../../core/util.js';
   import Icono from '../../core/Icono.svelte';
 
@@ -33,29 +44,43 @@
   let cfg = $state({});
   let chartCanvas = $state(null);
 
-  let periodoInicio = $derived(cfg.periodoInicio || nowLocal().iso);
-  let ventasPeriodoArr = $derived(ventas.filter(v => !v.anulada && new Date(v.fecha) >= new Date(periodoInicio)));
-  let comprasPeriodoArr = $derived(compras.filter(c => !c.anulada && new Date(c.fecha) >= new Date(periodoInicio)));
-  let ventasPeriodo = $derived(m(ventasPeriodoArr.reduce((s, v) => s + n(v.total), 0)));
-  let comprasPeriodo = $derived(m(comprasPeriodoArr.reduce((s, c) => s + n(c.total), 0)));
-  let gananciaBruta = $derived(m(ventasPeriodoArr.reduce((s, v) => s + n(v.ganancia), 0)));
-  let gastosOp = $derived(m(ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= new Date(periodoInicio)).reduce((s, a) => s + n(a.costoPerdida), 0)));
-  let gananciaNeta = $derived(m(gananciaBruta - gastosOp));
-  let margen = $derived(ventasPeriodo > 0 ? ((gananciaNeta / ventasPeriodo) * 100).toFixed(1) : '0.0');
-  let saldo = $derived(saldoCaja({ cfg, capital, ventas, compras, retiros, movCaja }));
-  let valInv = $derived(valorInventario(lotes));
-  let prodsActivos = $derived(productos.filter(p => !p.archivado));
-  let agotados = $derived(prodsActivos.filter(p => stockProducto(lotes, p.id) === 0));
-  let bajoStock = $derived(prodsActivos.filter(p => { const s = stockProducto(lotes, p.id); return s > 0 && s <= n(p.stockMinimo); }));
-  let topRent = $derived(topRentables(ventas));
-  let chartData = $derived(datosChart6Meses(ventas));
-  let ultimaAct = $derived((() => {
-    const v = ventas.filter(x => !x.anulada).sort((a, b) => new Date(b.fecha) - new Date(a.fecha))[0];
-    const c = cierres.sort((a, b) => new Date(b.fechaCierre) - new Date(a.fechaCierre))[0];
-    if (!v && !c) return 'Sin actividad';
-    if (v && (!c || new Date(v.fecha) > new Date(c.fechaCierre))) return 'Venta ' + fmt(v.total) + ' el ' + fmtFH(v.fecha);
-    return 'Cierre ' + (c?.periodo || '');
-  })());
+  const periodoInicio = $derived(cfg.periodoInicio || nowLocal().iso);
+  const ventasPeriodoArr = $derived(ventas.filter((v) => !v.anulada && new Date(v.fecha) >= new Date(periodoInicio)));
+  const comprasPeriodoArr = $derived(compras.filter((c) => !c.anulada && new Date(c.fecha) >= new Date(periodoInicio)));
+  const ventasPeriodo = $derived(m(ventasPeriodoArr.reduce((s, v) => s + n(v.total), 0)));
+  const comprasPeriodo = $derived(m(comprasPeriodoArr.reduce((s, c) => s + n(c.total), 0)));
+  const gananciaBruta = $derived(m(ventasPeriodoArr.reduce((s, v) => s + n(v.ganancia), 0)));
+  const gastosOp = $derived(
+    m(
+      ajustes
+        .filter((a) => a.cantidad < 0 && new Date(a.fecha) >= new Date(periodoInicio))
+        .reduce((s, a) => s + n(a.costoPerdida), 0)
+    )
+  );
+  const gananciaNeta = $derived(m(gananciaBruta - gastosOp));
+  const margen = $derived(ventasPeriodo > 0 ? ((gananciaNeta / ventasPeriodo) * 100).toFixed(1) : '0.0');
+  const saldo = $derived(saldoCaja({ cfg, capital, ventas, compras, retiros, movCaja }));
+  const valInv = $derived(valorInventario(lotes));
+  const prodsActivos = $derived(productos.filter((p) => !p.archivado));
+  const agotados = $derived(prodsActivos.filter((p) => stockProducto(lotes, p.id) === 0));
+  const bajoStock = $derived(
+    prodsActivos.filter((p) => {
+      const s = stockProducto(lotes, p.id);
+      return s > 0 && s <= n(p.stockMinimo);
+    })
+  );
+  const topRent = $derived(topRentables(ventas));
+  const chartData = $derived(datosChart6Meses(ventas));
+  const ultimaAct = $derived(
+    (() => {
+      const v = ventas.filter((x) => !x.anulada).sort((a, b) => new Date(b.fecha) - new Date(a.fecha))[0];
+      const c = cierres.sort((a, b) => new Date(b.fechaCierre) - new Date(a.fechaCierre))[0];
+      if (!v && !c) return 'Sin actividad';
+      if (v && (!c || new Date(v.fecha) > new Date(c.fechaCierre)))
+        return 'Venta ' + fmt(v.total) + ' el ' + fmtFH(v.fecha);
+      return 'Cierre ' + (c?.periodo || '');
+    })()
+  );
 
   async function recargar() {
     // Productos y lotes: tablas pequenas, cargar completas
@@ -70,25 +95,44 @@
       listarPaginado('cierres', 0, 20),
       listarPaginado('capital', 0, 20),
       listarPaginado('retiros', 0, 50),
-      listarPaginado('arqueos', 0, 20)
+      listarPaginado('arqueos', 0, 20),
     ]);
-    cfg = await leerConfig('cfg') || { moneda: '$', nombre: 'Tienda Pro', periodoInicio: nowLocal().iso, capitalInicial: 0 };
+    cfg = (await leerConfig('cfg')) || {
+      moneda: '$',
+      nombre: 'Tienda Pro',
+      periodoInicio: nowLocal().iso,
+      capitalInicial: 0,
+    };
   }
 
   onMount(() => {
     recargar();
     const off = bus.on('recargar', recargar);
-    return () => off();
+
+    // ResizeObserver para redibujar canvas al cambiar tamaño
+    let ro;
+    if (chartCanvas && 'ResizeObserver' in window) {
+      ro = new ResizeObserver(() => {
+        // Forzar re-render del $effect del canvas
+        chartCanvas.width = chartCanvas.offsetWidth;
+      });
+      ro.observe(chartCanvas.parentElement);
+    }
+
+    return () => {
+      off();
+      if (ro) ro.disconnect();
+    };
   });
 
   $effect(() => {
     if (!chartCanvas || chartData.length === 0) return;
     const ctx = chartCanvas.getContext('2d');
-    const w = chartCanvas.width = chartCanvas.offsetWidth;
-    const h = chartCanvas.height = 200;
+    const w = (chartCanvas.width = chartCanvas.offsetWidth);
+    const h = (chartCanvas.height = 200);
     ctx.clearRect(0, 0, w, h);
 
-    const max = Math.max(...chartData.map(d => Math.max(d.v, d.g)), 1);
+    const max = Math.max(...chartData.map((d) => Math.max(d.v, d.g)), 1);
     const barW = (w / chartData.length) * 0.3;
     const gap = (w / chartData.length) * 0.1;
     const step = w / chartData.length;
@@ -122,7 +166,9 @@
     </div>
   {/if}
 
-  <div class="bg-gradient-to-br from-primary to-[#1e3a8a] text-white rounded-[var(--radius-lg)] p-5 text-center mb-3 shadow-[var(--color-shadow)]">
+  <div
+    class="bg-gradient-to-br from-primary to-[#1e3a8a] text-white rounded-[var(--radius-lg)] p-5 text-center mb-3 shadow-[var(--color-shadow)]"
+  >
     <div class="flex items-center justify-center gap-1.5 text-xs opacity-90 mb-1">
       <Icono nombre="wallet" size={14} color="#fff" />
       Efectivo en Caja

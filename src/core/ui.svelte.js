@@ -6,11 +6,13 @@ export const ui = $state({
   prompt: null,
   offline: !navigator.onLine,
   activo: null,
-  masAbierto: false
+  masAbierto: false,
 });
 
 // Verificar estado de conexion inmediatamente (corrige valor stale al inicio)
-setTimeout(() => { ui.offline = !navigator.onLine; }, 0);
+setTimeout(() => {
+  ui.offline = !navigator.onLine;
+}, 0);
 
 /** Aplica tema al documento */
 export function aplicarTema() {
@@ -27,16 +29,19 @@ export function alternarTema() {
 
 let toastTimeout;
 
-/** Muestra toast */
+/** Muestra toast. Errores y warnings duran 5s, info/success 3s */
 export function avisar(msg, tipo = 'info') {
   clearTimeout(toastTimeout);
   ui.toast = { msg, tipo };
-  toastTimeout = setTimeout(() => { ui.toast = null; }, 2600);
+  const duracion = tipo === 'bad' || tipo === 'warn' ? 5000 : 3000;
+  toastTimeout = setTimeout(() => {
+    ui.toast = null;
+  }, duracion);
 }
 
 /** Confirmacion modal */
 export function confirmar(titulo, msg) {
-  return new Promise(res => {
+  return new Promise((res) => {
     ui.confirm = { titulo, msg, res };
   });
 }
@@ -48,7 +53,7 @@ export function cerrarConfirm(ok) {
 
 /** Prompt modal */
 export function preguntar(titulo, msg, inicial = '') {
-  return new Promise(res => {
+  return new Promise((res) => {
     ui.prompt = { titulo, msg, valor: inicial, res };
   });
 }
@@ -56,4 +61,19 @@ export function preguntar(titulo, msg, inicial = '') {
 export function cerrarPrompt(ok) {
   if (ui.prompt?.res) ui.prompt.res(ok ? ui.prompt.valor : null);
   ui.prompt = null;
+}
+
+/** Estado para detectar cambios sin guardar */
+const _cambiosSinGuardar = $state({ valor: false });
+
+export function marcarCambiosSinGuardar() {
+  _cambiosSinGuardar.valor = true;
+}
+
+export function limpiarCambiosSinGuardar() {
+  _cambiosSinGuardar.valor = false;
+}
+
+export function hayCambiosSinGuardar() {
+  return _cambiosSinGuardar.valor;
 }

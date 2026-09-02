@@ -3,9 +3,17 @@
 
 // UI: tema, toast, confirm, prompt, offline
 export {
-  ui, aplicarTema, alternarTema,
-  avisar, confirmar, cerrarConfirm,
-  preguntar, cerrarPrompt
+  ui,
+  aplicarTema,
+  alternarTema,
+  avisar,
+  confirmar,
+  cerrarConfirm,
+  preguntar,
+  cerrarPrompt,
+  marcarCambiosSinGuardar,
+  limpiarCambiosSinGuardar,
+  hayCambiosSinGuardar,
 } from './ui.svelte.js';
 
 // Auth: PIN, PBKDF2, rate limiting, config
