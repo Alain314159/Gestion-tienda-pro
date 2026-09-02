@@ -1,13 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
-import { abrirDB, getDB, cerrarDB } from '../../src/core/db.js';
+import { abrirDB, getDB, cerrarDB, guardar } from '../../src/core/db.js';
 import { enqueueWebhook, processQueue, queueStats, triggerWebhook, clearWebhookDedup } from '../../src/core/api.js';
 
 describe('Webhook Queue - Cola offline persistente', () => {
   beforeAll(async () => {
     await cerrarDB();
     await abrirDB([
-      { tablas: { webhookQueue: '++id, estado, fecha' } }
+      { tablas: { webhookQueue: '++id, estado, fecha', config: 'key' } }
     ]);
+    // Activar webhooks para los tests
+    await guardar('config', { key: 'cfg', value: { webhooksActivos: true } });
   });
 
   afterAll(async () => {
@@ -18,6 +20,8 @@ describe('Webhook Queue - Cola offline persistente', () => {
     clearWebhookDedup();
     const db = getDB();
     await db.webhookQueue.clear();
+    // Asegurar que webhooks esten activados
+    await guardar('config', { key: 'cfg', value: { webhooksActivos: true } });
   });
 
   it('encola un webhook correctamente', async () => {
