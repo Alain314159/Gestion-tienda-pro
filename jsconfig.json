@@ -5,8 +5,8 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "allowJs": true,
-    "checkJs": false,
-    "strict": false,
+    "checkJs": true,
+    "strict": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "paths": {
