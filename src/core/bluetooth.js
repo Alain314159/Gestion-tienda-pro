@@ -6,6 +6,8 @@ export class BluetoothSync {
     this.characteristic = null;
     this.SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
     this.CHAR_UUID = '0000ffe1-0000-1000-8000-00805f9b34fb';
+    this.onDisconnect = null;
+    this._boundDisconnectHandler = null;
   }
 
   async scan() {
@@ -22,6 +24,13 @@ export class BluetoothSync {
     this.server = await this.device.gatt.connect();
     const service = await this.server.getPrimaryService(this.SERVICE_UUID);
     this.characteristic = await service.getCharacteristic(this.CHAR_UUID);
+    // Escuchar desconexion inesperada
+    this._boundDisconnectHandler = () => {
+      this.server = null;
+      this.characteristic = null;
+      if (this.onDisconnect) this.onDisconnect();
+    };
+    this.device.addEventListener('gattserverdisconnected', this._boundDisconnectHandler);
     return true;
   }
 
@@ -59,5 +68,11 @@ export class BluetoothSync {
 
   disconnect() {
     if (this.device?.gatt?.connected) this.device.gatt.disconnect();
+    if (this._boundDisconnectHandler) {
+      this.device?.removeEventListener('gattserverdisconnected', this._boundDisconnectHandler);
+      this._boundDisconnectHandler = null;
+    }
+    this.server = null;
+    this.characteristic = null;
   }
 }

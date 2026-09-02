@@ -13,6 +13,9 @@ export const ui = $state({
   masAbierto: false
 });
 
+// Verificar estado de conexion inmediatamente (corrige valor stale al inicio)
+setTimeout(() => { ui.offline = !navigator.onLine; }, 0);
+
 /** Aplica tema al documento */
 export function aplicarTema() {
   document.documentElement.classList.toggle('dark', ui.tema === 'dark');

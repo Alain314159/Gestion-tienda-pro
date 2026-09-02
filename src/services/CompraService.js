@@ -34,6 +34,10 @@ export const CompraService = {
   /** Registra compra de producto nuevo: crea producto + compra + lote */
   async registrarNuevo({ nombre, codigo, unidad, cantidad, costo, total, precio, stockMin }) {
     const db = getDB();
+    const nombreLimpio = nombre.trim().toLowerCase();
+    const existente = await db.productos.where('nombre').equals(nombreLimpio).first();
+    if (existente) throw new Error('Ya existe un producto con ese nombre');
+
     const producto = {
       id: genId('p'),
       nombre: nombre.trim(), codigo: (codigo || '').trim(),

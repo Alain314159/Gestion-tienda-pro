@@ -39,6 +39,8 @@ export const InventarioService = {
 
   /** Ajuste positivo (sobrante): crea ajuste + lote nuevo */
   async ajustarPositivo({ productoId, productoNombre, productoUnidad, cantidad, motivo, costo }) {
+    if (n(costo) <= 0) throw new Error('El costo debe ser mayor a cero');
+    if (n(cantidad) <= 0) throw new Error('La cantidad debe ser mayor a cero');
     const db = getDB();
     const ajuste = {
       id: genId('a'),

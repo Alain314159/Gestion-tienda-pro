@@ -163,7 +163,7 @@ export function calcFIFO(lotes, productoId, cant) {
     usados.push({ loteId: l.id, cantidad: usar, costo: l.costo });
     rest -= usar;
   }
-  if (rest > 0.001) return { error: 'Stock insuficiente (faltan ' + rest.toFixed(3) + ')' };
+  if (q(rest) > 0) return { error: 'Stock insuficiente (faltan ' + q(rest).toFixed(3) + ')' };
   return { costoTotal: total, usados };
 }
 
