@@ -6,6 +6,61 @@ export const DB_NAME = 'tienda-pro-v8';
 let db = null;
 
 /* ================================================================
+   MANEJO DE ERRORES DE BASE DE DATOS
+   ================================================================ */
+
+/** Detecta si un error es por almacenamiento lleno (QuotaExceeded) */
+function esQuotaExceeded(err) {
+  return err && (
+    err.name === 'QuotaExceededError' ||
+    err.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+    (err.message && err.message.toLowerCase().includes('quota')) ||
+    (err.message && err.message.toLowerCase().includes('storage'))
+  );
+}
+
+/** Convierte errores de DB en mensajes amigables para el usuario */
+export function manejarErrorDB(err, operacion = 'operacion') {
+  if (esQuotaExceeded(err)) {
+    return {
+      tipo: 'quota',
+      mensaje: 'Almacenamiento lleno. Elimina datos antiguos o exporta un backup antes de continuar.',
+      original: err
+    };
+  }
+  if (err.name === 'VersionError' || err.name === 'UpgradeError') {
+    return {
+      tipo: 'version',
+      mensaje: 'Error de version de base de datos. Recarga la pagina.',
+      original: err
+    };
+  }
+  if (err.name === 'OpenFailedError') {
+    return {
+      tipo: 'open',
+      mensaje: 'No se pudo abrir la base de datos. Verifica que no haya otra pestana abierta.',
+      original: err
+    };
+  }
+  return {
+    tipo: 'desconocido',
+    mensaje: `Error en ${operacion}: ${err.message || err}`,
+    original: err
+  };
+}
+
+/** Wrapper async que captura errores de DB y los normaliza */
+async function conManejoError(operacion, fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    const errorNormalizado = manejarErrorDB(err, operacion);
+    console.error(`[DB Error] ${operacion}:`, errorNormalizado);
+    throw errorNormalizado;
+  }
+}
+
+/* ================================================================
    CLONACIÓN SEGURA
    ================================================================ */
 
@@ -138,56 +193,72 @@ export async function cerrarDB() {
 
 /** Guarda un objeto. Responsabilidad: clonar + convertir a centavos + persistir. */
 export async function guardar(tabla, obj) {
-  const db = getDB();
-  const cloned = deepClone(obj);
-  const converted = toCentsObj(tabla, cloned);
-  return db.table(tabla).put(converted);
+  return conManejoError(`guardar(${tabla})`, async () => {
+    const db = getDB();
+    const cloned = deepClone(obj);
+    const converted = toCentsObj(tabla, cloned);
+    return db.table(tabla).put(converted);
+  });
 }
 
 /** Bulk put. Responsabilidad: clonar + convertir cada objeto a centavos + persistir en lote. */
 export async function guardarBulk(tabla, objs) {
-  const db = getDB();
-  const converted = objs.map(o => toCentsObj(tabla, deepClone(o)));
-  return db.table(tabla).bulkPut(converted);
+  return conManejoError(`guardarBulk(${tabla})`, async () => {
+    const db = getDB();
+    const converted = objs.map(o => toCentsObj(tabla, deepClone(o)));
+    return db.table(tabla).bulkPut(converted);
+  });
 }
 
 /** Elimina por id. Responsabilidad: eliminar. */
 export async function eliminar(tabla, id) {
-  const db = getDB();
-  return db.table(tabla).delete(id);
+  return conManejoError(`eliminar(${tabla})`, async () => {
+    const db = getDB();
+    return db.table(tabla).delete(id);
+  });
 }
 
 /** Lista todos los registros. Responsabilidad: leer + convertir de centavos a float. */
 export async function listar(tabla) {
-  const db = getDB();
-  const items = await db.table(tabla).toArray();
-  return fromCentsArray(tabla, items);
+  return conManejoError(`listar(${tabla})`, async () => {
+    const db = getDB();
+    const items = await db.table(tabla).toArray();
+    return fromCentsArray(tabla, items);
+  });
 }
 
 /** Lista registros paginados. Responsabilidad: leer + convertir de centavos a float. */
 export async function listarPaginado(tabla, offset = 0, limit = 50) {
-  const db = getDB();
-  const items = await db.table(tabla).offset(offset).limit(limit).toArray();
-  return fromCentsArray(tabla, items);
+  return conManejoError(`listarPaginado(${tabla})`, async () => {
+    const db = getDB();
+    const items = await db.table(tabla).offset(offset).limit(limit).toArray();
+    return fromCentsArray(tabla, items);
+  });
 }
 
 /** Cuenta registros de una tabla sin cargarlos todos. */
 export async function contar(tabla) {
-  const db = getDB();
-  return db.table(tabla).count();
+  return conManejoError(`contar(${tabla})`, async () => {
+    const db = getDB();
+    return db.table(tabla).count();
+  });
 }
 
 /** Obtiene un registro por id. Responsabilidad: leer + convertir de centavos a float. */
 export async function obtener(tabla, id) {
-  const db = getDB();
-  const item = await db.table(tabla).get(id);
-  return item ? fromCentsObj(tabla, item) : null;
+  return conManejoError(`obtener(${tabla})`, async () => {
+    const db = getDB();
+    const item = await db.table(tabla).get(id);
+    return item ? fromCentsObj(tabla, item) : null;
+  });
 }
 
 /** Limpia tabla. Responsabilidad: vaciar. */
 export async function limpiar(tabla) {
-  const db = getDB();
-  return db.table(tabla).clear();
+  return conManejoError(`limpiar(${tabla})`, async () => {
+    const db = getDB();
+    return db.table(tabla).clear();
+  });
 }
 
 /* ================================================================
