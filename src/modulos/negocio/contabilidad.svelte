@@ -11,7 +11,7 @@
 
 <script>
   import { onMount } from 'svelte';
-  import { getDB, listar } from '../../core/db.js';
+  import { getDB, listar, leerConfig } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
   import { n, m, fmt, nowLocal } from '../../core/util.js';
   import { libroDiario, estadoPyG, balanceGeneral } from '../../core/contabilidad.js';
@@ -36,13 +36,11 @@
   let balance = $derived(balanceGeneral({ cfg, capital, retiros, ventas, compras, lotes, cierres }));
 
   async function recargar() {
-    const db = getDB();
     [ventas, compras, retiros, capital, ajustes, lotes, cierres, gastosOp] = await Promise.all([
       listar('ventas'), listar('compras'), listar('retiros'), listar('capital'),
       listar('ajustes'), listar('lotes'), listar('cierres'), listar('gastosOp')
     ]);
-    const c = await db.config.get('cfg');
-    cfg = c?.value || {};
+    cfg = await leerConfig('cfg') || {};
   }
   onMount(() => { recargar(); const off = bus.on('recargar', recargar); return () => off(); });
 </script>

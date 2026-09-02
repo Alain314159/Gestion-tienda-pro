@@ -11,7 +11,7 @@
 
 <script>
   import { onMount } from 'svelte';
-  import { getDB, listar, guardar } from '../../core/db.js';
+  import { getDB, listar, guardar, leerConfig } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
   import { avisar, pedirPIN } from '../../core/state.svelte.js';
   import { n, m, fmt, fmtFH, genId, saldoCaja, valorInventario, gananciaDisponible, clean, nowLocal } from '../../core/util.js';
@@ -51,13 +51,11 @@
   })());
 
   async function recargar() {
-    const db = getDB();
     [capital, ventas, compras, retiros, movCaja, ajustes, cierres, lotes] = await Promise.all([
       listar('capital'), listar('ventas'), listar('compras'), listar('retiros'),
       listar('movCaja'), listar('ajustes'), listar('cierres'), listar('lotes')
     ]);
-    const c = await db.config.get('cfg');
-    cfg = c?.value || { capitalInicial: 0, periodoInicio: nowLocal().iso };
+    cfg = await leerConfig('cfg') || { capitalInicial: 0, periodoInicio: nowLocal().iso };
   }
 
   onMount(() => {
@@ -94,8 +92,7 @@
   async function guardarCapInicial() {
     const val = n(capInicialStr);
     cfg.capitalInicial = val;
-    const db = getDB();
-    await db.config.put({ key: 'cfg', value: clean(cfg) });
+    await guardar('config', { key: 'cfg', value: clean(cfg) });
     capInicialStr = '';
     await recargar();
     bus.emit('recargar');

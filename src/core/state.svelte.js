@@ -1,4 +1,4 @@
-import { getDB, guardar } from './db.js';
+import { getDB, guardar, leerConfig } from './db.js';
 import { clean } from './util.js';
 import { processQueue } from './api.js';
 
@@ -70,13 +70,12 @@ async function hashPin(pin) {
 /** Pide PIN si esta activo */
 export async function pedirPIN() {
   try {
-    const db = getDB();
-    const c = await db.config.get('cfg');
-    if (!c?.value?.pinActivo || !c?.value?.pinHash) return true;
+    const cfg = await leerConfig('cfg');
+    if (!cfg?.pinActivo || !cfg?.pinHash) return true;
     const v = await preguntar('Seguridad', 'Ingresa tu PIN');
     if (v === null || v === undefined) return false;
     const hashed = await hashPin(v);
-    return hashed === c.value.pinHash;
+    return hashed === cfg.pinHash;
   } catch (err) {
     console.error('Error al verificar PIN:', err);
     avisar('Error al verificar PIN', 'error');
@@ -99,9 +98,7 @@ export async function guardarCfg(cfg) {
 /** Carga configuracion desde DB */
 export async function cargarCfg() {
   try {
-    const db = getDB();
-    const c = await db.config.get('cfg');
-    return c?.value || {};
+    return await leerConfig('cfg') || {};
   } catch (e) { return {}; }
 }
 

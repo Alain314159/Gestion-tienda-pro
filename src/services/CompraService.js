@@ -1,4 +1,4 @@
-import { getDB, guardar, guardarBulk, listar, eliminar } from '../core/db.js';
+import { getDB, txPut, listar, eliminar } from '../core/db.js';
 import { nowLocal, m, n, genId } from '../core/util.js';
 
 /**
@@ -24,8 +24,8 @@ export const CompraService = {
     };
 
     await db.transaction('rw', db.compras, db.lotes, async (trans) => {
-      await trans.table('compras').put(compra);
-      await trans.table('lotes').put(lote);
+      await txPut('compras', compra, trans);
+      await txPut('lotes', lote, trans);
     });
 
     return { compra, lote };
@@ -56,9 +56,9 @@ export const CompraService = {
     };
 
     await db.transaction('rw', db.productos, db.compras, db.lotes, async (trans) => {
-      await trans.table('productos').put(producto);
-      await trans.table('compras').put(compra);
-      await trans.table('lotes').put(lote);
+      await txPut('productos', producto, trans);
+      await txPut('compras', compra, trans);
+      await txPut('lotes', lote, trans);
     });
 
     return { producto, compra, lote };
@@ -71,8 +71,8 @@ export const CompraService = {
     const loteActualizado = { ...lote, ...nuevosDatos.lote };
 
     await db.transaction('rw', db.compras, db.lotes, async (trans) => {
-      await trans.table('compras').put(compActualizada);
-      await trans.table('lotes').put(loteActualizado);
+      await txPut('compras', compActualizada, trans);
+      await txPut('lotes', loteActualizado, trans);
     });
 
     return { compra: compActualizada, lote: loteActualizado };

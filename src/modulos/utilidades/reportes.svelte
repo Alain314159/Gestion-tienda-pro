@@ -11,7 +11,7 @@
 
 <script>
   import { onMount } from 'svelte';
-  import { getDB, listar, guardar } from '../../core/db.js';
+  import { getDB, listar, guardar, leerConfig } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
   import { avisar, confirmar } from '../../core/state.svelte.js';
   import { n, m, fmt, fmtFecha, genId, generarReporte, valorInventario, clean, nowLocal } from '../../core/util.js';
@@ -32,12 +32,10 @@
   let cierresOrdenados = $derived(cierres.slice().sort((a, b) => new Date(b.fechaCierre) - new Date(a.fechaCierre)));
 
   async function recargar() {
-    const db = getDB();
     [ventas, compras, ajustes, cierres, lotes] = await Promise.all([
       listar('ventas'), listar('compras'), listar('ajustes'), listar('cierres'), listar('lotes')
     ]);
-    const c = await db.config.get('cfg');
-    cfg = c?.value || { periodoInicio: nowLocal().iso };
+    cfg = await leerConfig('cfg') || { periodoInicio: nowLocal().iso };
   }
 
   onMount(() => {
@@ -82,8 +80,7 @@
     };
     await guardar('cierres', cierre);
     cfg.periodoInicio = nowLocal().iso;
-    const db = getDB();
-    await db.config.put({ key: 'cfg', value: clean(cfg) });
+    await guardar('config', { key: 'cfg', value: clean(cfg) });
     await recargar();
     bus.emit('recargar');
     avisar('Periodo cerrado');

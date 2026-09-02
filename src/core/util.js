@@ -299,7 +299,7 @@ export const MONEY_SCHEMA = {
   retiros: { fields: ['monto'] },
   capital: { fields: ['monto'] },
   gastosOp: { fields: ['monto'] },
-  config: { fields: ['capitalInicial'] }
+  config: { fields: [], nested: { value: ['capitalInicial'] } }
 };
 
 /** Convierte campos monetarios de un objeto a centavos (para guardar en DB) */
@@ -312,8 +312,12 @@ export function toCentsDeep(obj, fields, nested = {}) {
     }
   }
   for (const [nestedPath, nestedFields] of Object.entries(nested)) {
-    if (nestedPath in result && Array.isArray(result[nestedPath])) {
-      result[nestedPath] = result[nestedPath].map(item => toCentsDeep(item, nestedFields));
+    if (nestedPath in result && result[nestedPath] != null) {
+      if (Array.isArray(result[nestedPath])) {
+        result[nestedPath] = result[nestedPath].map(item => toCentsDeep(item, nestedFields));
+      } else if (typeof result[nestedPath] === 'object') {
+        result[nestedPath] = toCentsDeep(result[nestedPath], nestedFields);
+      }
     }
   }
   return result;
@@ -329,8 +333,12 @@ export function fromCentsDeep(obj, fields, nested = {}) {
     }
   }
   for (const [nestedPath, nestedFields] of Object.entries(nested)) {
-    if (nestedPath in result && Array.isArray(result[nestedPath])) {
-      result[nestedPath] = result[nestedPath].map(item => fromCentsDeep(item, nestedFields));
+    if (nestedPath in result && result[nestedPath] != null) {
+      if (Array.isArray(result[nestedPath])) {
+        result[nestedPath] = result[nestedPath].map(item => fromCentsDeep(item, nestedFields));
+      } else if (typeof result[nestedPath] === 'object') {
+        result[nestedPath] = fromCentsDeep(result[nestedPath], nestedFields);
+      }
     }
   }
   return result;

@@ -206,3 +206,21 @@ export async function txToArray(tabla, trans) {
   const items = await trans.table(tabla).toArray();
   return fromCentsArray(tabla, items);
 }
+
+/* ================================================================
+   CONFIGURACIÓN (wrapper con conversión monetaria)
+   ================================================================ */
+
+/** Lee configuración por clave y convierte centavos → float. Devuelve el objeto value. */
+export async function leerConfig(key = 'cfg') {
+  const db = getDB();
+  const c = await db.config.get(key);
+  if (!c) return null;
+  const converted = fromCentsObj('config', deepClone(c));
+  return converted.value;
+}
+
+/** Guarda configuración convirtiendo float → centavos en campos monetarios anidados. */
+export async function guardarConfig(key, value) {
+  return guardar('config', { key, value });
+}

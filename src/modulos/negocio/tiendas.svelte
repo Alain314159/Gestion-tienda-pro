@@ -11,7 +11,7 @@
 
 <script>
   import { onMount } from 'svelte';
-  import { getDB, listar, guardar } from '../../core/db.js';
+  import { getDB, listar, guardar, leerConfig } from '../../core/db.js';
   import { avisar, preguntar } from '../../core/state.svelte.js';
   import { genId, nowLocal } from '../../core/util.js';
   import Icono from '../../core/Icono.svelte';
@@ -22,9 +22,7 @@
 
   async function recargar() {
     tiendas = await listar('tiendas');
-    const db = getDB();
-    const cfg = await db.config.get('tiendaActiva');
-    tiendaActiva = cfg?.value || null;
+    tiendaActiva = await leerConfig('tiendaActiva');
   }
 
   onMount(() => { recargar(); });
@@ -40,8 +38,7 @@
   }
 
   async function activarTienda(t) {
-    const db = getDB();
-    await db.config.put({ key: 'tiendaActiva', value: t.id });
+    await guardar('config', { key: 'tiendaActiva', value: t.id });
     tiendaActiva = t.id;
     avisar(`Activada: ${t.nombre}`);
   }

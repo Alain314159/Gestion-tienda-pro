@@ -14,7 +14,7 @@
   import { listar } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
   import { avisar, confirmar, preguntar, pedirPIN } from '../../core/state.svelte.js';
-  import { n, m, q, fmt, fmtCant, fmtFH, stockProducto } from '../../core/util.js';
+  import { n, m, q, fmt, fmtCant, fmtFH, stockProducto, calcFIFO } from '../../core/util.js';
   import { VentaService } from '../../services/VentaService.js';
   import Icono from '../../core/Icono.svelte';
 

@@ -11,7 +11,7 @@
 
 <script>
   import { onMount } from 'svelte';
-  import { listar } from '../../core/db.js';
+  import { getDB, listar, leerConfig } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
   import { avisar } from '../../core/state.svelte.js';
   import { n, m, fmt, fmtFH, saldoCaja, movimientosCaja } from '../../core/util.js';
@@ -49,12 +49,10 @@
   })());
 
   async function recargar() {
-    const db = getDB();
     [capital, ventas, compras, retiros, movCaja, arqueos] = await Promise.all([
       listar('capital'), listar('ventas'), listar('compras'), listar('retiros'), listar('movCaja'), listar('arqueos')
     ]);
-    const c = await db.config.get('cfg');
-    cfg = c?.value || { capitalInicial: 0 };
+    cfg = await leerConfig('cfg') || { capitalInicial: 0 };
   }
 
   onMount(() => {

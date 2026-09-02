@@ -11,7 +11,7 @@
 
 <script>
   import { onMount } from 'svelte';
-  import { getDB, listar, guardar, limpiar } from '../../core/db.js';
+  import { getDB, listar, guardar, limpiar, leerConfig } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
   import { ui, alternarTema, avisar, confirmar, preguntar, pedirPIN } from '../../core/state.svelte.js';
   import { n, m, fmt, clean, nowLocal } from '../../core/util.js';
@@ -30,9 +30,7 @@
   let btStatus = $state('');
 
   async function recargar() {
-    const db = getDB();
-    const c = await db.config.get('cfg');
-    cfg = c?.value || { nombre: 'Tienda Pro', moneda: '$', periodoInicio: nowLocal().iso };
+    cfg = await leerConfig('cfg') || { nombre: 'Tienda Pro', moneda: '$', periodoInicio: nowLocal().iso };
     pinActivo = !!cfg.pinActivo;
     const counts = {};
     for (const t of tablas) {
@@ -49,8 +47,7 @@
   });
 
   async function guardarCfg() {
-    const db = getDB();
-    await db.config.put({ key: 'cfg', value: clean(cfg) });
+    await guardar('config', { key: 'cfg', value: clean(cfg) });
     bus.emit('recargar');
     avisar('Configuracion guardada');
   }
