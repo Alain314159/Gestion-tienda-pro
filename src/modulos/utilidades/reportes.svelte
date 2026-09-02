@@ -75,7 +75,8 @@
     const mermas = m(ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= new Date(periodoInicio)).reduce((s, a) => s + n(a.costoPerdida), 0));
     const neta = m(bruta - mermas);
     const cierre = {
-      id: genId('cr'), fechaCierre: nowLocal().iso, fechaLocal: nowLocal().local, periodo: 'Del ' + fmtFecha(periodoInicio) + ' al ' + fmtFecha(nowLocal().iso),
+      id: genId('cr'), fechaCierre: nowLocal().iso, fechaLocal: nowLocal().local, fechaInicio: periodoInicio,
+      periodo: 'Del ' + fmtFecha(periodoInicio) + ' al ' + fmtFecha(nowLocal().iso),
       ingresos: ing, cogs, bruta, mermas, neta, numVentas: vta.length, margenB: ing > 0 ? ((bruta / ing) * 100).toFixed(1) : '0.0', margenN: ing > 0 ? ((neta / ing) * 100).toFixed(1) : '0.0'
     };
     await guardar('cierres', cierre);

@@ -15,6 +15,7 @@
   import { bus } from '../../core/bus.js';
   import { avisar, pedirPIN } from '../../core/state.svelte.js';
   import { n, m, fmt, fmtFH, genId, saldoCaja, valorInventario, gananciaDisponible, clean, nowLocal } from '../../core/util.js';
+  import { verificarPeriodoCerrado, obtenerPeriodosCerrados } from '../../core/periodos.js';
   import Icono from '../../core/Icono.svelte';
 
   let cfg = $state({});
@@ -26,10 +27,12 @@
   let ajustes = $state([]);
   let cierres = $state([]);
   let lotes = $state([]);
+  let periodosCerrados = $state([]);
 
   let retiroForm = $state({ monto: '', concepto: '' });
   let aporteForm = $state({ monto: '', nota: '' });
   let capInicialStr = $state('');
+  let procesando = $state(false);
 
   let periodoInicio = $derived(cfg.periodoInicio || nowLocal().iso);
   let saldo = $derived(saldoCaja({ cfg, capital, ventas, compras, retiros, movCaja }));
@@ -56,6 +59,12 @@
       listar('movCaja'), listar('ajustes'), listar('cierres'), listar('lotes')
     ]);
     cfg = await leerConfig('cfg') || { capitalInicial: 0, periodoInicio: nowLocal().iso };
+    periodosCerrados = await obtenerPeriodosCerrados();
+  }
+
+  function esCerrado(fechaIso) {
+    const f = new Date(fechaIso);
+    return periodosCerrados.some(p => new Date(p.inicio) <= f && f <= new Date(p.fin));
   }
 
   onMount(() => {
@@ -65,6 +74,8 @@
   });
 
   async function registrarRetiro() {
+    if (procesando) return;
+    try { await verificarPeriodoCerrado(nowLocal().iso); } catch (e) { return avisar(e.message, 'bad'); }
     const monto = n(retiroForm.monto);
     const c = (retiroForm.concepto || '').trim();
     if (monto <= 0) return avisar('Monto invalido', 'bad');
@@ -72,31 +83,44 @@
     if (monto > disp + 0.01) return avisar('Maximo ' + fmt(disp), 'bad');
     const pinOk = await pedirPIN();
     if (!pinOk) return;
-    await guardar('retiros', { id: genId('r'), fecha: nowLocal().iso, fechaLocal: nowLocal().local, monto, concepto: c });
-    await recargar();
-    bus.emit('recargar');
-    retiroForm = { monto: '', concepto: '' };
-    avisar('Retiro registrado');
+    procesando = true;
+    try {
+      await guardar('retiros', { id: genId('r'), fecha: nowLocal().iso, fechaLocal: nowLocal().local, monto, concepto: c });
+      await recargar();
+      bus.emit('recargar');
+      retiroForm = { monto: '', concepto: '' };
+      avisar('Retiro registrado');
+    } finally { procesando = false; }
   }
 
   async function registrarAporte() {
+    if (procesando) return;
+    try { await verificarPeriodoCerrado(nowLocal().iso); } catch (e) { return avisar(e.message, 'bad'); }
     const monto = n(aporteForm.monto);
     if (monto <= 0) return avisar('Monto invalido', 'bad');
-    await guardar('capital', { id: genId('k'), fecha: nowLocal().iso, fechaLocal: nowLocal().local, monto, nota: aporteForm.nota || '' });
-    await recargar();
-    bus.emit('recargar');
-    aporteForm = { monto: '', nota: '' };
-    avisar('Aporte registrado');
+    procesando = true;
+    try {
+      await guardar('capital', { id: genId('k'), fecha: nowLocal().iso, fechaLocal: nowLocal().local, monto, nota: aporteForm.nota || '' });
+      await recargar();
+      bus.emit('recargar');
+      aporteForm = { monto: '', nota: '' };
+      avisar('Aporte registrado');
+    } finally { procesando = false; }
   }
 
   async function guardarCapInicial() {
+    if (procesando) return;
+    try { await verificarPeriodoCerrado(nowLocal().iso); } catch (e) { return avisar(e.message, 'bad'); }
     const val = n(capInicialStr);
     cfg.capitalInicial = val;
-    await guardar('config', { key: 'cfg', value: clean(cfg) });
-    capInicialStr = '';
-    await recargar();
-    bus.emit('recargar');
-    avisar('Capital inicial guardado');
+    procesando = true;
+    try {
+      await guardar('config', { key: 'cfg', value: clean(cfg) });
+      capInicialStr = '';
+      await recargar();
+      bus.emit('recargar');
+      avisar('Capital inicial guardado');
+    } finally { procesando = false; }
   }
 </script>
 
@@ -155,9 +179,9 @@
     </div>
     <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3" type="number" inputmode="decimal" step="0.01" placeholder="Monto" bind:value={retiroForm.monto} />
     <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3" type="text" placeholder="Concepto" bind:value={retiroForm.concepto} />
-    <button class="w-full py-3.5 rounded-[var(--radius-md)] bg-warning text-white font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={registrarRetiro}>
+    <button class="w-full py-3.5 rounded-[var(--radius-md)] bg-warning text-white font-extrabold text-sm active:scale-[0.97] transition-transform disabled:opacity-50" onclick={registrarRetiro} disabled={procesando}>
       <Icono nombre="dollar" size={16} color="#fff" />
-      Retirar Ganancia
+      {procesando ? 'Procesando...' : 'Retirar Ganancia'}
     </button>
   </div>
 
@@ -168,9 +192,9 @@
     </div>
     <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3" type="number" inputmode="decimal" step="0.01" placeholder="Monto" bind:value={aporteForm.monto} />
     <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3" type="text" placeholder="Nota" bind:value={aporteForm.nota} />
-    <button class="w-full py-3.5 rounded-[var(--radius-md)] bg-success text-white font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={registrarAporte}>
+    <button class="w-full py-3.5 rounded-[var(--radius-md)] bg-success text-white font-extrabold text-sm active:scale-[0.97] transition-transform disabled:opacity-50" onclick={registrarAporte} disabled={procesando}>
       <Icono nombre="plus" size={16} color="#fff" />
-      Registrar Aporte
+      {procesando ? 'Procesando...' : 'Registrar Aporte'}
     </button>
   </div>
 
@@ -181,9 +205,9 @@
     </div>
     <div class="text-xs text-muted mb-3">Actual: {fmt(cfg.capitalInicial || 0)}</div>
     <input class="w-full px-3.5 py-3.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3" type="number" inputmode="decimal" step="0.01" placeholder="Monto de capital inicial" bind:value={capInicialStr} />
-    <button class="w-full py-3.5 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={guardarCapInicial}>
+    <button class="w-full py-3.5 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm active:scale-[0.97] transition-transform disabled:opacity-50" onclick={guardarCapInicial} disabled={procesando}>
       <Icono nombre="check" size={16} color="#fff" />
-      Guardar Capital Inicial
+      {procesando ? 'Guardando...' : 'Guardar Capital Inicial'}
     </button>
   </div>
 
@@ -196,12 +220,18 @@
       <div class="text-center text-muted py-8 text-sm">Sin movimientos</div>
     {:else}
       {#each movs as m}
-        <div class="flex justify-between items-center gap-2 py-3 border-b border-border">
+        <div class="flex justify-between items-center gap-2 py-3 border-b border-border {esCerrado(m.fecha) ? 'opacity-60' : ''}">
           <div class="min-w-0 flex-1">
             <div class="font-bold text-sm">{m.tipo}</div>
             <div class="text-xs text-muted">{fmtFH(m.fecha)} {m.nota ? '· ' + m.nota : ''}</div>
           </div>
-          <b class="flex-shrink-0 {m.tipo === 'Retiro' ? 'text-danger' : 'text-success'}">{m.tipo === 'Retiro' ? '-' : '+'}{fmt(m.monto)}</b>
+          <div class="flex items-center gap-1 flex-shrink-0">
+            {#if esCerrado(m.fecha)}
+              <span class="inline-block px-2 py-0.5 rounded-full text-[0.6rem] font-extrabold text-white bg-warning" title="Periodo cerrado">🔒 CERRADO</span>
+            {:else}
+              <b class="{m.tipo === 'Retiro' ? 'text-danger' : 'text-success'}">{m.tipo === 'Retiro' ? '-' : '+'}{fmt(m.monto)}</b>
+            {/if}
+          </div>
         </div>
       {/each}
     {/if}

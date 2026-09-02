@@ -33,6 +33,7 @@
     cfg = await leerConfig('cfg') || { nombre: 'Tienda Pro', moneda: '$', periodoInicio: nowLocal().iso };
     pinActivo = !!cfg.pinActivo;
     const counts = {};
+    const db = getDB();
     for (const t of tablas) {
       try { counts[t] = await db.table(t).count(); } catch (e) { counts[t] = 0; }
     }

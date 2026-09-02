@@ -1,5 +1,6 @@
 import { getDB, guardar, guardarBulk, listar } from '../core/db.js';
-import { calcFIFO, stockProducto, nowLocal, m, n, q, genId } from '../core/util.js';
+import { calcFIFO, stockProducto, nowLocal, m, n, q, genId, lotesDeProducto } from '../core/util.js';
+import { verificarPeriodoCerrado } from '../core/periodos.js';
 
 /**
  * Servicio de Ventas
@@ -13,6 +14,7 @@ export const VentaService = {
 
   /** Procesa una venta completa: calcula FIFO, guarda venta, actualiza lotes. Todo en una transaccion. */
   async procesar(carrito, lotes) {
+    await verificarPeriodoCerrado(nowLocal().iso);
     const db = getDB();
 
     // 1. Calcular items, totales y lotes usados (fuera de la transaccion, es solo lectura)
@@ -67,8 +69,30 @@ export const VentaService = {
     return { venta, total, ganancia };
   },
 
+  /** Restaura stock de una venta antigua sin lotesUsados usando FIFO inverso.
+   *  Busca los lotes mas antiguos y reduce cantidadVendida.
+   *  Devuelve array de {loteId, cantidad} para referencia futura.
+   */
+  function restaurarStockSinLotesUsados(item, lotes) {
+    const lotesProd = lotesDeProducto(lotes, item.productoId);
+    let rest = n(item.cantidad);
+    const usados = [];
+    for (let i = lotesProd.length - 1; i >= 0 && rest > 0; i--) {
+      const l = lotesProd[i];
+      const vendido = n(l.cantidadVendida);
+      const devolver = Math.min(vendido, rest);
+      if (devolver > 0) {
+        l.cantidadVendida = q(vendido - devolver);
+        usados.push({ loteId: l.id, cantidad: devolver });
+        rest -= devolver;
+      }
+    }
+    return usados;
+  }
+
   /** Anula una venta y restaura el stock. Transaccion atomica. */
   async anular(venta, lotes) {
+    await verificarPeriodoCerrado(venta.fecha);
     const db = getDB();
 
     await db.transaction('rw', db.ventas, db.lotes, async (trans) => {
@@ -81,12 +105,22 @@ export const VentaService = {
 
       // Restaurar stock en lotes
       for (const item of venta.items) {
-        if (!item.lotesUsados) continue;
-        for (const u of item.lotesUsados) {
-          const lote = lotes.find(l => l.id === u.loteId);
-          if (lote) {
-            lote.cantidadVendida = Math.max(0, q(n(lote.cantidadVendida) - u.cantidad));
-            await trans.table('lotes').put(lote);
+        if (item.lotesUsados && item.lotesUsados.length > 0) {
+          for (const u of item.lotesUsados) {
+            const lote = lotes.find(l => l.id === u.loteId);
+            if (lote) {
+              lote.cantidadVendida = Math.max(0, q(n(lote.cantidadVendida) - u.cantidad));
+              await trans.table('lotes').put(lote);
+            }
+          }
+        } else {
+          // Venta antigua sin lotesUsados: restaurar con FIFO inverso
+          const usados = restaurarStockSinLotesUsados(item, lotes);
+          for (const u of usados) {
+            const lote = lotes.find(l => l.id === u.loteId);
+            if (lote) {
+              await trans.table('lotes').put(lote);
+            }
           }
         }
       }

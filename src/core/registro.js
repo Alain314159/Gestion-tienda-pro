@@ -1,4 +1,5 @@
 import { abrirDB } from './db.js';
+import PlaceholderModulo from './PlaceholderModulo.svelte';
 
 const modulosRaw = [
   { manifiesto: { id: 'tiendas', nombre: 'Tiendas', icono: 'store', grupo: 'negocio', orden: -1, tablas: { tiendas: '++id, nombre' } }, loader: () => import('../modulos/negocio/tiendas.svelte') },
@@ -14,7 +15,6 @@ const modulosRaw = [
   { manifiesto: { id: 'reportes', nombre: 'Reportes', icono: 'chart', grupo: 'utilidades', orden: 9, tablas: { cierres: '++id, fechaCierre' } }, loader: () => import('../modulos/utilidades/reportes.svelte') },
   { manifiesto: { id: 'analisis', nombre: 'Analisis', icono: 'layers', grupo: 'utilidades', orden: 10, tablas: {} }, loader: () => import('../modulos/negocio/analisis.svelte') },
   { manifiesto: { id: 'contabilidad', nombre: 'Contabilidad', icono: 'book', grupo: 'utilidades', orden: 11, tablas: {} }, loader: () => import('../modulos/negocio/contabilidad.svelte') },
-  { manifiesto: { id: 'qrmenu', nombre: 'Menu QR', icono: 'scan', grupo: 'utilidades', orden: 12, tablas: {} }, loader: () => import('../modulos/negocio/qrmenu.svelte') },
   { manifiesto: { id: 'ajustes', nombre: 'Ajustes', icono: 'settings', grupo: 'utilidades', orden: 13, tablas: {} }, loader: () => import('../modulos/utilidades/ajustes.svelte') },
 ];
 
@@ -65,15 +65,6 @@ export async function cargarModulos() {
 
   await abrirDB(modulos);
   return modulos;
-}
-
-/** Componente placeholder para módulos lazy */
-function PlaceholderModulo() {
-  return {
-    onMount() {
-      // El placeholder no debería renderizarse; se reemplaza antes
-    }
-  };
 }
 
 /** Precarga módulos lazy cuando el navegador está idle */

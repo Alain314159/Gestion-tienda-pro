@@ -16,6 +16,7 @@
   import { avisar } from '../../core/state.svelte.js';
   import { n, m, fmt, fmtFH, saldoCaja, movimientosCaja } from '../../core/util.js';
   import { CajaService } from '../../services/CajaService.js';
+  import { obtenerPeriodosCerrados } from '../../core/periodos.js';
   import Icono from '../../core/Icono.svelte';
 
   let cfg = $state({});
@@ -28,6 +29,8 @@
 
   let arqueoForm = $state({ monto: '', nota: '' });
   let paginaMovs = $state(1);
+  let procesando = $state(false);
+  let periodosCerrados = $state([]);
   const itemsPorPagina = 20;
 
   let saldo = $derived(saldoCaja({ cfg, capital, ventas, compras, retiros, movCaja }));
@@ -53,6 +56,12 @@
       listar('capital'), listar('ventas'), listar('compras'), listar('retiros'), listar('movCaja'), listar('arqueos')
     ]);
     cfg = await leerConfig('cfg') || { capitalInicial: 0 };
+    periodosCerrados = await obtenerPeriodosCerrados();
+  }
+
+  function esCerrado(fechaIso) {
+    const f = new Date(fechaIso);
+    return periodosCerrados.some(p => new Date(p.inicio) <= f && f <= new Date(p.fin));
   }
 
   onMount(() => {
@@ -62,9 +71,10 @@
   });
 
   async function registrarArqueo() {
+    if (procesando) return;
     const monto = n(arqueoForm.monto);
     if (monto < 0 || arqueoForm.monto === '') return avisar('Monto invalido', 'bad');
-
+    procesando = true;
     try {
       const { diff } = await CajaService.registrarArqueo({
         montoFisico: monto, saldoSistema: saldo, nota: arqueoForm.nota
@@ -79,7 +89,7 @@
       }
     } catch (e) {
       avisar(e.message, 'bad');
-    }
+    } finally { procesando = false; }
   }
 </script>
 
@@ -146,9 +156,9 @@
       </div>
     {/if}
     <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2" type="text" placeholder="Nota (opcional)" bind:value={arqueoForm.nota} />
-    <button class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={registrarArqueo}>
+    <button class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm active:scale-[0.97] transition-transform disabled:opacity-50" onclick={registrarArqueo} disabled={procesando}>
       <Icono nombre="check" size={16} color="#fff" />
-      Registrar Arqueo
+      {procesando ? 'Procesando...' : 'Registrar Arqueo'}
     </button>
   </div>
 
@@ -161,12 +171,18 @@
       <div class="text-center text-muted py-6 text-sm">Sin movimientos</div>
     {:else}
       {#each movsPaginados as mv}
-        <div class="flex justify-between items-center gap-2 py-2.5 border-b border-border">
+        <div class="flex justify-between items-center gap-2 py-2.5 border-b border-border {esCerrado(mv.fecha) ? 'opacity-60' : ''}">
           <div class="min-w-0 flex-1">
             <div class="font-bold text-sm">{mv.concepto}</div>
             <div class="text-xs text-muted">{fmtFH(mv.fecha)}</div>
           </div>
-          <b class="flex-shrink-0 {mv.tipo === 'ingreso' ? 'text-success' : 'text-danger'}">{mv.tipo === 'ingreso' ? '+' : '-'}{fmt(mv.monto)}</b>
+          <div class="flex items-center gap-1 flex-shrink-0">
+            {#if esCerrado(mv.fecha)}
+              <span class="inline-block px-2 py-0.5 rounded-full text-[0.6rem] font-extrabold text-white bg-warning" title="Periodo cerrado">🔒 CERRADO</span>
+            {:else}
+              <b class="{mv.tipo === 'ingreso' ? 'text-success' : 'text-danger'}">{mv.tipo === 'ingreso' ? '+' : '-'}{fmt(mv.monto)}</b>
+            {/if}
+          </div>
         </div>
       {/each}
       {#if totalPaginasMovs > 1}

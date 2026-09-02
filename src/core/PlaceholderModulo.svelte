@@ -1,0 +1,1 @@
+<script module></script><script>import Icono from './Icono.svelte';</script><div class='flex flex-col items-center justify-center py-20 gap-3 text-muted'><div class='w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin'></div><p class='text-sm font-bold'>Cargando...</p></div>

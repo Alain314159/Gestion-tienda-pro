@@ -1,5 +1,6 @@
 import { getDB, guardar, listar } from '../core/db.js';
 import { saldoCaja, nowLocal, m, n, genId } from '../core/util.js';
+import { verificarPeriodoCerrado } from '../core/periodos.js';
 
 /**
  * Servicio de Caja
@@ -9,6 +10,7 @@ export const CajaService = {
 
   /** Registra un arqueo y crea movimiento de ajuste si hay diferencia */
   async registrarArqueo({ montoFisico, saldoSistema, nota }) {
+    await verificarPeriodoCerrado(nowLocal().iso);
     const db = getDB();
     const diff = m(montoFisico - saldoSistema);
     const nl = nowLocal();

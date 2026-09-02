@@ -16,17 +16,20 @@
   import { avisar, confirmar } from '../../core/state.svelte.js';
   import { n, m, fmt, fmtCant, fmtFH, stockProducto } from '../../core/util.js';
   import { CompraService } from '../../services/CompraService.js';
+  import { obtenerPeriodosCerrados } from '../../core/periodos.js';
   import Icono from '../../core/Icono.svelte';
 
   let productos = $state([]);
   let lotes = $state([]);
   let compras = $state([]);
+  let periodosCerrados = $state([]);
   let busq = $state('');
   let busqDebounced = $state('');
   $effect(() => { const t = setTimeout(() => busqDebounced = busq, 200); return () => clearTimeout(t); });
   let focusBusq = $state(false);
   let paginaHist = $state(1);
   const itemsPorPagina = 20;
+  let procesando = $state(false);
 
   let form = $state({ editId: '', productoId: '', nombre: '', cantidad: '', costo: '', unidad: '' });
 
@@ -42,6 +45,12 @@
 
   async function recargar() {
     [productos, lotes, compras] = await Promise.all([listar('productos'), listar('lotes'), listar('compras')]);
+    periodosCerrados = await obtenerPeriodosCerrados();
+  }
+
+  function esCerrado(fechaIso) {
+    const f = new Date(fechaIso);
+    return periodosCerrados.some(p => new Date(p.inicio) <= f && f <= new Date(p.fin));
   }
 
   onMount(() => {
@@ -72,23 +81,29 @@
   }
 
   async function eliminar(c) {
+    if (procesando) return;
     if (!loteSinVentas(c.id)) return;
     const ok = await confirmar('Eliminar compra', '¿Eliminar compra de ' + c.productoNombre + '?');
     if (!ok) return;
-    const l = lotes.find(x => x.compraId === c.id);
-    await CompraService.eliminar(c.id, l?.id);
-    await recargar();
-    bus.emit('recargar');
-    avisar('Compra eliminada');
+    procesando = true;
+    try {
+      const l = lotes.find(x => x.compraId === c.id);
+      await CompraService.eliminar(c.id, l?.id);
+      await recargar();
+      bus.emit('recargar');
+      avisar('Compra eliminada');
+    } finally { procesando = false; }
   }
 
   async function guardarCompra() {
+    if (procesando) return;
     const cant = n(form.cantidad), costo = n(form.costo);
     if (!form.productoId) return avisar('Selecciona producto', 'bad');
     if (cant <= 0) return avisar('Cantidad debe ser > 0', 'bad');
     if (costo < 0) return avisar('Costo invalido', 'bad');
     const total = m(cant * costo);
 
+    procesando = true;
     try {
       if (form.editId) {
         const l = lotes.find(x => x.compraId === form.editId);
@@ -109,6 +124,7 @@
       avisar('Compra ' + fmt(total));
       bus.emit('recargar');
     } catch (e) { avisar(e.message, 'bad'); }
+    finally { procesando = false; }
   }
 </script>
 
@@ -153,11 +169,11 @@
       {#if n(form.cantidad) > 0 && n(form.costo) >= 0}
         <div class="text-danger font-extrabold text-sm my-1">Total: {fmt(n(form.cantidad) * n(form.costo))}</div>
       {/if}
-      <button class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm mb-2 active:scale-[0.97] transition-transform" onclick={guardarCompra}>
+      <button class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm mb-2 active:scale-[0.97] transition-transform disabled:opacity-50" onclick={guardarCompra} disabled={procesando}>
         <Icono nombre="bag" size={16} color="#fff" />
-        {form.editId ? 'Actualizar' : 'Registrar'} Compra
+        {procesando ? 'Guardando...' : (form.editId ? 'Actualizar' : 'Registrar') + ' Compra'}
       </button>
-      <button class="w-full py-3 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-extrabold text-sm active:scale-[0.97] transition-transform" onclick={resetForm}>Cancelar</button>
+      <button class="w-full py-3 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-extrabold text-sm active:scale-[0.97] transition-transform disabled:opacity-50" onclick={resetForm} disabled={procesando}>Cancelar</button>
     {/if}
   </div>
 
@@ -177,9 +193,11 @@
           </div>
           <div class="flex items-center gap-1 flex-shrink-0">
             <b class="text-danger">{fmt(c.total)}</b>
-            {#if loteSinVentas(c.id)}
-              <button class="w-8 h-8 rounded-lg bg-background flex items-center justify-center border-none cursor-pointer" aria-label="Editar compra" onclick={() => editar(c)}><Icono nombre="edit" size={15} /></button>
-              <button class="w-8 h-8 rounded-lg bg-danger/10 flex items-center justify-center border-none cursor-pointer" aria-label="Eliminar compra" onclick={() => eliminar(c)}><Icono nombre="trash" size={15} color="#dc2626" /></button>
+            {#if esCerrado(c.fecha)}
+              <span class="inline-block px-2 py-0.5 rounded-full text-[0.6rem] font-extrabold text-white bg-warning" title="Periodo cerrado">🔒 CERRADO</span>
+            {:else if loteSinVentas(c.id)}
+              <button class="w-8 h-8 rounded-lg bg-background flex items-center justify-center border-none cursor-pointer disabled:opacity-30" aria-label="Editar compra" onclick={() => editar(c)} disabled={procesando}><Icono nombre="edit" size={15} /></button>
+              <button class="w-8 h-8 rounded-lg bg-danger/10 flex items-center justify-center border-none cursor-pointer disabled:opacity-30" aria-label="Eliminar compra" onclick={() => eliminar(c)} disabled={procesando}><Icono nombre="trash" size={15} color="#dc2626" /></button>
             {:else}
               <span title="Con ventas: no editable"><Icono nombre="lock" size={15} /></span>
             {/if}

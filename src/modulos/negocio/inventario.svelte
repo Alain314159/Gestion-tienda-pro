@@ -16,12 +16,15 @@
   import { avisar } from '../../core/state.svelte.js';
   import { n, m, fmt, fmtCant, fmtFH, stockProducto, valorInventario, inventarioGrupos } from '../../core/util.js';
   import { InventarioService } from '../../services/InventarioService.js';
+  import { obtenerPeriodosCerrados } from '../../core/periodos.js';
   import Icono from '../../core/Icono.svelte';
 
   let productos = $state([]);
   let lotes = $state([]);
   let ajustes = $state([]);
   let expandido = $state({});
+  let procesando = $state(false);
+  let periodosCerrados = $state([]);
 
   let form = $state({ productoId: '', cantidad: '', motivo: '', costoSobrante: '' });
 
@@ -34,6 +37,12 @@
 
   async function recargar() {
     [productos, lotes, ajustes] = await Promise.all([listar('productos'), listar('lotes'), listar('ajustes')]);
+    periodosCerrados = await obtenerPeriodosCerrados();
+  }
+
+  function esCerrado(fechaIso) {
+    const f = new Date(fechaIso);
+    return periodosCerrados.some(p => new Date(p.inicio) <= f && f <= new Date(p.fin));
   }
 
   onMount(() => {
@@ -43,6 +52,7 @@
   });
 
   async function registrarAjuste() {
+    if (procesando) return;
     const cant = n(form.cantidad);
     if (!form.productoId) return avisar('Selecciona producto', 'bad');
     if (cant === 0) return avisar('Cantidad no puede ser 0', 'bad');
@@ -50,6 +60,7 @@
     const prod = productos.find(p => p.id === form.productoId);
     if (cant < 0 && Math.abs(cant) > stockProducto(lotes, form.productoId)) return avisar('Solo hay ' + stockProducto(lotes, form.productoId), 'bad');
 
+    procesando = true;
     try {
       if (cant < 0) {
         const { costoPerdida } = await InventarioService.ajustarNegativo({
@@ -72,6 +83,7 @@
       }
       form = { productoId: '', cantidad: '', motivo: '', costoSobrante: '' };
     } catch (e) { avisar(e.message, 'bad'); }
+    finally { procesando = false; }
   }
 </script>
 
@@ -160,14 +172,18 @@
       <div class="text-center text-muted py-6 text-sm">Sin ajustes</div>
     {:else}
       {#each ajustesRecientes as a}
-        <div class="flex justify-between items-center gap-2 py-2.5 border-b border-border">
+        <div class="flex justify-between items-center gap-2 py-2.5 border-b border-border {esCerrado(a.fecha) ? 'opacity-60' : ''}">
           <div class="min-w-0 flex-1">
             <div class="font-bold text-sm">{a.productoNombre}</div>
             <div class="text-xs text-muted">{fmtFH(a.fecha)} · {a.motivo}</div>
           </div>
           <div class="text-right flex-shrink-0">
-            <div class="font-extrabold {a.cantidad < 0 ? 'text-danger' : 'text-success'}">{a.cantidad > 0 ? '+' : ''}{fmtCant(a.cantidad)}</div>
-            {#if a.costoPerdida}<div class="text-xs text-danger">-{fmt(a.costoPerdida)}</div>{/if}
+            {#if esCerrado(a.fecha)}
+              <span class="inline-block px-2 py-0.5 rounded-full text-[0.6rem] font-extrabold text-white bg-warning" title="Periodo cerrado">🔒 CERRADO</span>
+            {:else}
+              <div class="font-extrabold {a.cantidad < 0 ? 'text-danger' : 'text-success'}">{a.cantidad > 0 ? '+' : ''}{fmtCant(a.cantidad)}</div>
+              {#if a.costoPerdida}<div class="text-xs text-danger">-{fmt(a.costoPerdida)}</div>{/if}
+            {/if}
           </div>
         </div>
       {/each}

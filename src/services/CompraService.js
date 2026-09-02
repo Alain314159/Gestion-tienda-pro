@@ -1,5 +1,6 @@
 import { getDB, txPut, listar, eliminar } from '../core/db.js';
 import { nowLocal, m, n, genId } from '../core/util.js';
+import { verificarPeriodoCerrado } from '../core/periodos.js';
 
 /**
  * Servicio de Compras
@@ -9,6 +10,7 @@ export const CompraService = {
 
   /** Registra una compra existente (producto ya creado) + lote */
   async registrarExistente({ productoId, nombre, unidad, cantidad, costo, total }) {
+    await verificarPeriodoCerrado(nowLocal().iso);
     const db = getDB();
     const compra = {
       id: genId('c'),
@@ -70,6 +72,7 @@ export const CompraService = {
 
   /** Edita una compra y su lote asociado */
   async editar(compra, lote, nuevosDatos) {
+    await verificarPeriodoCerrado(compra.fecha);
     const db = getDB();
     const compActualizada = { ...compra, ...nuevosDatos.compra };
     const loteActualizado = { ...lote, ...nuevosDatos.lote };

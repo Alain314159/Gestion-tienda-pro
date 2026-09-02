@@ -16,11 +16,13 @@
   import { avisar, confirmar, preguntar, pedirPIN } from '../../core/state.svelte.js';
   import { n, m, q, fmt, fmtCant, fmtFH, stockProducto, calcFIFO } from '../../core/util.js';
   import { VentaService } from '../../services/VentaService.js';
+  import { obtenerPeriodosCerrados } from '../../core/periodos.js';
   import Icono from '../../core/Icono.svelte';
 
   let productos = $state([]);
   let lotes = $state([]);
   let ventas = $state([]);
+  let periodosCerrados = $state([]);
   let busq = $state('');
   let focusBusq = $state(false);
   let carrito = $state([]);
@@ -70,6 +72,12 @@
 
   async function recargar() {
     [productos, lotes, ventas] = await Promise.all([listar('productos'), listar('lotes'), listar('ventas')]);
+    periodosCerrados = await obtenerPeriodosCerrados();
+  }
+
+  function esCerrado(fechaIso) {
+    const f = new Date(fechaIso);
+    return periodosCerrados.some(p => new Date(p.inicio) <= f && f <= new Date(p.fin));
   }
 
   onMount(() => {
@@ -242,8 +250,10 @@
             <div class="font-bold text-sm {v.anulada ? 'line-through' : ''}">{v.items.map(x => x.nombre + ' ×' + fmtCant(x.cantidad) + (x.unidad ? (' ' + x.unidad) : '')).join(', ')}</div>
             <div class="text-xs text-muted">{fmtFH(v.fecha)} · <b class="text-primary">{fmt(v.total)}</b> · <span class="text-success">+{fmt(v.ganancia)}</span></div>
           </div>
-          {#if !v.anulada}
+          {#if !v.anulada && !esCerrado(v.fecha)}
             <button class="bg-transparent border-none text-danger text-xs underline cursor-pointer" onclick={() => anularVenta(v)}>Anular</button>
+          {:else if esCerrado(v.fecha)}
+            <span class="inline-block px-2 py-0.5 rounded-full text-[0.6rem] font-extrabold text-white bg-warning" title="Periodo cerrado">🔒 CERRADO</span>
           {:else}
             <span class="inline-block px-2 py-0.5 rounded-full text-[0.6rem] font-extrabold text-white bg-muted">ANULADA</span>
           {/if}

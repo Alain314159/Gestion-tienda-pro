@@ -16,6 +16,19 @@
     if (inicio) activo = inicio;
     // Notificaciones globales (stock bajo, arqueo, periodo abierto)
     setTimeout(() => checkNotificacionesGlobales().catch(() => {}), 2000);
+
+    // Manejar navegacion con boton Atras del navegador
+    const handlePopstate = () => {
+      const hash = location.hash.slice(1);
+      const mod = modulos.find(m => m.id === hash);
+      if (mod) {
+        cargarModuloLazy(mod.id).then(() => { activo = mod; });
+      } else if (!hash && inicio) {
+        activo = inicio;
+      }
+    };
+    window.addEventListener('popstate', handlePopstate);
+    return () => window.removeEventListener('popstate', handlePopstate);
   });
 
   async function irA(mod) {
@@ -130,7 +143,7 @@
 
   <!-- Modal Prompt -->
   {#if ui.prompt}
-    <div class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 no-print" onclick={() => cerrarPrompt(false)} role="dialog" tabindex="-1">
+    <div class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 no-print" onclick={() => cerrarPrompt(false)} role="dialog" tabindex="-1" onkeydown={(e) => e.key === 'Escape' && cerrarPrompt(false)}>
       <div class="bg-card rounded-[var(--radius-lg)] p-5 w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-[0_10px_40px_rgba(0,0,0,0.3)] animate-pop" onclick={(e) => e.stopPropagation()}>
         <h3 class="font-extrabold text-primary text-lg mb-1">{ui.prompt.titulo}</h3>
         {#if ui.prompt.msg}
@@ -142,6 +155,7 @@
           class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-3"
           bind:value={ui.prompt.valor}
           onkeydown={(e) => e.key === 'Enter' && cerrarPrompt(true)}
+          autofocus
         />
         <div class="flex gap-2">
           <button class="flex-1 py-2.5 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-bold text-sm" onclick={() => cerrarPrompt(false)}>Cancelar</button>
