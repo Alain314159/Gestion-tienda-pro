@@ -1,7 +1,8 @@
 <script>
   import { onMount } from 'svelte';
   import { ui, alternarTema, cerrarConfirm, cerrarPrompt } from './core/state.svelte.js';
-  import { cargarModulos, navMods, modulos } from './core/registro.js';
+  import { cargarModulos, navMods, modulos, cargarModuloLazy } from './core/registro.js';
+  import { checkNotificacionesGlobales } from './core/notificaciones.js';
   import Icono from './core/Icono.svelte';
 
   let cargando = $state(true);
@@ -13,9 +14,12 @@
     // Activar inicio por defecto
     const inicio = modulos.find(m => m.id === 'inicio');
     if (inicio) activo = inicio;
+    // Notificaciones globales (stock bajo, arqueo, periodo abierto)
+    setTimeout(() => checkNotificacionesGlobales().catch(() => {}), 2000);
   });
 
-  function irA(mod) {
+  async function irA(mod) {
+    await cargarModuloLazy(mod.id);
     activo = mod;
     ui.masAbierto = false;
     try { history.pushState({ sec: mod.id }, '', '#' + mod.id); } catch (e) {}

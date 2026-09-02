@@ -206,27 +206,31 @@ export function badgeStock(producto, lotes) {
   return { clase: 'ok', texto: 'OK' };
 }
 
-/** Agrupa inventario por producto */
+/** Agrupa inventario por producto (optimizado: O(n+m) con Map) */
 export function inventarioGrupos(productos, lotes) {
+  const prodMap = new Map();
+  for (const p of productos) {
+    prodMap.set(p.id, { nombre: p.nombre, unidad: p.unidad });
+  }
   const map = {};
-  const activos = lotes.filter(l => (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0);
-  activos.forEach(l => {
+  for (const l of lotes) {
+    const disp = n(l.cantidadInicial) - n(l.cantidadVendida);
+    if (disp <= 0) continue;
     if (!map[l.productoId]) {
-      const p = productos.find(x => x.id === l.productoId);
+      const p = prodMap.get(l.productoId);
       map[l.productoId] = {
         productoId: l.productoId,
-        nombre: l.productoNombre || (p?.nombre) || 'Desconocido',
-        unidad: l.productoUnidad || (p?.unidad) || '',
+        nombre: l.productoNombre || p?.nombre || 'Desconocido',
+        unidad: l.productoUnidad || p?.unidad || '',
         lotes: [],
         stockTotal: 0,
         valorTotal: 0
       };
     }
-    const disp = n(l.cantidadInicial) - n(l.cantidadVendida);
     map[l.productoId].lotes.push(l);
     map[l.productoId].stockTotal += disp;
     map[l.productoId].valorTotal = m(map[l.productoId].valorTotal + (disp * n(l.costo)));
-  });
+  }
   return Object.values(map).sort((a, b) => b.valorTotal - a.valorTotal);
 }
 

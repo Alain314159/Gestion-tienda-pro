@@ -11,14 +11,13 @@
 
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { getDB, listar, leerConfig } from '../../core/db.js';
+  import { getDB, listar, listarPaginado, leerConfig } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
   import { ui, avisar } from '../../core/state.svelte.js';
   import {
     n, m, fmt, fmtCant, fmtFecha, fmtFH, valorInventario, stockProducto,
-    datosChart6Meses, topRentables, saldoCaja, inventarioGrupos, badgeStock, nowLocal
+    datosChart6Meses, topRentables, saldoCaja, badgeStock, nowLocal
   } from '../../core/util.js';
-  import { checkNotificaciones } from '../../core/notificaciones.js';
   import Icono from '../../core/Icono.svelte';
 
   let productos = $state([]);
@@ -59,17 +58,25 @@
   })());
 
   async function recargar() {
+    // Productos y lotes: tablas pequenas, cargar completas
+    // Ventas/compras: tablas grandes, solo ultimos N para el dashboard
     [productos, lotes, ventas, compras, ajustes, movCaja, cierres, capital, retiros, arqueos] = await Promise.all([
-      listar('productos'), listar('lotes'), listar('ventas'), listar('compras'),
-      listar('ajustes'), listar('movCaja'), listar('cierres'), listar('capital'), listar('retiros'), listar('arqueos')
+      listar('productos'),
+      listar('lotes'),
+      listarPaginado('ventas', 0, 300),
+      listarPaginado('compras', 0, 150),
+      listarPaginado('ajustes', 0, 50),
+      listarPaginado('movCaja', 0, 50),
+      listarPaginado('cierres', 0, 20),
+      listarPaginado('capital', 0, 20),
+      listarPaginado('retiros', 0, 50),
+      listarPaginado('arqueos', 0, 20)
     ]);
     cfg = await leerConfig('cfg') || { moneda: '$', nombre: 'Tienda Pro', periodoInicio: nowLocal().iso, capitalInicial: 0 };
   }
 
   onMount(() => {
-    recargar().then(() => {
-      checkNotificaciones({ productos, lotes, ventas, arqueos, cfg });
-    });
+    recargar();
     const off = bus.on('recargar', recargar);
     return () => off();
   });

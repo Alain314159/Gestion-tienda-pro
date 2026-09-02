@@ -21,18 +21,80 @@ const modulosRaw = [
 export let modulos = [];
 export let navMods = [];
 
+/** Módulos que se cargan inmediatamente (inicio + navegación principal) */
+const EAGER_IDS = new Set(['inicio', 'ventas', 'compras', 'productos']);
+
 export async function cargarModulos() {
-  const cargados = await Promise.all(modulosRaw.map(async cfg => {
+  // Carga eager primero (inicio + nav principal)
+  const eager = modulosRaw.filter(cfg => EAGER_IDS.has(cfg.manifiesto.id));
+  const lazy = modulosRaw.filter(cfg => !EAGER_IDS.has(cfg.manifiesto.id));
+
+  const cargadosEager = await Promise.all(eager.map(async cfg => {
     const mod = await cfg.loader();
     return { ...cfg.manifiesto, Componente: mod.default };
   }));
 
-  modulos = cargados
+  // Lazy: creamos placeholders que cargan bajo demanda
+  const cargadosLazy = lazy.map(cfg => ({
+    ...cfg.manifiesto,
+    _loader: cfg.loader,
+    _loaded: false,
+    get Componente() {
+      // Svelte accede a .Componente al renderizar; si no está cargado, devolvemos un placeholder
+      if (!this._loaded) {
+        // Retornamos un componente placeholder que se auto-reemplaza
+        return PlaceholderModulo;
+      }
+      return this._realComponente;
+    },
+    set Componente(v) { this._realComponente = v; }
+  }));
+
+  modulos = [...cargadosEager, ...cargadosLazy]
     .filter(m => m.id)
     .sort((a, b) => (a.orden ?? 99) - (b.orden ?? 99));
 
   navMods = modulos.slice(0, 4);
 
+  // Precargar lazy modules en idle time
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(() => precargarLazy());
+  } else {
+    setTimeout(precargarLazy, 2000);
+  }
+
   await abrirDB(modulos);
   return modulos;
+}
+
+/** Componente placeholder para módulos lazy */
+function PlaceholderModulo() {
+  return {
+    onMount() {
+      // El placeholder no debería renderizarse; se reemplaza antes
+    }
+  };
+}
+
+/** Precarga módulos lazy cuando el navegador está idle */
+async function precargarLazy() {
+  for (const m of modulos) {
+    if (m._loader && !m._loaded) {
+      try {
+        const mod = await m._loader();
+        m._realComponente = mod.default;
+        m._loaded = true;
+      } catch (e) { console.warn('Error precargando modulo', m.id, e); }
+    }
+  }
+}
+
+/** Carga un módulo lazy bajo demanda (llamar antes de renderizar) */
+export async function cargarModuloLazy(id) {
+  const m = modulos.find(x => x.id === id);
+  if (!m || !m._loader || m._loaded) return m;
+  const mod = await m._loader();
+  m._realComponente = mod.default;
+  m._loaded = true;
+  return m;
 }

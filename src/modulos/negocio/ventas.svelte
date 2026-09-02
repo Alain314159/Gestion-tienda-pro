@@ -51,11 +51,22 @@
   let ventasPaginadas = $derived(ventasFiltradas.slice((paginaHist - 1) * itemsPorPagina, paginaHist * itemsPorPagina));
   let totalPaginas = $derived(Math.max(1, Math.ceil(ventasFiltradas.length / itemsPorPagina)));
   let totalCarrito = $derived(m(carrito.reduce((s, it) => s + (n(it.precio) * n(it.cant)), 0)));
-  let gananciaCarrito = $derived(m(carrito.reduce((s, it) => {
-    const f = calcFIFO(lotes, it.productoId, n(it.cant));
-    if (f.error) return s;
-    return s + ((n(it.precio) * n(it.cant)) - f.costoTotal);
-  }, 0)));
+  let gananciaCarrito = $derived(m((() => {
+    const cache = new Map();
+    return carrito.reduce((s, it) => {
+      const key = it.productoId + '|' + n(it.cant);
+      let costoTotal;
+      if (cache.has(key)) {
+        costoTotal = cache.get(key);
+      } else {
+        const f = calcFIFO(lotes, it.productoId, n(it.cant));
+        if (f.error) return s;
+        costoTotal = f.costoTotal;
+        cache.set(key, costoTotal);
+      }
+      return s + ((n(it.precio) * n(it.cant)) - costoTotal);
+    }, 0);
+  })()));
 
   async function recargar() {
     [productos, lotes, ventas] = await Promise.all([listar('productos'), listar('lotes'), listar('ventas')]);

@@ -1,5 +1,5 @@
 import Dexie from 'dexie';
-import { MONEY_SCHEMA, toCentsDeep, fromCentsDeep } from './util.js';
+import { MONEY_SCHEMA, toCentsDeep, fromCentsDeep, n } from './util.js';
 
 export const DB_NAME = 'tienda-pro-v8';
 
@@ -164,6 +164,19 @@ export async function listar(tabla) {
   return fromCentsArray(tabla, items);
 }
 
+/** Lista registros paginados. Responsabilidad: leer + convertir de centavos a float. */
+export async function listarPaginado(tabla, offset = 0, limit = 50) {
+  const db = getDB();
+  const items = await db.table(tabla).offset(offset).limit(limit).toArray();
+  return fromCentsArray(tabla, items);
+}
+
+/** Cuenta registros de una tabla sin cargarlos todos. */
+export async function contar(tabla) {
+  const db = getDB();
+  return db.table(tabla).count();
+}
+
 /** Obtiene un registro por id. Responsabilidad: leer + convertir de centavos a float. */
 export async function obtener(tabla, id) {
   const db = getDB();
@@ -175,6 +188,34 @@ export async function obtener(tabla, id) {
 export async function limpiar(tabla) {
   const db = getDB();
   return db.table(tabla).clear();
+}
+
+/* ================================================================
+   AGREGACIONES (para dashboards sin cargar todo en memoria)
+   ================================================================ */
+
+/** Suma un campo numerico de una tabla (en centavos, devuelve float). */
+export async function sumarCampo(tabla, campo, filtro = null) {
+  const db = getDB();
+  let coll = db.table(tabla);
+  if (filtro) coll = coll.filter(filtro);
+  const items = await coll.toArray();
+  return fromCentsArray(tabla, items).reduce((s, it) => s + (n(it[campo]) || 0), 0);
+}
+
+/** Obtiene los N ultimos registros ordenados por fecha descendente. */
+export async function ultimos(tabla, n = 5) {
+  const db = getDB();
+  const items = await db.table(tabla).orderBy('fecha').reverse().limit(n).toArray();
+  return fromCentsArray(tabla, items);
+}
+
+/** Obtiene registros de una fecha especifica (comparando solo YYYY-MM-DD). */
+export async function porFecha(tabla, fechaIso) {
+  const db = getDB();
+  const fechaStr = fechaIso.slice(0, 10);
+  const items = await db.table(tabla).filter(it => it.fecha && it.fecha.slice(0, 10) === fechaStr).toArray();
+  return fromCentsArray(tabla, items);
 }
 
 /* ================================================================
