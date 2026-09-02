@@ -100,8 +100,14 @@
     </div>
   </div>
 {:else}
+  <a
+    href="#main-content"
+    class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:bg-primary focus:text-white focus:px-4 focus:py-2 focus:rounded-md focus:font-bold focus:shadow-lg"
+    >Saltar al contenido</a
+  >
+
   <header
-    class="sticky top-0 z-50 mx-2.5 bg-primary text-white rounded-b-[var(--radius-lg)] px-4 py-3.5 flex justify-between items-center shadow-[0_4px_14px_rgba(33,150,243,0.35)] no-print"
+    class="sticky top-0 z-50 mx-2.5 bg-primary/95 text-white rounded-b-[var(--radius-lg)] px-4 py-3.5 flex justify-between items-center shadow-[0_4px_14px_rgba(33,150,243,0.35)] no-print backdrop-blur-md"
   >
     <h1 class="text-lg font-extrabold flex items-center gap-1.5">
       <Icono nombre="store" size={20} color="#fff" />

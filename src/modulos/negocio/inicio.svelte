@@ -132,6 +132,12 @@
     const h = (chartCanvas.height = 200);
     ctx.clearRect(0, 0, w, h);
 
+    // Leer colores del tema CSS
+    const style = getComputedStyle(chartCanvas);
+    const colorPrimary = style.getPropertyValue('--color-primary').trim() || '#2196F3';
+    const colorSuccess = style.getPropertyValue('--color-success').trim() || '#16a34a';
+    const colorMuted = style.getPropertyValue('--color-muted').trim() || '#6b7280';
+
     const max = Math.max(...chartData.map((d) => Math.max(d.v, d.g)), 1);
     const barW = (w / chartData.length) * 0.3;
     const gap = (w / chartData.length) * 0.1;
@@ -142,12 +148,12 @@
       const vh = (d.v / max) * (h - 30);
       const gh = (d.g / max) * (h - 30);
 
-      ctx.fillStyle = '#2196F3';
+      ctx.fillStyle = colorPrimary;
       ctx.fillRect(x, h - vh - 20, barW, vh);
-      ctx.fillStyle = '#16a34a';
+      ctx.fillStyle = colorSuccess;
       ctx.fillRect(x + barW + gap, h - gh - 20, barW, gh);
 
-      ctx.fillStyle = ui.tema === 'dark' ? '#94a3b8' : '#6b7280';
+      ctx.fillStyle = colorMuted;
       ctx.font = '10px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(d.label, x + barW + gap / 2, h - 5);

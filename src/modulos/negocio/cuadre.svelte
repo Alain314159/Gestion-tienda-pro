@@ -146,10 +146,17 @@
     const h = (chartCanvas.height = 160);
     ctx.clearRect(0, 0, w, h);
 
+    // Leer colores del tema CSS
+    const style = getComputedStyle(chartCanvas);
+    const colorPrimary = style.getPropertyValue('--color-primary').trim() || '#2196F3';
+    const colorDanger = style.getPropertyValue('--color-danger').trim() || '#dc2626';
+    const colorSuccess = style.getPropertyValue('--color-success').trim() || '#16a34a';
+    const colorMuted = style.getPropertyValue('--color-muted').trim() || '#666';
+
     const datos = [
-      { label: 'Ventas', val: ventasTotal, color: '#2196F3' },
-      { label: 'Costo', val: costoVendido, color: '#dc2626' },
-      { label: 'Ganancia', val: gananciaNeta, color: '#16a34a' },
+      { label: 'Ventas', val: ventasTotal, color: colorPrimary },
+      { label: 'Costo', val: costoVendido, color: colorDanger },
+      { label: 'Ganancia', val: gananciaNeta, color: colorSuccess },
     ];
     const max = Math.max(...datos.map((d) => d.val), 1);
     const bw = w / (datos.length * 2);
@@ -159,7 +166,7 @@
       const x = (i * 2 + 0.5) * bw;
       ctx.fillStyle = d.color;
       ctx.fillRect(x, h - bh - 20, bw, bh);
-      ctx.fillStyle = '#666';
+      ctx.fillStyle = colorMuted;
       ctx.font = '10px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(d.label, x + bw / 2, h - 5);
@@ -199,7 +206,7 @@
       </div>
     </div>
 
-    <div class="relative h-[160px] mb-4">
+    <div class="relative h-[160px] mb-4" role="img" aria-label="Grafico comparando ventas, costo y ganancia del dia">
       <canvas bind:this={chartCanvas} class="w-full h-full"></canvas>
     </div>
 
