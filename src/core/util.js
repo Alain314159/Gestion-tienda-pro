@@ -113,6 +113,37 @@ export function debounce(fn, ms = 200) {
   };
 }
 
+/** Búsqueda fuzzy: "det 1kg" encuentra "Detergente 1kg"
+ *  Cada token del query debe aparecer en alguna parte del texto
+ */
+export function fuzzySearch(items, query, getter) {
+  const qry = (query || '').toLowerCase().trim();
+  if (!qry) return items;
+  const tokens = qry.split(/\s+/).filter(t => t.length > 0);
+  return items.filter(item => {
+    const text = (getter ? getter(item) : item).toLowerCase();
+    return tokens.every(t => text.includes(t));
+  });
+}
+
+/** Búsqueda fuzzy con scoring (mejores coincidencias primero) */
+export function fuzzySearchScored(items, query, getter) {
+  const qry = (query || '').toLowerCase().trim();
+  if (!qry) return items.map(it => ({ item: it, score: 0 }));
+  const tokens = qry.split(/\s+/).filter(t => t.length > 0);
+  const scored = items.map(item => {
+    const text = (getter ? getter(item) : item).toLowerCase();
+    let score = 0;
+    for (const t of tokens) {
+      if (text.startsWith(t)) score += 3;
+      else if (text.includes(' ' + t)) score += 2;
+      else if (text.includes(t)) score += 1;
+    }
+    return { item, score };
+  });
+  return scored.filter(s => s.score > 0).sort((a, b) => b.score - a.score);
+}
+
 /** Formato de dinero */
 export function fmt(val, moneda = '$') {
   const v = m(val);
