@@ -1,0 +1,292 @@
+<script module>
+  export const manifiesto = {
+    id: 'cuadre',
+    nombre: 'Cuadre',
+    icono: 'calculator',
+    grupo: 'negocio',
+    orden: 5,
+    tablas: { socios: '++id', gastosOp: '++id, fecha' },
+  };
+</script>
+
+<script>
+  import { onMount } from 'svelte';
+  import { getDB, listar, guardar } from '../../core/db.js';
+  import { bus } from '../../core/bus.js';
+  import { avisar, confirmar, preguntar } from '../../core/state.svelte.js';
+  import { n, m, fmt, genId, valorInventario, stockProducto, nowLocal } from '../../core/util.js';
+  import { ventasDelDia } from '../../core/calendario.js';
+  import { generarPDFCuadre } from '../../core/pdf.js';
+  import Icono from '../../core/Icono.svelte';
+
+  let productos = $state([]);
+  let lotes = $state([]);
+  let ventas = $state([]);
+  let compras = $state([]);
+  let ajustes = $state([]);
+  let socios = $state([]);
+  let gastosOp = $state([]);
+
+  let fechaSel = $state(nowLocal().local);
+  let chartCanvas = $state(null);
+
+  const vDia = $derived(ventasDelDia(ventas, fechaSel));
+  const ventasTotal = $derived(m(vDia.reduce((s, v) => s + n(v.total), 0)));
+  const costoVendido = $derived(m(vDia.reduce((s, v) => s + v.items.reduce((ss, it) => ss + n(it.costo), 0), 0)));
+  const gananciaBruta = $derived(m(ventasTotal - costoVendido));
+  const gastosDia = $derived(
+    m(gastosOp.filter((g) => g.fecha.slice(0, 10) === fechaSel).reduce((s, g) => s + n(g.monto), 0))
+  );
+  const gananciaNeta = $derived(m(gananciaBruta - gastosDia));
+  const invFisico = $derived(lotes.reduce((s, l) => s + Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida)), 0));
+  const valInv = $derived(valorInventario(lotes));
+
+  const distribucion = $derived(
+    (() => {
+      const totalS = socios.reduce((s, x) => s + n(x.porcentaje), 0);
+      if (totalS === 0) return [];
+      return socios.map((s) => ({ ...s, monto: m(gananciaNeta * (n(s.porcentaje) / 100)) }));
+    })()
+  );
+
+  async function recargar() {
+    [productos, lotes, ventas, compras, ajustes, socios, gastosOp] = await Promise.all([
+      listar('productos'),
+      listar('lotes'),
+      listar('ventas'),
+      listar('compras'),
+      listar('ajustes'),
+      listar('socios'),
+      listar('gastosOp'),
+    ]);
+  }
+
+  onMount(() => {
+    recargar();
+    const off = bus.on('recargar', recargar);
+
+    // ResizeObserver para redibujar canvas al cambiar tamaño
+    let ro;
+    if (chartCanvas && 'ResizeObserver' in window) {
+      ro = new ResizeObserver(() => {
+        chartCanvas.width = chartCanvas.offsetWidth;
+      });
+      ro.observe(chartCanvas.parentElement);
+    }
+
+    return () => {
+      off();
+      if (ro) ro.disconnect();
+    };
+  });
+
+  async function agregarSocio() {
+    const nombre = await preguntar('Nuevo socio', 'Nombre del socio');
+    if (!nombre) return;
+    const pct = await preguntar('Porcentaje', '% de ganancia (ej: 50)', '50');
+    if (!pct || n(pct) <= 0) return;
+    await guardar('socios', { id: genId('s'), nombre, porcentaje: n(pct) });
+    await recargar();
+    bus.emit('recargar');
+  }
+
+  async function eliminarSocio(s) {
+    const ok = await confirmar('Eliminar socio', `Quitar a ${s.nombre}?`);
+    if (!ok) return;
+    const db = getDB();
+    await db.socios.delete(s.id);
+    await recargar();
+    bus.emit('recargar');
+  }
+
+  async function agregarGasto() {
+    const concepto = await preguntar('Gasto operativo', 'Concepto (luz, agua, alquiler...)');
+    if (!concepto) return;
+    const monto = await preguntar('Monto', 'Cuanto fue?');
+    if (!monto || n(monto) <= 0) return;
+    await guardar('gastosOp', {
+      id: genId('g'),
+      fecha: fechaSel + 'T12:00:00.000Z',
+      concepto,
+      monto: n(monto),
+    });
+    await recargar();
+    bus.emit('recargar');
+    avisar('Gasto registrado');
+  }
+
+  async function exportarPDF() {
+    try {
+      let chartImage = null;
+      if (chartCanvas) {
+        await new Promise((r) => setTimeout(r, 100));
+        chartImage = chartCanvas.toDataURL('image/png');
+      }
+      await generarPDFCuadre({
+        ventasTotal,
+        costoVendido,
+        gananciaBruta,
+        gastosOp: gastosDia,
+        gananciaNeta,
+        inventarioFisico: invFisico,
+        valorInventario: valInv,
+        socios: distribucion,
+        chartImage,
+      });
+      avisar('PDF descargado');
+    } catch (e) {
+      avisar('Error PDF: ' + e.message, 'bad');
+    }
+  }
+
+  $effect(() => {
+    if (!chartCanvas) return;
+    const ctx = chartCanvas.getContext('2d');
+    const w = (chartCanvas.width = chartCanvas.offsetWidth);
+    const h = (chartCanvas.height = 160);
+    ctx.clearRect(0, 0, w, h);
+
+    // Leer colores del tema CSS
+    const style = getComputedStyle(chartCanvas);
+    const colorPrimary = style.getPropertyValue('--color-primary').trim() || '#2196F3';
+    const colorDanger = style.getPropertyValue('--color-danger').trim() || '#dc2626';
+    const colorSuccess = style.getPropertyValue('--color-success').trim() || '#16a34a';
+    const colorMuted = style.getPropertyValue('--color-muted').trim() || '#666';
+
+    const datos = [
+      { label: 'Ventas', val: ventasTotal, color: colorPrimary },
+      { label: 'Costo', val: costoVendido, color: colorDanger },
+      { label: 'Ganancia', val: gananciaNeta, color: colorSuccess },
+    ];
+    const max = Math.max(...datos.map((d) => d.val), 1);
+    const bw = w / (datos.length * 2);
+
+    datos.forEach((d, i) => {
+      const bh = (d.val / max) * (h - 30);
+      const x = (i * 2 + 0.5) * bw;
+      ctx.fillStyle = d.color;
+      ctx.fillRect(x, h - bh - 20, bw, bh);
+      ctx.fillStyle = colorMuted;
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(d.label, x + bw / 2, h - 5);
+      ctx.fillText(fmt(d.val), x + bw / 2, h - bh - 25);
+    });
+  });
+</script>
+
+<div class="modulo">
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
+      <Icono nombre="calendar" size={18} />
+      Fecha del cuadre
+    </div>
+    <input
+      type="date"
+      class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text mb-4"
+      bind:value={fechaSel}
+    />
+
+    <div class="grid grid-cols-2 gap-2.5 mb-3">
+      <div class="bg-primary/5 rounded-xl p-3 text-center">
+        <div class="text-[0.65rem] text-muted font-bold">VENTAS</div>
+        <div class="text-lg font-extrabold text-primary">{fmt(ventasTotal)}</div>
+      </div>
+      <div class="bg-danger/5 rounded-xl p-3 text-center">
+        <div class="text-[0.65rem] text-muted font-bold">COSTO VENDIDO</div>
+        <div class="text-lg font-extrabold text-danger">{fmt(costoVendido)}</div>
+      </div>
+      <div class="bg-success/5 rounded-xl p-3 text-center">
+        <div class="text-[0.65rem] text-muted font-bold">GANANCIA NETA</div>
+        <div class="text-lg font-extrabold text-success">{fmt(gananciaNeta)}</div>
+      </div>
+      <div class="bg-purple/5 rounded-xl p-3 text-center">
+        <div class="text-[0.65rem] text-muted font-bold">INV. VALOR</div>
+        <div class="text-lg font-extrabold text-purple">{fmt(valInv)}</div>
+      </div>
+    </div>
+
+    <div class="relative h-[160px] mb-4" role="img" aria-label="Grafico comparando ventas, costo y ganancia del dia">
+      <canvas bind:this={chartCanvas} class="w-full h-full"></canvas>
+    </div>
+
+    <button
+      class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm active:scale-[0.97] transition-transform"
+      onclick={exportarPDF}
+    >
+      <Icono nombre="fileText" size={16} color="#fff" />
+      Exportar PDF
+    </button>
+  </div>
+
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
+    <div class="flex items-center gap-2 font-extrabold text-warning mb-3">
+      <Icono nombre="receipt" size={18} />
+      Gastos operativos del dia
+    </div>
+    {#if gastosOp.filter((g) => g.fecha.slice(0, 10) === fechaSel).length === 0}
+      <div class="text-center text-muted py-4 text-sm">Sin gastos registrados</div>
+    {:else}
+      {#each gastosOp.filter((g) => g.fecha.slice(0, 10) === fechaSel) as g}
+        <div class="flex justify-between py-2 border-b border-border text-sm">
+          <span>{g.concepto}</span>
+          <span class="text-danger font-bold">{fmt(g.monto)}</span>
+        </div>
+      {/each}
+    {/if}
+    <button
+      class="w-full py-2.5 mt-3 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-bold text-sm"
+      onclick={agregarGasto}
+    >
+      + Agregar gasto
+    </button>
+  </div>
+
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
+    <div class="flex items-center gap-2 font-extrabold text-purple mb-3">
+      <Icono nombre="users" size={18} />
+      Distribucion entre socios
+    </div>
+    {#each distribucion as s}
+      <div class="flex justify-between items-center py-2 border-b border-border text-sm">
+        <div>
+          <div class="font-bold">{s.nombre}</div>
+          <div class="text-xs text-muted">{s.porcentaje}%</div>
+        </div>
+        <div class="text-right">
+          <div class="font-extrabold text-success">{fmt(s.monto)}</div>
+          <button class="text-xs text-danger underline" onclick={() => eliminarSocio(s)}>Quitar</button>
+        </div>
+      </div>
+    {/each}
+    <button
+      class="w-full py-2.5 mt-3 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-bold text-sm"
+      onclick={agregarSocio}
+    >
+      + Agregar socio
+    </button>
+  </div>
+
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)]">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-3">
+      <Icono nombre="cart" size={18} />
+      Ventas del dia ({vDia.length})
+    </div>
+    {#if vDia.length === 0}
+      <div class="text-center text-muted py-6 text-sm">Sin ventas este dia</div>
+    {:else}
+      {#each vDia as v}
+        <div class="flex justify-between py-2 border-b border-border text-sm">
+          <div class="min-w-0 flex-1">
+            <div class="font-bold truncate">{v.items.map((i) => i.nombre).join(', ')}</div>
+            <div class="text-xs text-muted">{new Date(v.fecha).toLocaleTimeString()}</div>
+          </div>
+          <div class="text-right">
+            <div class="font-bold">{fmt(v.total)}</div>
+            <div class="text-xs text-success">+{fmt(v.ganancia)}</div>
+          </div>
+        </div>
+      {/each}
+    {/if}
+  </div>
+</div>
