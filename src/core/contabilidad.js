@@ -58,7 +58,7 @@ export function balanceGeneral({ cfg, capital, retiros, ventas, compras, lotes, 
   const ajusteTotal = m((ajustes || []).reduce((s, a) => a.cantidad > 0 ? s + n(a.costoPerdida) : s - n(a.costoPerdida), 0));
   const cajaMovs = m((movCaja || []).reduce((s, m) => m.tipo === 'ingreso' ? s + n(m.monto) : s - n(m.monto), 0));
   const cajaReal = m(capTotal + vtaTotal - compTotal - retTotal + ajusteTotal + cajaMovs);
-  const ganAcum = m(cierres.reduce((s, x) => s + n(x.ganancia), 0));
+  const ganAcum = m(cierres.reduce((s, x) => s + n(x.neta), 0));
 
   return {
     activos: {

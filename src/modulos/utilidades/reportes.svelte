@@ -73,11 +73,12 @@
     const cogs = m(vta.reduce((s, v) => s + v.items.reduce((ss, it) => ss + n(it.costo), 0), 0));
     const bruta = m(ing - cogs);
     const mermas = m(ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= new Date(periodoInicio)).reduce((s, a) => s + n(a.costoPerdida), 0));
-    const neta = m(bruta - mermas);
+    const gastos = m((await listar('gastosOp')).filter(g => new Date(g.fecha) >= new Date(periodoInicio)).reduce((s, g) => s + n(g.monto), 0));
+    const neta = m(bruta - mermas - gastos);
     const cierre = {
       id: genId('cr'), fechaCierre: nowLocal().iso, fechaLocal: nowLocal().local, fechaInicio: periodoInicio,
       periodo: 'Del ' + fmtFecha(periodoInicio) + ' al ' + fmtFecha(nowLocal().iso),
-      ingresos: ing, cogs, bruta, mermas, neta, numVentas: vta.length, margenB: ing > 0 ? ((bruta / ing) * 100).toFixed(1) : '0.0', margenN: ing > 0 ? ((neta / ing) * 100).toFixed(1) : '0.0'
+      ingresos: ing, cogs, bruta, mermas, gastos, neta, numVentas: vta.length, margenB: ing > 0 ? ((bruta / ing) * 100).toFixed(1) : '0.0', margenN: ing > 0 ? ((neta / ing) * 100).toFixed(1) : '0.0'
     };
     await guardar('cierres', cierre);
     cfg.periodoInicio = nowLocal().iso;

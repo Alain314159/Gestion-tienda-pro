@@ -22,6 +22,7 @@
   let cfg = $state({});
   const tablas = $state([
     'productos',
+    'productoVariantes',
     'lotes',
     'ventas',
     'compras',
