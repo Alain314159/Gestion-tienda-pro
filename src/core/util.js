@@ -113,6 +113,37 @@ export function debounce(fn, ms = 200) {
   };
 }
 
+/** Búsqueda fuzzy: "det 1kg" encuentra "Detergente 1kg"
+ *  Cada token del query debe aparecer en alguna parte del texto
+ */
+export function fuzzySearch(items, query, getter) {
+  const qry = (query || '').toLowerCase().trim();
+  if (!qry) return items;
+  const tokens = qry.split(/\s+/).filter(t => t.length > 0);
+  return items.filter(item => {
+    const text = (getter ? getter(item) : item).toLowerCase();
+    return tokens.every(t => text.includes(t));
+  });
+}
+
+/** Búsqueda fuzzy con scoring (mejores coincidencias primero) */
+export function fuzzySearchScored(items, query, getter) {
+  const qry = (query || '').toLowerCase().trim();
+  if (!qry) return items.map(it => ({ item: it, score: 0 }));
+  const tokens = qry.split(/\s+/).filter(t => t.length > 0);
+  const scored = items.map(item => {
+    const text = (getter ? getter(item) : item).toLowerCase();
+    let score = 0;
+    for (const t of tokens) {
+      if (text.startsWith(t)) score += 3;
+      else if (text.includes(' ' + t)) score += 2;
+      else if (text.includes(t)) score += 1;
+    }
+    return { item, score };
+  });
+  return scored.filter(s => s.score > 0).sort((a, b) => b.score - a.score);
+}
+
 /** Formato de dinero */
 export function fmt(val, moneda = '$') {
   const v = m(val);
@@ -146,8 +177,8 @@ export function fmtFH(iso) {
   } catch (e) { return ''; }
 }
 
-/** Cálculo FIFO para costo de ventas
- *  @returns { costoTotal, usados: [{loteId, cantidad, costo}] }
+/** FIFO por producto (legacy, usa calcFIFOVariante para variantes)
+ *  @deprecated Usar calcFIFOVariante con varianteId
  */
 export function calcFIFO(lotes, productoId, cant) {
   const lotesDisp = lotes
@@ -167,11 +198,63 @@ export function calcFIFO(lotes, productoId, cant) {
   return { costoTotal: total, usados };
 }
 
-/** Stock total de un producto */
+/** FIFO por variante (nueva forma preferida) */
+export function calcFIFOVariante(lotes, varianteId, cant) {
+  const lotesDisp = lotes
+    .filter(l => l.varianteId === varianteId && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
+    .sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || (a.id < b.id ? -1 : 1));
+
+  let rest = cant, total = 0, usados = [];
+  for (const l of lotesDisp) {
+    if (rest <= 0) break;
+    const disp = n(l.cantidadInicial) - n(l.cantidadVendida);
+    const usar = Math.min(disp, rest);
+    total = m(total + (usar * n(l.costo)));
+    usados.push({ loteId: l.id, cantidad: usar, costo: l.costo });
+    rest -= usar;
+  }
+  if (q(rest) > 0) return { error: 'Stock insuficiente (faltan ' + q(rest).toFixed(3) + ')' };
+  return { costoTotal: total, usados };
+}
+
+/** Stock total de un producto (legacy, suma todas las variantes)
+ *  @deprecated Usar stockVariante con varianteId
+ */
 export function stockProducto(lotes, productoId) {
   return lotes
     .filter(l => l.productoId === productoId)
     .reduce((s, l) => s + Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida)), 0);
+}
+
+/** Stock total de una variante específica */
+export function stockVariante(lotes, varianteId) {
+  return lotes
+    .filter(l => l.varianteId === varianteId)
+    .reduce((s, l) => s + Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida)), 0);
+}
+
+/** Lotes activos de una variante */
+export function lotesDeVariante(lotes, varianteId) {
+  return lotes
+    .filter(l => l.varianteId === varianteId && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
+    .sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || (a.id < b.id ? -1 : 1));
+}
+
+/** Valor de lotes de una variante */
+export function valorLotesVariante(lotes, varianteId) {
+  return m(lotesDeVariante(lotes, varianteId).reduce((s, l) => {
+    const disp = n(l.cantidadInicial) - n(l.cantidadVendida);
+    return s + (disp * n(l.costo));
+  }, 0));
+}
+
+/** Badge de stock para una variante */
+export function badgeStockVariante(variante, lotes) {
+  const s = stockVariante(lotes, variante.id);
+  if (variante.archivado) return { clase: 'arch', texto: 'ARCHIVADO' };
+  if (s === 0) return { clase: 'out', texto: 'AGOTADO' };
+  if (s <= n(variante.stockMinimo)) return { clase: 'low', texto: 'BAJO' };
+  return { clase: 'ok', texto: 'OK' };
 }
 
 /** Valor del inventario */
@@ -182,7 +265,9 @@ export function valorInventario(lotes) {
   }, 0));
 }
 
-/** Lotes activos de un producto */
+/** Lotes activos de un producto (legacy, suma todas las variantes)
+ *  @deprecated Usar lotesDeVariante con varianteId
+ */
 export function lotesDeProducto(lotes, productoId) {
   return lotes
     .filter(l => l.productoId === productoId && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
@@ -206,30 +291,40 @@ export function badgeStock(producto, lotes) {
   return { clase: 'ok', texto: 'OK' };
 }
 
-/** Agrupa inventario por producto (optimizado: O(n+m) con Map) */
-export function inventarioGrupos(productos, lotes) {
+/** Agrupa inventario por variante (optimizado: O(n+m) con Map)
+ *  Muestra stock separado por cada presentacion del producto
+ */
+export function inventarioGrupos(productos, variantes, lotes) {
+  const varMap = new Map();
+  for (const v of variantes) {
+    varMap.set(v.id, { nombre: v.nombre, unidad: v.unidad, productoId: v.productoId });
+  }
   const prodMap = new Map();
   for (const p of productos) {
-    prodMap.set(p.id, { nombre: p.nombre, unidad: p.unidad });
+    prodMap.set(p.id, p.nombre);
   }
   const map = {};
   for (const l of lotes) {
     const disp = n(l.cantidadInicial) - n(l.cantidadVendida);
     if (disp <= 0) continue;
-    if (!map[l.productoId]) {
-      const p = prodMap.get(l.productoId);
-      map[l.productoId] = {
+    const vid = l.varianteId || l.productoId;
+    if (!map[vid]) {
+      const v = varMap.get(vid);
+      const pName = prodMap.get(l.productoId) || l.productoNombre || 'Desconocido';
+      map[vid] = {
+        varianteId: vid,
         productoId: l.productoId,
-        nombre: l.productoNombre || p?.nombre || 'Desconocido',
-        unidad: l.productoUnidad || p?.unidad || '',
+        nombre: v?.nombre || l.productoNombre || pName,
+        nombreBase: pName,
+        unidad: v?.unidad || l.productoUnidad || '',
         lotes: [],
         stockTotal: 0,
         valorTotal: 0
       };
     }
-    map[l.productoId].lotes.push(l);
-    map[l.productoId].stockTotal += disp;
-    map[l.productoId].valorTotal = m(map[l.productoId].valorTotal + (disp * n(l.costo)));
+    map[vid].lotes.push(l);
+    map[vid].stockTotal += disp;
+    map[vid].valorTotal = m(map[vid].valorTotal + (disp * n(l.costo)));
   }
   return Object.values(map).sort((a, b) => b.valorTotal - a.valorTotal);
 }
@@ -278,7 +373,7 @@ export function gananciaDisponible({ cfg, capital, ventas, compras, retiros, mov
   const gastosOp = m(ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= new Date(periodoInicio))
     .reduce((s, a) => s + n(a.costoPerdida), 0));
   const ganNeta = m(ganBruta - gastosOp);
-  const acum = m(cierres.reduce((s, x) => s + n(x.ganancia), 0) + ganNeta - retiros.reduce((s, r) => s + n(r.monto), 0));
+  const acum = m(cierres.reduce((s, x) => s + n(x.neta), 0) + ganNeta - retiros.reduce((s, r) => s + n(r.monto), 0));
   if (acum <= 0) return 0;
   const capTotal = m(n(cfg.capitalInicial) + capital.reduce((s, c) => s + n(c.monto), 0));
   const capEnCaja = Math.max(0, capTotal - valorInventario(lotes));
@@ -324,13 +419,14 @@ export function datosChart6Meses(ventas) {
 
 export const MONEY_SCHEMA = {
   productos: { fields: ['precio'] },
+  productoVariantes: { fields: ['precioBase'] },
   lotes: { fields: ['costo'] },
   ventas: { fields: ['total', 'ganancia'], nested: { items: ['precio', 'costo', 'ganancia'] } },
   compras: { fields: ['costo', 'total'] },
   ajustes: { fields: ['costoPerdida'] },
   movCaja: { fields: ['monto'] },
   arqueos: { fields: ['montoFisico', 'saldoSistema', 'diferencia'] },
-  cierres: { fields: ['gananciaNeta', 'totalVentas', 'totalCompras', 'totalRetiros', 'totalGastos', 'totalAportes', 'totalAjustes', 'inventarioValor', 'capitalTotal'] },
+  cierres: { fields: ['ingresos', 'cogs', 'bruta', 'mermas', 'gastos', 'neta'] },
   retiros: { fields: ['monto'] },
   capital: { fields: ['monto'] },
   gastosOp: { fields: ['monto'] },
@@ -379,7 +475,7 @@ export function fromCentsDeep(obj, fields, nested = {}) {
   return result;
 }
 /** Reporte por período */
-export function generarReporte({ ventas, ajustes }, fechaInicio, fechaFin) {
+export function generarReporte({ ventas, ajustes, gastosOp }, fechaInicio, fechaFin) {
   const i = new Date(fechaInicio), f = new Date(fechaFin);
   f.setHours(23, 59, 59);
   if (i > f) return { error: 'Fecha inicio > fin' };
@@ -390,10 +486,12 @@ export function generarReporte({ ventas, ajustes }, fechaInicio, fechaFin) {
   const bruta = m(ing - cogs);
   const mermas = m(ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f)
     .reduce((s, a) => s + n(a.costoPerdida), 0));
-  const neta = m(bruta - mermas);
+  const gastos = m((gastosOp || []).filter(g => new Date(g.fecha) >= i && new Date(g.fecha) <= f)
+    .reduce((s, g) => s + n(g.monto), 0));
+  const neta = m(bruta - mermas - gastos);
 
   return {
-    ingresos: ing, cogs, bruta, mermas, neta,
+    ingresos: ing, cogs, bruta, mermas, gastos, neta,
     numVentas: vp.length,
     margenB: ing > 0 ? ((bruta / ing) * 100).toFixed(1) : '0.0',
     margenN: ing > 0 ? ((neta / ing) * 100).toFixed(1) : '0.0',

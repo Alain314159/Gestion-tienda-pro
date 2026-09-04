@@ -1,5 +1,5 @@
 import { getDB, guardar, listar } from '../core/db.js';
-import { calcFIFO, nowLocal, m, n, q, genId } from '../core/util.js';
+import { calcFIFOVariante, nowLocal, m, n, q, genId } from '../core/util.js';
 import { verificarPeriodoCerrado } from '../core/periodos.js';
 
 /**
@@ -9,10 +9,10 @@ import { verificarPeriodoCerrado } from '../core/periodos.js';
 
 export const InventarioService = {
   /** Ajuste negativo (merma): reduce stock usando FIFO */
-  ajustarNegativo: async function ({ productoId, productoNombre, cantidad, motivo, lotes }) {
+  ajustarNegativo: async function ({ productoId, varianteId, productoNombre, cantidad, motivo, lotes }) {
     await verificarPeriodoCerrado(nowLocal().iso);
     const db = getDB();
-    const res = calcFIFO(lotes, productoId, cantidad);
+    const res = calcFIFOVariante(lotes, varianteId, cantidad);
     if (res.error) throw new Error(res.error);
 
     const ajuste = {
@@ -20,6 +20,7 @@ export const InventarioService = {
       fecha: nowLocal().iso,
       fechaLocal: nowLocal().local,
       productoId,
+      varianteId,
       productoNombre,
       cantidad: -cantidad,
       motivo,
@@ -42,7 +43,7 @@ export const InventarioService = {
   },
 
   /** Ajuste positivo (sobrante): crea ajuste + lote nuevo */
-  ajustarPositivo: async function ({ productoId, productoNombre, productoUnidad, cantidad, motivo, costo }) {
+  ajustarPositivo: async function ({ productoId, varianteId, productoNombre, productoUnidad, cantidad, motivo, costo }) {
     await verificarPeriodoCerrado(nowLocal().iso);
     if (n(costo) <= 0) throw new Error('El costo debe ser mayor a cero');
     if (n(cantidad) <= 0) throw new Error('La cantidad debe ser mayor a cero');
@@ -52,6 +53,7 @@ export const InventarioService = {
       fecha: nowLocal().iso,
       fechaLocal: nowLocal().local,
       productoId,
+      varianteId,
       productoNombre,
       cantidad,
       motivo,
@@ -62,6 +64,7 @@ export const InventarioService = {
       id: genId('l'),
       compraId: 'aj-' + ajuste.id,
       productoId,
+      varianteId,
       productoNombre,
       productoUnidad: productoUnidad || '',
       cantidadInicial: cantidad,
@@ -79,7 +82,9 @@ export const InventarioService = {
   },
 
   recargar: async function () {
-    const [productos, lotes, ajustes] = await Promise.all([listar('productos'), listar('lotes'), listar('ajustes')]);
-    return { productos, lotes, ajustes };
+    const [productos, lotes, ajustes, variantes] = await Promise.all([
+      listar('productos'), listar('lotes'), listar('ajustes'), listar('productoVariantes')
+    ]);
+    return { productos, lotes, ajustes, variantes };
   },
 };

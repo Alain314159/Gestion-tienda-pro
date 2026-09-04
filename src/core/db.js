@@ -1,7 +1,7 @@
 import Dexie from 'dexie';
 import { MONEY_SCHEMA, toCentsDeep, fromCentsDeep, n } from './util.js';
 
-export const DB_NAME = 'tienda-pro-v8';
+export const DB_NAME = 'tienda-pro-v9';
 
 let db = null;
 
@@ -144,6 +144,90 @@ async function migrateMoneyToCents() {
 }
 
 /* ================================================================
+   MIGRACIÓN: Productos simples → Variantes de producto
+   ================================================================ */
+
+async function migrarAVariantes() {
+  const cfg = await db.config.get('cfg');
+  if (cfg?.value?._variantesMigrated) return;
+
+  // Solo migrar si existen las tablas necesarias
+  const hasProductos = db.tables.some(t => t.name === 'productos');
+  const hasLotes = db.tables.some(t => t.name === 'lotes');
+  const hasCompras = db.tables.some(t => t.name === 'compras');
+  const hasVentas = db.tables.some(t => t.name === 'ventas');
+
+  if (!hasProductos) {
+    await db.config.put({
+      key: 'cfg',
+      value: { ...(cfg?.value || {}), _variantesMigrated: true }
+    });
+    return;
+  }
+
+  const productos = await db.productos.toArray();
+  if (productos.length === 0) {
+    await db.config.put({
+      key: 'cfg',
+      value: { ...(cfg?.value || {}), _variantesMigrated: true }
+    });
+    return;
+  }
+
+  const lotes = hasLotes ? await db.lotes.toArray() : [];
+  const comprasArr = hasCompras ? await db.compras.toArray() : [];
+  const ventasArr = hasVentas ? await db.ventas.toArray() : [];
+
+  for (const p of productos) {
+    const variante = {
+      id: 'pv-' + p.id,
+      productoId: p.id,
+      nombre: p.nombre,
+      codigo: p.codigo || '',
+      unidad: p.unidad || '',
+      precioBase: p.precio || 0,
+      stockMinimo: p.stockMinimo || 5,
+      archivado: p.archivado || false,
+      esCaja: false,
+      unidadesPorCaja: 0,
+      varianteUnidadId: '',
+      preciosEscalonados: [],
+    };
+    await db.productoVariantes.put(variante);
+
+    for (const l of lotes) {
+      if (l.productoId === p.id) {
+        l.varianteId = variante.id;
+        await db.lotes.put(l);
+      }
+    }
+
+    for (const c of comprasArr) {
+      if (c.productoId === p.id) {
+        c.varianteId = variante.id;
+        await db.compras.put(c);
+      }
+    }
+
+    for (const v of ventasArr) {
+      let cambio = false;
+      for (const it of v.items || []) {
+        if (it.productoId === p.id) {
+          it.varianteId = variante.id;
+          cambio = true;
+        }
+      }
+      if (cambio) await db.ventas.put(v);
+    }
+  }
+
+  await db.config.put({
+    key: 'cfg',
+    value: { ...(cfg?.value || {}), _variantesMigrated: true }
+  });
+}
+
+/* ================================================================
    APERTURA / CIERRE DE BASE DE DATOS
    ================================================================ */
 
@@ -159,7 +243,8 @@ export async function abrirDB(manifiestos = []) {
     gastosOp: '++id, fecha, tiendaId',
     contabilidad: '++id, fecha, tipo, tiendaId',
     webhookLog: '++id, fecha',
-    webhookQueue: '++id, estado, fecha'
+    webhookQueue: '++id, estado, fecha',
+    productoVariantes: '++id, productoId, nombre, codigo, archivado'
   };
 
   for (const m of manifiestos) {
@@ -171,6 +256,7 @@ export async function abrirDB(manifiestos = []) {
 
   await db.open();
   await migrateMoneyToCents();
+  await migrarAVariantes();
   return db;
 }
 

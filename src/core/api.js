@@ -166,7 +166,7 @@ export async function queueStats() {
 
 // REST API local (exportable)
 export function exportData(db) {
-  const tables = ['productos', 'ventas', 'compras', 'lotes', 'ajustes', 'cierres', 'capital', 'retiros', 'socios', 'gastosOp'];
+  const tables = ['productos', 'productoVariantes', 'ventas', 'compras', 'lotes', 'ajustes', 'cierres', 'capital', 'retiros', 'socios', 'gastosOp'];
   const data = {};
   return Promise.all(tables.map(async t => {
     data[t] = await db[t].toArray();

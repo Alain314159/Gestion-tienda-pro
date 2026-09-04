@@ -1,5 +1,5 @@
 import { getDB, guardar, guardarBulk, listar } from '../core/db.js';
-import { calcFIFO, stockProducto, nowLocal, m, n, q, genId, lotesDeProducto } from '../core/util.js';
+import { calcFIFOVariante, stockVariante, nowLocal, m, n, q, genId, lotesDeVariante, lotesDeProducto } from '../core/util.js';
 import { verificarPeriodoCerrado } from '../core/periodos.js';
 
 /**
@@ -25,12 +25,13 @@ export const VentaService = {
     for (const it of carrito) {
       const cant = n(it.cant),
         precio = n(it.precio);
-      const fifo = calcFIFO(lotes, it.productoId, cant);
+      const fifo = calcFIFOVariante(lotes, it.varianteId, cant);
       if (fifo.error) throw new Error(fifo.error + ' en ' + it.nombre);
 
       const subtotal = m(precio * cant);
       items.push({
         productoId: it.productoId,
+        varianteId: it.varianteId,
         nombre: it.nombre,
         cantidad: cant,
         unidad: it.unidad || '',
@@ -75,11 +76,14 @@ export const VentaService = {
    *  Devuelve array de {loteId, cantidad} para referencia futura.
    */
   restaurarStockSinLotesUsados: function (item, lotes) {
-    const lotesProd = lotesDeProducto(lotes, item.productoId);
+    // Fallback: si hay varianteId usar lotesDeVariante, sino lotesDeProducto (legacy)
+    const lotesVar = item.varianteId
+      ? lotesDeVariante(lotes, item.varianteId)
+      : lotesDeProducto(lotes, item.productoId);
     let rest = n(item.cantidad);
     const usados = [];
-    for (let i = lotesProd.length - 1; i >= 0 && rest > 0; i--) {
-      const l = lotesProd[i];
+    for (let i = lotesVar.length - 1; i >= 0 && rest > 0; i--) {
+      const l = lotesVar[i];
       const vendido = n(l.cantidadVendida);
       const devolver = Math.min(vendido, rest);
       if (devolver > 0) {
@@ -130,7 +134,9 @@ export const VentaService = {
 
   /** Recarga datos desde DB (ya con conversion de centavos automatica) */
   recargar: async function () {
-    const [productos, lotes, ventas] = await Promise.all([listar('productos'), listar('lotes'), listar('ventas')]);
-    return { productos, lotes, ventas };
+    const [productos, lotes, ventas, variantes] = await Promise.all([
+      listar('productos'), listar('lotes'), listar('ventas'), listar('productoVariantes')
+    ]);
+    return { productos, lotes, ventas, variantes };
   },
 };

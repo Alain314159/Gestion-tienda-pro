@@ -22,16 +22,17 @@
     fmtFecha,
     fmtFH,
     valorInventario,
-    stockProducto,
+    stockVariante,
     datosChart6Meses,
     topRentables,
     saldoCaja,
-    badgeStock,
+    badgeStockVariante,
     nowLocal,
   } from '../../core/util.js';
   import Icono from '../../core/Icono.svelte';
 
   let productos = $state([]);
+  let variantes = $state([]);
   let lotes = $state([]);
   let ventas = $state([]);
   let compras = $state([]);
@@ -61,12 +62,12 @@
   const margen = $derived(ventasPeriodo > 0 ? ((gananciaNeta / ventasPeriodo) * 100).toFixed(1) : '0.0');
   const saldo = $derived(saldoCaja({ cfg, capital, ventas, compras, retiros, movCaja }));
   const valInv = $derived(valorInventario(lotes));
-  const prodsActivos = $derived(productos.filter((p) => !p.archivado));
-  const agotados = $derived(prodsActivos.filter((p) => stockProducto(lotes, p.id) === 0));
+  const varsActivas = $derived(variantes.filter((v) => !v.archivado));
+  const agotados = $derived(varsActivas.filter((v) => stockVariante(lotes, v.id) === 0));
   const bajoStock = $derived(
-    prodsActivos.filter((p) => {
-      const s = stockProducto(lotes, p.id);
-      return s > 0 && s <= n(p.stockMinimo);
+    varsActivas.filter((v) => {
+      const s = stockVariante(lotes, v.id);
+      return s > 0 && s <= n(v.stockMinimo);
     })
   );
   const topRent = $derived(topRentables(ventas));
@@ -85,8 +86,9 @@
   async function recargar() {
     // Productos y lotes: tablas pequenas, cargar completas
     // Ventas/compras: tablas grandes, solo ultimos N para el dashboard
-    [productos, lotes, ventas, compras, ajustes, movCaja, cierres, capital, retiros, arqueos] = await Promise.all([
+    [productos, variantes, lotes, ventas, compras, ajustes, movCaja, cierres, capital, retiros, arqueos] = await Promise.all([
       listar('productos'),
+      listar('productoVariantes'),
       listar('lotes'),
       listarPaginado('ventas', 0, 300),
       listarPaginado('compras', 0, 150),

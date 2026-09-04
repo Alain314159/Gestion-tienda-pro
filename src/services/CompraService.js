@@ -9,7 +9,7 @@ import { verificarPeriodoCerrado } from '../core/periodos.js';
 
 export const CompraService = {
   /** Registra una compra existente (producto ya creado) + lote */
-  registrarExistente: async function ({ productoId, nombre, unidad, cantidad, costo, total }) {
+  registrarExistente: async function ({ productoId, varianteId, nombre, unidad, cantidad, costo, total }) {
     await verificarPeriodoCerrado(nowLocal().iso);
     const db = getDB();
     const compra = {
@@ -17,6 +17,7 @@ export const CompraService = {
       fecha: nowLocal().iso,
       fechaLocal: nowLocal().local,
       productoId,
+      varianteId,
       productoNombre: nombre,
       productoUnidad: unidad,
       cantidad,
@@ -30,6 +31,7 @@ export const CompraService = {
       fecha: nowLocal().iso,
       fechaLocal: nowLocal().local,
       productoId,
+      varianteId,
       productoNombre: nombre,
       productoUnidad: unidad,
       cantidadInicial: cantidad,
@@ -46,7 +48,7 @@ export const CompraService = {
     return { compra, lote };
   },
 
-  /** Registra compra de producto nuevo: crea producto + compra + lote */
+  /** Registra compra de producto nuevo: crea producto + variante + compra + lote */
   registrarNuevo: async function ({ nombre, codigo, unidad, cantidad, costo, total, precio, stockMin }) {
     await verificarPeriodoCerrado(nowLocal().iso);
     const db = getDB();
@@ -58,16 +60,28 @@ export const CompraService = {
       id: genId('p'),
       nombre: nombre.trim(),
       codigo: (codigo || '').trim(),
-      precio,
+      archivado: false,
+    };
+    const variante = {
+      id: genId('pv'),
+      productoId: producto.id,
+      nombre: producto.nombre,
+      codigo: producto.codigo,
+      unidad: unidad || '',
+      precioBase: n(precio),
       stockMinimo: n(stockMin) || 5,
       archivado: false,
-      unidad: unidad || '',
+      esCaja: false,
+      unidadesPorCaja: 0,
+      varianteUnidadId: '',
+      preciosEscalonados: [],
     };
     const compra = {
       id: genId('c'),
       fecha: nowLocal().iso,
       fechaLocal: nowLocal().local,
       productoId: producto.id,
+      varianteId: variante.id,
       productoNombre: producto.nombre,
       productoUnidad: unidad,
       cantidad,
@@ -81,6 +95,7 @@ export const CompraService = {
       fecha: nowLocal().iso,
       fechaLocal: nowLocal().local,
       productoId: producto.id,
+      varianteId: variante.id,
       productoNombre: producto.nombre,
       productoUnidad: unidad,
       cantidadInicial: cantidad,
@@ -89,13 +104,14 @@ export const CompraService = {
       compraId: compra.id,
     };
 
-    await db.transaction('rw', db.productos, db.compras, db.lotes, async (trans) => {
+    await db.transaction('rw', db.productos, db.productoVariantes, db.compras, db.lotes, async (trans) => {
       await txPut('productos', producto, trans);
+      await txPut('productoVariantes', variante, trans);
       await txPut('compras', compra, trans);
       await txPut('lotes', lote, trans);
     });
 
-    return { producto, compra, lote };
+    return { producto, variante, compra, lote };
   },
 
   /** Edita una compra y su lote asociado */
@@ -123,7 +139,9 @@ export const CompraService = {
   },
 
   recargar: async function () {
-    const [productos, lotes, compras] = await Promise.all([listar('productos'), listar('lotes'), listar('compras')]);
-    return { productos, lotes, compras };
+    const [productos, lotes, compras, variantes] = await Promise.all([
+      listar('productos'), listar('lotes'), listar('compras'), listar('productoVariantes')
+    ]);
+    return { productos, lotes, compras, variantes };
   },
 };
