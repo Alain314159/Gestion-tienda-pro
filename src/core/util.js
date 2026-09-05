@@ -1,6 +1,8 @@
 /** ================================================================
  *  MOTOR MATEMÁTICO NATIVO BLINDADO
  *  ================================================================ */
+\
+import { toBig, m2, m3, toCents as moneyToCents, fromCents as moneyFromCents, toNumber, add, sub, mul, div, round, sum, sumWhere, pct, margin, eq, gt, lt, gte, lte, abs, max, min, allocate, toFixed, toString as moneyToString } from './Money.js';
 
 /** Convierte cualquier valor a número seguro. null/undefined/'' → 0 */
 export function n(v) {
@@ -20,14 +22,14 @@ export function fromCents(cents) {
   return (n(cents) / 100);
 }
 
-/** Redondea a 2 decimales (moneda) */
+/** Redondea a 2 decimales (moneda) - usa big.js para precision exacta */
 export function m(v) {
-  return Math.round(n(v) * 100) / 100;
+  return toNumber(m2(v));
 }
 
-/** Redondea a 3 decimales (cantidades) */
+/** Redondea a 3 decimales (cantidades) - usa big.js para precision exacta */
 export function q(v) {
-  return Math.round(n(v) * 1000) / 1000;
+  return toNumber(m3(v));
 }
 
 /** ================================================================
