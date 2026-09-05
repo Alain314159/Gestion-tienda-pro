@@ -56,7 +56,7 @@ export function detectarAnomalias(ventas, compras, ajustes) {
       const costo = toBig(it.costo);
       let margen;
       if (revenue.gt('0')) {
-        margen = toNumber(costo.div(revenue).times('100'));
+        margen = toNumber(revenue.minus(costo).div(revenue).times('100'));
       } else if (costo.gt('0')) {
         margen = -100;
       } else {
