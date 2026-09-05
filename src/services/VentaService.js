@@ -1,5 +1,15 @@
 import { getDB, guardar, guardarBulk, listar } from '../core/db.js';
-import { calcFIFOVariante, stockVariante, nowLocal, m, n, q, genId, lotesDeVariante, lotesDeProducto } from '../core/util.js';
+import {
+  calcFIFOVariante,
+  stockVariante,
+  nowLocal,
+  m,
+  n,
+  q,
+  genId,
+  lotesDeVariante,
+  lotesDeProducto,
+} from '../core/util.js';
 import { toBig, toNumber, add, sub, mul, Big } from '../core/Money.js';
 import { verificarPeriodoCerrado } from '../core/periodos.js';
 
@@ -76,8 +86,9 @@ export const VentaService = {
     return { venta, total, ganancia };
   },
 
-  /** Restaura stock de una venta antigua sin lotesUsados usando FIFO inverso.
-   *  Busca los lotes mas antiguos y reduce cantidadVendida.
+  /** Restaura stock de una venta antigua sin lotesUsados usando FIFO.
+   *  Busca los lotes mas antiguos (los que se vendieron primero en FIFO)
+   *  y reduce cantidadVendida. Mantiene coherencia con la valoracion FIFO.
    *  Devuelve array de {loteId, cantidad} para referencia futura.
    */
   restaurarStockSinLotesUsados: function (item, lotes) {
@@ -87,7 +98,8 @@ export const VentaService = {
       : lotesDeProducto(lotes, item.productoId);
     let rest = n(item.cantidad);
     const usados = [];
-    for (let i = lotesVar.length - 1; i >= 0 && rest > 0; i--) {
+    // FIFO: restaurar desde los lotes mas antiguos primero (indice 0 en adelante)
+    for (let i = 0; i < lotesVar.length && rest > 0; i++) {
       const l = lotesVar[i];
       const vendido = n(l.cantidadVendida);
       const devolver = Math.min(vendido, rest);
@@ -100,17 +112,31 @@ export const VentaService = {
     return usados;
   },
 
-  /** Anula una venta y restaura el stock. Transaccion atomica. */
+  /** Anula una venta y restaura el stock. Transaccion atomica.
+   *  Registra un egreso en caja por la devolucion del dinero.
+   */
   anular: async function (venta, lotes) {
     await verificarPeriodoCerrado(venta.fecha);
     const db = getDB();
+    const nl = nowLocal();
 
-    await db.transaction('rw', db.ventas, db.lotes, async (trans) => {
+    await db.transaction('rw', db.ventas, db.lotes, db.movCaja, async (trans) => {
       // Marcar venta como anulada
       await trans.table('ventas').put({
         ...venta,
         anulada: true,
-        fechaAnulacion: nowLocal().iso,
+        fechaAnulacion: nl.iso,
+      });
+
+      // Registrar devolucion de dinero en caja
+      await trans.table('movCaja').put({
+        id: genId('mc'),
+        fecha: nl.iso,
+        fechaLocal: nl.local,
+        tipo: 'egreso',
+        monto: venta.total,
+        concepto: 'Devolucion por anulacion de venta',
+        ventaId: venta.id,
       });
 
       // Restaurar stock en lotes
@@ -124,7 +150,7 @@ export const VentaService = {
             }
           }
         } else {
-          // Venta antigua sin lotesUsados: restaurar con FIFO inverso
+          // Venta antigua sin lotesUsados: restaurar con FIFO
           const usados = VentaService.restaurarStockSinLotesUsados(item, lotes);
           for (const u of usados) {
             const lote = lotes.find((l) => l.id === u.loteId);
@@ -140,7 +166,10 @@ export const VentaService = {
   /** Recarga datos desde DB (ya con conversion de centavos automatica) */
   recargar: async function () {
     const [productos, lotes, ventas, variantes] = await Promise.all([
-      listar('productos'), listar('lotes'), listar('ventas'), listar('productoVariantes')
+      listar('productos'),
+      listar('lotes'),
+      listar('ventas'),
+      listar('productoVariantes'),
     ]);
     return { productos, lotes, ventas, variantes };
   },

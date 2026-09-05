@@ -47,7 +47,15 @@ export const InventarioService = {
    *  El costoPerdida guarda el valor del sobrante para reflejarlo
    *  contablemente como reduccion de COGS o ingreso extraordinario.
    */
-  ajustarPositivo: async function ({ productoId, varianteId, productoNombre, productoUnidad, cantidad, motivo, costo }) {
+  ajustarPositivo: async function ({
+    productoId,
+    varianteId,
+    productoNombre,
+    productoUnidad,
+    cantidad,
+    motivo,
+    costo,
+  }) {
     await verificarPeriodoCerrado(nowLocal().iso);
     const cant = n(cantidad);
     const cst = toBig(costo);
@@ -78,6 +86,7 @@ export const InventarioService = {
       cantidadVendida: 0,
       costo: toNumber(cst),
       fecha: ajuste.fecha,
+      fechaLocal: ajuste.fechaLocal,
     };
 
     await db.transaction('rw', db.ajustes, db.lotes, async (trans) => {
@@ -90,7 +99,10 @@ export const InventarioService = {
 
   recargar: async function () {
     const [productos, lotes, ajustes, variantes] = await Promise.all([
-      listar('productos'), listar('lotes'), listar('ajustes'), listar('productoVariantes')
+      listar('productos'),
+      listar('lotes'),
+      listar('ajustes'),
+      listar('productoVariantes'),
     ]);
     return { productos, lotes, ajustes, variantes };
   },

@@ -2,7 +2,35 @@
  *  MOTOR MATEMATICO NATIVO BLINDADO - Con precision decimal (big.js)
  *  ================================================================ */
 
-import { toBig, m2, m3, toCents as moneyToCents, fromCents as moneyFromCents, toNumber, add, sub, mul, div, round, sum, sumWhere, pct, margin, eq, gt, lt, gte, lte, abs, max, min, allocate, toFixed, toString as moneyToString, Big } from './Money.js';
+import {
+  toBig,
+  m2,
+  m3,
+  toCents as moneyToCents,
+  fromCents as moneyFromCents,
+  toNumber,
+  add,
+  sub,
+  mul,
+  div,
+  round,
+  sum,
+  sumWhere,
+  pct,
+  margin,
+  eq,
+  gt,
+  lt,
+  gte,
+  lte,
+  abs,
+  max,
+  min,
+  allocate,
+  toFixed,
+  toString as moneyToString,
+  Big,
+} from './Money.js';
 
 /** Convierte cualquier valor a numero seguro. null/undefined/'' → 0
  *  ATENCION: Para calculos financieros usar Money.toBig() en lugar de n()
@@ -55,7 +83,13 @@ export function validateWebhookUrl(url) {
     const u = new URL(url);
     if (u.protocol !== 'https:') return { ok: false, error: 'Solo se permiten URLs HTTPS' };
     const hostname = u.hostname.toLowerCase();
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.startsWith('172.')) {
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname.startsWith('192.168.') ||
+      hostname.startsWith('10.') ||
+      hostname.startsWith('172.')
+    ) {
       return { ok: false, error: 'No se permiten URLs de red local' };
     }
     return { ok: true };
@@ -95,7 +129,11 @@ export function genId(p = '') {
 
 /** Vibracion tactil */
 export function vib(ms = 20) {
-  try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {}
+  try {
+    navigator.vibrate && navigator.vibrate(ms);
+  } catch (e) {
+    /* no-op */
+  }
 }
 
 /** Deep clone seguro usando structuredClone nativo (fallback a JSON) */
@@ -123,19 +161,19 @@ export function debounce(fn, ms = 200) {
 export function fuzzySearch(items, query, getter) {
   const qry = (query || '').toLowerCase().trim();
   if (!qry) return items;
-  const tokens = qry.split(/\s+/).filter(t => t.length > 0);
-  return items.filter(item => {
+  const tokens = qry.split(/\s+/).filter((t) => t.length > 0);
+  return items.filter((item) => {
     const text = (getter ? getter(item) : item).toLowerCase();
-    return tokens.every(t => text.includes(t));
+    return tokens.every((t) => text.includes(t));
   });
 }
 
 /** Busqueda fuzzy con scoring (mejores coincidencias primero) */
 export function fuzzySearchScored(items, query, getter) {
   const qry = (query || '').toLowerCase().trim();
-  if (!qry) return items.map(it => ({ item: it, score: 0 }));
-  const tokens = qry.split(/\s+/).filter(t => t.length > 0);
-  const scored = items.map(item => {
+  if (!qry) return items.map((it) => ({ item: it, score: 0 }));
+  const tokens = qry.split(/\s+/).filter((t) => t.length > 0);
+  const scored = items.map((item) => {
     const text = (getter ? getter(item) : item).toLowerCase();
     let score = 0;
     for (const t of tokens) {
@@ -145,7 +183,7 @@ export function fuzzySearchScored(items, query, getter) {
     }
     return { item, score };
   });
-  return scored.filter(s => s.score > 0).sort((a, b) => b.score - a.score);
+  return scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score);
 }
 
 /** Formato de dinero */
@@ -165,20 +203,26 @@ export function fmtCant(val, forceDecimals = false) {
 export function fmtFecha(iso) {
   try {
     const d = new Date(iso);
-    return String(d.getDate()).padStart(2, '0') + '/' +
-           String(d.getMonth() + 1).padStart(2, '0') + '/' +
-           String(d.getFullYear()).slice(2);
-  } catch (e) { return ''; }
+    return (
+      String(d.getDate()).padStart(2, '0') +
+      '/' +
+      String(d.getMonth() + 1).padStart(2, '0') +
+      '/' +
+      String(d.getFullYear()).slice(2)
+    );
+  } catch (e) {
+    return '';
+  }
 }
 
 /** Formato fecha + hora */
 export function fmtFH(iso) {
   try {
     const d = new Date(iso);
-    return fmtFecha(iso) + ' ' +
-           String(d.getHours()).padStart(2, '0') + ':' +
-           String(d.getMinutes()).padStart(2, '0');
-  } catch (e) { return ''; }
+    return fmtFecha(iso) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  } catch (e) {
+    return '';
+  }
 }
 
 /** ================================================================
@@ -190,7 +234,7 @@ export function fmtFH(iso) {
  */
 export function calcFIFO(lotes, productoId, cant) {
   const lotesDisp = lotes
-    .filter(l => l.productoId === productoId && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
+    .filter((l) => l.productoId === productoId && n(l.cantidadInicial) - n(l.cantidadVendida) > 0)
     .sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || (a.id < b.id ? -1 : 1));
 
   let rest = cant;
@@ -211,7 +255,7 @@ export function calcFIFO(lotes, productoId, cant) {
 /** FIFO por variante (nueva forma preferida) */
 export function calcFIFOVariante(lotes, varianteId, cant) {
   const lotesDisp = lotes
-    .filter(l => l.varianteId === varianteId && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
+    .filter((l) => l.varianteId === varianteId && n(l.cantidadInicial) - n(l.cantidadVendida) > 0)
     .sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || (a.id < b.id ? -1 : 1));
 
   let rest = cant;
@@ -238,30 +282,32 @@ export function calcFIFOVariante(lotes, varianteId, cant) {
  */
 export function stockProducto(lotes, productoId) {
   return lotes
-    .filter(l => l.productoId === productoId)
+    .filter((l) => l.productoId === productoId)
     .reduce((s, l) => s + Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida)), 0);
 }
 
 /** Stock total de una variante especifica */
 export function stockVariante(lotes, varianteId) {
   return lotes
-    .filter(l => l.varianteId === varianteId)
+    .filter((l) => l.varianteId === varianteId)
     .reduce((s, l) => s + Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida)), 0);
 }
 
 /** Lotes activos de una variante */
 export function lotesDeVariante(lotes, varianteId) {
   return lotes
-    .filter(l => l.varianteId === varianteId && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
+    .filter((l) => l.varianteId === varianteId && n(l.cantidadInicial) - n(l.cantidadVendida) > 0)
     .sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || (a.id < b.id ? -1 : 1));
 }
 
 /** Valor de lotes de una variante */
 export function valorLotesVariante(lotes, varianteId) {
-  return toNumber(sum(lotesDeVariante(lotes, varianteId), l => {
-    const disp = Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida));
-    return toNumber(toBig(disp).times(toBig(l.costo)));
-  }));
+  return toNumber(
+    sum(lotesDeVariante(lotes, varianteId), (l) => {
+      const disp = Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida));
+      return toNumber(toBig(disp).times(toBig(l.costo)));
+    })
+  );
 }
 
 /** Badge de stock para una variante */
@@ -275,10 +321,12 @@ export function badgeStockVariante(variante, lotes) {
 
 /** Valor del inventario */
 export function valorInventario(lotes) {
-  return toNumber(sum(lotes, l => {
-    const disp = Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida));
-    return toNumber(toBig(disp).times(toBig(l.costo)));
-  }));
+  return toNumber(
+    sum(lotes, (l) => {
+      const disp = Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida));
+      return toNumber(toBig(disp).times(toBig(l.costo)));
+    })
+  );
 }
 
 /** Lotes activos de un producto (legacy, suma todas las variantes)
@@ -286,16 +334,18 @@ export function valorInventario(lotes) {
  */
 export function lotesDeProducto(lotes, productoId) {
   return lotes
-    .filter(l => l.productoId === productoId && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
+    .filter((l) => l.productoId === productoId && n(l.cantidadInicial) - n(l.cantidadVendida) > 0)
     .sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || (a.id < b.id ? -1 : 1));
 }
 
 /** Valor de lotes de un producto */
 export function valorLotesProducto(lotes, productoId) {
-  return toNumber(sum(lotesDeProducto(lotes, productoId), l => {
-    const disp = Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida));
-    return toNumber(toBig(disp).times(toBig(l.costo)));
-  }));
+  return toNumber(
+    sum(lotesDeProducto(lotes, productoId), (l) => {
+      const disp = Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida));
+      return toNumber(toBig(disp).times(toBig(l.costo)));
+    })
+  );
 }
 
 /** Determina badge de stock */
@@ -335,7 +385,7 @@ export function inventarioGrupos(productos, variantes, lotes) {
         unidad: v?.unidad || l.productoUnidad || '',
         lotes: [],
         stockTotal: 0,
-        valorTotal: new Big('0')
+        valorTotal: new Big('0'),
       };
     }
     map[vid].lotes.push(l);
@@ -344,7 +394,7 @@ export function inventarioGrupos(productos, variantes, lotes) {
   }
   return Object.values(map)
     .sort((a, b) => toNumber(b.valorTotal) - toNumber(a.valorTotal))
-    .map(g => ({ ...g, valorTotal: toNumber(g.valorTotal.round(2, 1)) }));
+    .map((g) => ({ ...g, valorTotal: toNumber(g.valorTotal.round(2, 1)) }));
 }
 
 /** ================================================================
@@ -355,57 +405,103 @@ export function inventarioGrupos(productos, variantes, lotes) {
 export function movimientosCaja({ cfg, capital, ventas, compras, retiros, movCaja }) {
   const arr = [];
   if (n(cfg.capitalInicial) > 0) {
-    arr.push({ id: 'ci', fecha: cfg.periodoInicio, tipo: 'ingreso', monto: n(cfg.capitalInicial), concepto: 'Capital inicial' });
+    arr.push({
+      id: 'ci',
+      fecha: cfg.periodoInicio,
+      tipo: 'ingreso',
+      monto: n(cfg.capitalInicial),
+      concepto: 'Capital inicial',
+    });
   }
-  capital.forEach(c => arr.push({
-    id: c.id, fecha: c.fecha, tipo: 'ingreso', monto: n(c.monto),
-    concepto: 'Aporte' + (c.nota ? ' · ' + c.nota : '')
-  }));
-  ventas.filter(v => !v.anulada).forEach(v => arr.push({
-    id: v.id, fecha: v.fecha, tipo: 'ingreso', monto: n(v.total), concepto: 'Venta'
-  }));
-  compras.filter(c => !c.anulada).forEach(c => arr.push({
-    id: c.id, fecha: c.fecha, tipo: 'egreso', monto: n(c.total), concepto: 'Compra · ' + c.productoNombre
-  }));
-  retiros.forEach(r => arr.push({
-    id: r.id, fecha: r.fecha, tipo: 'egreso', monto: n(r.monto), concepto: 'Retiro · ' + r.concepto
-  }));
-  movCaja.forEach(x => arr.push({
-    id: x.id, fecha: x.fecha, tipo: x.tipo, monto: n(x.monto), concepto: x.concepto
-  }));
+  capital.forEach((c) =>
+    arr.push({
+      id: c.id,
+      fecha: c.fecha,
+      tipo: 'ingreso',
+      monto: n(c.monto),
+      concepto: 'Aporte' + (c.nota ? ' · ' + c.nota : ''),
+    })
+  );
+  ventas
+    .filter((v) => !v.anulada)
+    .forEach((v) =>
+      arr.push({
+        id: v.id,
+        fecha: v.fecha,
+        tipo: 'ingreso',
+        monto: n(v.total),
+        concepto: 'Venta',
+      })
+    );
+  compras
+    .filter((c) => !c.anulada)
+    .forEach((c) =>
+      arr.push({
+        id: c.id,
+        fecha: c.fecha,
+        tipo: 'egreso',
+        monto: n(c.total),
+        concepto: 'Compra · ' + c.productoNombre,
+      })
+    );
+  retiros.forEach((r) =>
+    arr.push({
+      id: r.id,
+      fecha: r.fecha,
+      tipo: 'egreso',
+      monto: n(r.monto),
+      concepto: 'Retiro · ' + r.concepto,
+    })
+  );
+  movCaja.forEach((x) =>
+    arr.push({
+      id: x.id,
+      fecha: x.fecha,
+      tipo: x.tipo,
+      monto: n(x.monto),
+      concepto: x.concepto,
+    })
+  );
   return arr.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 }
 
 /** Saldo de caja */
 export function saldoCaja({ cfg, capital, ventas, compras, retiros, movCaja }) {
   const aportes = toNumber(sum(capital, 'monto'));
-  const vta = toNumber(sumWhere(ventas, v => !v.anulada, 'total'));
-  const cmp = toNumber(sumWhere(compras, c => !c.anulada, 'total'));
+  const vta = toNumber(sumWhere(ventas, (v) => !v.anulada, 'total'));
+  const cmp = toNumber(sumWhere(compras, (c) => !c.anulada, 'total'));
   const ret = toNumber(sum(retiros, 'monto'));
-  const movs = toNumber(sum(movCaja || [], mv => mv.tipo === 'ingreso' ? mv.monto : -mv.monto));
+  const movs = toNumber(sum(movCaja || [], (mv) => (mv.tipo === 'ingreso' ? mv.monto : -mv.monto)));
   return toNumber(add(cfg.capitalInicial || 0, aportes, vta, -cmp, -ret, movs));
 }
 
 /** Ganancia disponible para retiro
- *  Formula: min(ganancias acumuladas, efectivo en caja que excede el capital)
- *  El capital debe permanecer en el negocio (caja + inventario).
- *  Solo se puede retirar el excedente de efectivo sobre el capital,
- *  limitado por las ganancias reales acumuladas.
+ *  Formula: ganancias netas acumuladas - retiros ya realizados
+ *  Las ganancias netas incluyen: ganancias de ventas del periodo menos mermas,
+ *  mas ganancias retenidas de cierres anteriores, menos retiros realizados.
+ *  Nunca puede ser negativa.
  */
-export function gananciaDisponible({ cfg, capital, ventas, compras, retiros, movCaja, ajustes, cierres, lotes, periodoInicio }) {
-  const ventasArr = ventas.filter(v => !v.anulada && isoToLocal(v.fecha) >= isoToLocal(periodoInicio));
+export function gananciaDisponible({
+  cfg,
+  capital,
+  ventas,
+  compras,
+  retiros,
+  movCaja,
+  ajustes,
+  cierres,
+  lotes,
+  periodoInicio,
+}) {
+  const ventasArr = ventas.filter((v) => !v.anulada && isoToLocal(v.fecha) >= isoToLocal(periodoInicio));
   const ganBruta = toNumber(sum(ventasArr, 'ganancia'));
-  const gastosOp = toNumber(sumWhere(ajustes, a => a.cantidad < 0 && isoToLocal(a.fecha) >= isoToLocal(periodoInicio), 'costoPerdida'));
+  const gastosOp = toNumber(
+    sumWhere(ajustes, (a) => a.cantidad < 0 && isoToLocal(a.fecha) >= isoToLocal(periodoInicio), 'costoPerdida')
+  );
   const ganNeta = toNumber(sub(ganBruta, gastosOp));
   const retirosTotal = toNumber(sum(retiros, 'monto'));
   const acum = toNumber(add(sum(cierres, 'neta'), ganNeta, -retirosTotal));
-  if (acum <= 0) return 0;
-  const capTotal = toNumber(add(cfg.capitalInicial || 0, sum(capital, 'monto')));
-  const valInv = valorInventario(lotes);
-  const saldo = saldoCaja({ cfg, capital, ventas, compras, retiros, movCaja });
-  const capReservadoEnCaja = Math.max(0, capTotal - valInv);
-  const efectivoLibre = Math.max(0, saldo - capReservadoEnCaja);
-  return Math.max(0, Math.min(acum, efectivoLibre));
+  return Math.max(0, acum);
 }
 
 /** ================================================================
@@ -414,21 +510,25 @@ export function gananciaDisponible({ cfg, capital, ventas, compras, retiros, mov
 
 /** Top rentables del mes actual */
 export function topRentables(ventas) {
-  const now = new Date(), mes = now.getMonth(), an = now.getFullYear();
+  const now = new Date(),
+    mes = now.getMonth(),
+    an = now.getFullYear();
   const r = {};
-  ventas.filter(v => !v.anulada).forEach(v => {
-    const f = new Date(v.fecha);
-    if (f.getMonth() === mes && f.getFullYear() === an) {
-      v.items.forEach(it => {
-        if (!r[it.productoId]) r[it.productoId] = { id: it.productoId, nombre: it.nombre, gan: new Big('0') };
-        r[it.productoId].gan = r[it.productoId].gan.plus(toBig(it.ganancia));
-      });
-    }
-  });
+  ventas
+    .filter((v) => !v.anulada)
+    .forEach((v) => {
+      const f = new Date(v.fecha);
+      if (f.getMonth() === mes && f.getFullYear() === an) {
+        v.items.forEach((it) => {
+          if (!r[it.productoId]) r[it.productoId] = { id: it.productoId, nombre: it.nombre, gan: new Big('0') };
+          r[it.productoId].gan = r[it.productoId].gan.plus(toBig(it.ganancia));
+        });
+      }
+    });
   return Object.values(r)
     .sort((a, b) => toNumber(b.gan) - toNumber(a.gan))
     .slice(0, 5)
-    .map(x => ({ ...x, gan: toNumber(x.gan.round(2, 1)) }));
+    .map((x) => ({ ...x, gan: toNumber(x.gan.round(2, 1)) }));
 }
 
 /** Datos para grafica de 6 meses */
@@ -437,43 +537,62 @@ export function datosChart6Meses(ventas) {
   const now = new Date();
   for (let i = 5; i >= 0; i--) {
     const f = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    meses.push({ m: f.getMonth(), y: f.getFullYear(), label: f.toLocaleDateString('es', { month: 'short' }), v: new Big('0'), g: new Big('0') });
+    meses.push({
+      m: f.getMonth(),
+      y: f.getFullYear(),
+      label: f.toLocaleDateString('es', { month: 'short' }),
+      v: new Big('0'),
+      g: new Big('0'),
+    });
   }
-  ventas.filter(v => !v.anulada).forEach(v => {
-    const f = new Date(v.fecha);
-    const mes = meses.find(x => x.m === f.getMonth() && x.y === f.getFullYear());
-    if (mes) {
-      mes.v = mes.v.plus(toBig(v.total));
-      mes.g = mes.g.plus(toBig(v.ganancia));
-    }
-  });
-  return meses.map(m => ({
+  ventas
+    .filter((v) => !v.anulada)
+    .forEach((v) => {
+      const f = new Date(v.fecha);
+      const mes = meses.find((x) => x.m === f.getMonth() && x.y === f.getFullYear());
+      if (mes) {
+        mes.v = mes.v.plus(toBig(v.total));
+        mes.g = mes.g.plus(toBig(v.ganancia));
+      }
+    });
+  return meses.map((m) => ({
     ...m,
     v: toNumber(m.v.round(2, 1)),
-    g: toNumber(m.g.round(2, 1))
+    g: toNumber(m.g.round(2, 1)),
   }));
 }
 
 /** Reporte por periodo */
-export function generarReporte({ ventas, ajustes, gastosOp }, fechaInicio, fechaFin) {
-  const i = new Date(fechaInicio), f = new Date(fechaFin);
+export function generarReporte({ ventas, compras, ajustes, gastosOp }, fechaInicio, fechaFin) {
+  const i = new Date(fechaInicio),
+    f = new Date(fechaFin);
   f.setHours(23, 59, 59);
   if (i > f) return { error: 'Fecha inicio > fin' };
 
-  const vp = ventas.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
+  const vp = ventas.filter((v) => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
+  const cp = (compras || []).filter((c) => !c.anulada && new Date(c.fecha) >= i && new Date(c.fecha) <= f);
   const ing = toNumber(sum(vp, 'total'));
-  const cogs = toNumber(sum(vp, v => toNumber(sum(v.items, 'costo'))));
+  const cogs = toNumber(sum(vp, (v) => toNumber(sum(v.items, 'costo'))));
+  const comprasTotal = toNumber(sum(cp, 'total'));
   const bruta = toNumber(sub(ing, cogs));
-  const mermas = toNumber(sumWhere(ajustes, a => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f, 'costoPerdida'));
-  const gastos = toNumber(sumWhere(gastosOp || [], g => new Date(g.fecha) >= i && new Date(g.fecha) <= f, 'monto'));
+  const mermas = toNumber(
+    sumWhere(ajustes, (a) => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f, 'costoPerdida')
+  );
+  const gastos = toNumber(sumWhere(gastosOp || [], (g) => new Date(g.fecha) >= i && new Date(g.fecha) <= f, 'monto'));
   const neta = toNumber(sub(bruta, add(mermas, gastos)));
 
   return {
-    ingresos: ing, cogs, bruta, mermas, gastos, neta,
+    ingresos: ing,
+    cogs,
+    compras: comprasTotal,
+    bruta,
+    mermas,
+    gastos,
+    neta,
     numVentas: vp.length,
     margenB: ing > 0 ? toNumber(pct(bruta, ing)) : 0,
     margenN: ing > 0 ? toNumber(pct(neta, ing)) : 0,
-    _vp: vp
+    _vp: vp,
   };
 }
 
@@ -494,7 +613,7 @@ export const MONEY_SCHEMA = {
   retiros: { fields: ['monto'] },
   capital: { fields: ['monto'] },
   gastosOp: { fields: ['monto'] },
-  config: { fields: [], nested: { value: ['capitalInicial'] } }
+  config: { fields: [], nested: { value: ['capitalInicial'] } },
 };
 
 /** Convierte campos monetarios de un objeto a centavos (para guardar en DB) */
@@ -507,9 +626,9 @@ export function toCentsDeep(obj, fields, nested = {}) {
     }
   }
   for (const [nestedPath, nestedFields] of Object.entries(nested)) {
-    if (nestedPath in result && result[nestedPath] != null) {
+    if (nestedPath in result && result[nestedPath] !== null) {
       if (Array.isArray(result[nestedPath])) {
-        result[nestedPath] = result[nestedPath].map(item => toCentsDeep(item, nestedFields));
+        result[nestedPath] = result[nestedPath].map((item) => toCentsDeep(item, nestedFields));
       } else if (typeof result[nestedPath] === 'object') {
         result[nestedPath] = toCentsDeep(result[nestedPath], nestedFields);
       }
@@ -528,9 +647,9 @@ export function fromCentsDeep(obj, fields, nested = {}) {
     }
   }
   for (const [nestedPath, nestedFields] of Object.entries(nested)) {
-    if (nestedPath in result && result[nestedPath] != null) {
+    if (nestedPath in result && result[nestedPath] !== null) {
       if (Array.isArray(result[nestedPath])) {
-        result[nestedPath] = result[nestedPath].map(item => fromCentsDeep(item, nestedFields));
+        result[nestedPath] = result[nestedPath].map((item) => fromCentsDeep(item, nestedFields));
       } else if (typeof result[nestedPath] === 'object') {
         result[nestedPath] = fromCentsDeep(result[nestedPath], nestedFields);
       }
