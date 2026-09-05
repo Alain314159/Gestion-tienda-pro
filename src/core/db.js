@@ -44,6 +44,11 @@ export function getDeviceId() {
   return _deviceId;
 }
 
+/** Resetea el cache en memoria de deviceId (usado en tests) */
+export function resetDeviceId() {
+  _deviceId = null;
+}
+
 /** Devuelve el nombre amigable de este dispositivo */
 export async function getDeviceName() {
   try {
@@ -535,21 +540,22 @@ function installSyncHooks(dbInstance) {
   for (const tabla of SYNCABLE_TABLES) {
     const table = dbInstance[tabla];
     if (!table) continue;
-    // Hook creating: se ejecuta al insertar un nuevo registro
+    // Hook creating: se ejecuta al insertar un nuevo registro.
+    // Si el objeto ya trae campos de sync (ej. al aplicar un delta),
+    // los respetamos para no perder la metadata del origen.
     table.hook("creating", function (primKey, obj, trans) {
-      obj.updatedAt = now();
-      obj.updatedBy = deviceId;
-      obj.version = 1;
-      obj.deletedAt = null;
+      if (!obj.updatedAt) obj.updatedAt = now();
+      if (!obj.updatedBy) obj.updatedBy = deviceId;
+      if (!obj.version) obj.version = 1;
+      if (obj.deletedAt === undefined) obj.deletedAt = null;
     });
     // Hook updating: se ejecuta al actualizar un registro existente.
     // modifications contiene solo los campos que cambian.
-    // obj es el objeto ANTES de la actualizacion.
-    // Retornamos las modifications extendidas.
+    // Si ya vienen campos de sync (ej. delta merge), los respetamos.
     table.hook("updating", function (modifications, primKey, obj, trans) {
-      modifications.updatedAt = now();
-      modifications.updatedBy = deviceId;
-      modifications.version = (obj.version || 0) + 1;
+      if (!modifications.updatedAt) modifications.updatedAt = now();
+      if (!modifications.updatedBy) modifications.updatedBy = deviceId;
+      if (!modifications.version) modifications.version = (obj.version || 0) + 1;
       return modifications;
     });
   }

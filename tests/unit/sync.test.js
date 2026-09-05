@@ -7,7 +7,7 @@ import {
   addToSyncLog, getPendingSyncLog, markSyncLogStatus, cleanSyncLog,
   getSyncSchemaHash, getSyncableTablesOrdered,
   esTablaSyncable, SYNCABLE_TABLES, SYNC_DEPENDENCY_ORDER, getDeviceId,
-  DB_NAME,
+  resetDeviceId, DB_NAME,
 } from "../../src/core/db.js";
 import {
   MergeStrategy, getMergeStrategy, createMessage, MsgType,
@@ -23,6 +23,7 @@ vi.stubGlobal("localStorage", localStorageMock);
 
 describe("db.js — Sincronizacion y Delta Sync", () => {
   beforeEach(async () => {
+    resetDeviceId();
     await cerrarDB();
     try { await Dexie.delete(DB_NAME); } catch {}
     localStorageMock.store = {};
@@ -117,13 +118,13 @@ describe("db.js — Sincronizacion y Delta Sync", () => {
   describe("getDeltaChanges", () => {
     it("devuelve solo registros con updatedAt posterior al since", async () => {
       const db = await abrirDB([{ tablas: { productos: "++id, nombre" } }]);
-      const t1 = new Date(Date.now() - 2000).toISOString();
-      const t2 = new Date(Date.now() - 1000).toISOString();
-      const t3 = new Date().toISOString();
+      const t1 = "2026-09-05T10:00:00.000Z";
+      const t2 = "2026-09-05T10:00:02.000Z";
+      const t3 = "2026-09-05T10:00:04.000Z";
       await db.productos.put({ id: "p1", nombre: "A", updatedAt: t1, updatedBy: "dev-a", version: 1, deletedAt: null });
       await db.productos.put({ id: "p2", nombre: "B", updatedAt: t2, updatedBy: "dev-a", version: 1, deletedAt: null });
       await db.productos.put({ id: "p3", nombre: "C", updatedAt: t3, updatedBy: "dev-a", version: 1, deletedAt: null });
-      const changes = await getDeltaChanges("productos", t2, 0);
+      const changes = await getDeltaChanges("productos", "2026-09-05T10:00:03.000Z", 0);
       expect(changes.length).toBe(1);
       expect(changes[0].id).toBe("p3");
     });
