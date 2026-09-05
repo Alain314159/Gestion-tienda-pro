@@ -200,7 +200,7 @@ describe('Contabilidad - Estado de Perdidas y Ganancias (PyG)', () => {
     expect(r.ingresos).toBe(200);
     expect(r.cogs).toBe(100);
     expect(r.gananciaBruta).toBe(100);
-    expect(r.mermas).toBe(55);
+    expect(r.mermas).toBe(10);
     expect(r.gastosOperativos).toBe(20);
     expect(r.gananciaNeta).toBe(70);
   });
@@ -229,7 +229,7 @@ describe('Contabilidad - Estado de Perdidas y Ganancias (PyG)', () => {
       ],
       gastosOp: []
     }, '2024-01-01', '2024-01-31');
-    expect(r.mermas).toBe(55);
+    expect(r.mermas).toBe(10);
     expect(r.gananciaNeta).toBe(40); // 100 - 50 - 10 = 40
   });
 });
