@@ -1,5 +1,6 @@
 import { getDB, guardar, guardarBulk, listar } from '../core/db.js';
 import { calcFIFOVariante, stockVariante, nowLocal, m, n, q, genId, lotesDeVariante, lotesDeProducto } from '../core/util.js';
+import { toBig, toNumber, add, sub, mul } from '../core/Money.js';
 import { verificarPeriodoCerrado } from '../core/periodos.js';
 
 /**
@@ -18,36 +19,36 @@ export const VentaService = {
 
     // 1. Calcular items, totales y lotes usados (fuera de la transaccion, es solo lectura)
     const items = [];
-    let totalRaw = 0,
-      gananciaRaw = 0;
+    let totalRaw = new Big('0');
+    let gananciaRaw = new Big('0');
     const lotesUsados = []; // { loteId, cantidad }
 
     for (const it of carrito) {
-      const cant = n(it.cant),
-        precio = n(it.precio);
+      const cant = n(it.cant);
+      const precio = toBig(it.precio);
       const fifo = calcFIFOVariante(lotes, it.varianteId, cant);
       if (fifo.error) throw new Error(fifo.error + ' en ' + it.nombre);
 
-      const subtotal = precio * cant; // sin redondear intermedio
-      const itemGanancia = subtotal - fifo.costoTotal;
+      const subtotal = precio.times(toBig(cant)); // sin redondear intermedio
+      const itemGanancia = subtotal.minus(toBig(fifo.costoTotal));
       items.push({
         productoId: it.productoId,
         varianteId: it.varianteId,
         nombre: it.nombre,
         cantidad: cant,
         unidad: it.unidad || '',
-        precio,
+        precio: toNumber(precio),
         costo: fifo.costoTotal,
-        ganancia: m(itemGanancia),
+        ganancia: toNumber(itemGanancia.round(2, 1)),
         lotesUsados: fifo.usados,
       });
-      totalRaw += subtotal;
-      gananciaRaw += itemGanancia;
+      totalRaw = totalRaw.plus(subtotal);
+      gananciaRaw = gananciaRaw.plus(itemGanancia);
       lotesUsados.push(...fifo.usados);
     }
 
-    const total = m(totalRaw);
-    const ganancia = m(gananciaRaw);
+    const total = toNumber(totalRaw.round(2, 1));
+    const ganancia = toNumber(gananciaRaw.round(2, 1));
 
     const venta = {
       id: genId('v'),
