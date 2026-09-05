@@ -447,6 +447,25 @@
     {/if}
   </div>
 
+  <!-- Sync P2P -->
+  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
+    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
+      <Icono nombre="sync" size={18} />
+      Sincronizar dispositivos
+      <span class="text-xs text-muted font-normal ml-auto">P2P + QR</span>
+    </div>
+    <div class="text-sm text-muted mb-3">
+      Sincroniza datos entre dispositivos via WiFi usando codigos QR. Sin servidores, sin internet.
+    </div>
+    <button
+      class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm active:scale-[0.97] transition-transform flex items-center justify-center gap-2"
+      onclick={() => { try { window.location.hash = 'sync'; } catch {} }}
+    >
+      <Icono nombre="sync" size={16} color="#fff" />
+      Abrir sincronizacion
+    </button>
+  </div>
+
   <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
     <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
       <Icono nombre="backup" size={18} />

@@ -124,6 +124,7 @@ export function createMessage(type, payload = {}) {
    @param {RTCDataChannel} channel — canal de datos abierto
    @returns {Promise<Object>} — metadatos del dispositivo remoto */
 export async function performHandshake(channel) {
+  const localSchemaHash = await getSyncSchemaHash();
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       cleanup();
@@ -140,7 +141,7 @@ export async function performHandshake(channel) {
       if (msg.type === MsgType.HANDSHAKE) {
         const ack = createMessage(MsgType.HANDSHAKE_ACK, {
           deviceName: getDeviceName(),
-          schemaHash: getSyncSchemaHash(),
+          schemaHash: localSchemaHash,
           tables: SYNCABLE_TABLES,
         });
         channel.send(JSON.stringify(ack));
@@ -162,7 +163,7 @@ export async function performHandshake(channel) {
 
     const handshake = createMessage(MsgType.HANDSHAKE, {
       deviceName: getDeviceName(),
-      schemaHash: getSyncSchemaHash(),
+      schemaHash: localSchemaHash,
       tables: SYNCABLE_TABLES,
     });
     channel.send(JSON.stringify(handshake));

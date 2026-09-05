@@ -15,6 +15,7 @@ const modulosRaw = [
   { manifiesto: { id: 'reportes', nombre: 'Reportes', icono: 'chart', grupo: 'utilidades', orden: 9, tablas: { cierres: '++id, fechaCierre' } }, loader: () => import('../modulos/utilidades/reportes.svelte') },
   { manifiesto: { id: 'analisis', nombre: 'Analisis', icono: 'layers', grupo: 'utilidades', orden: 10, tablas: {} }, loader: () => import('../modulos/negocio/analisis.svelte') },
   { manifiesto: { id: 'contabilidad', nombre: 'Contabilidad', icono: 'book', grupo: 'utilidades', orden: 11, tablas: {} }, loader: () => import('../modulos/negocio/contabilidad.svelte') },
+  { manifiesto: { id: 'sync', nombre: 'Sincronizar', icono: 'sync', grupo: 'utilidades', orden: 12, tablas: {} }, loader: () => import('../modulos/utilidades/sync.svelte') },
   { manifiesto: { id: 'ajustes', nombre: 'Ajustes', icono: 'settings', grupo: 'utilidades', orden: 13, tablas: {} }, loader: () => import('../modulos/utilidades/ajustes.svelte') },
 ];
 
