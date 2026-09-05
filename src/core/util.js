@@ -82,7 +82,7 @@ export function escapeHtml(str) {
 }
 
 
-/** Genera fecha actual con informacion local y UTC
+/** ================================================================ *  SAFE LOCALSTORAGE - Wrapper con try/catch para entornos restringidos *  Previene crashes en modo incognito, Safari ITP, storage lleno *  ================================================================ */ const LS_PREFIX = 'tp_'; export const safeLocalStorage = { get(key, fallback = null) { try { const val = localStorage.getItem(LS_PREFIX + key); return val !== null ? val : fallback; } catch { return fallback; } }, set(key, value) { try { localStorage.setItem(LS_PREFIX + key, String(value)); return true; } catch { return false; } }, remove(key) { try { localStorage.removeItem(LS_PREFIX + key); return true; } catch { return false; } }, getJSON(key, fallback = null) { try { const val = localStorage.getItem(LS_PREFIX + key); return val !== null ? JSON.parse(val) : fallback; } catch { return fallback; } }, setJSON(key, value) { try { localStorage.setItem(LS_PREFIX + key, JSON.stringify(value)); return true; } catch { return false; } }, }; /** Genera fecha actual con informacion local y UTC
  *  Usa toLocaleDateString('sv-SE') para evitar bugs de DST y zona horaria
  *  @returns { iso: string, local: string, offset: number }
  */

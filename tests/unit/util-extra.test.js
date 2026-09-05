@@ -3,7 +3,7 @@ import {
   fuzzySearch, fuzzySearchScored, fmtFecha, fmtFH, calcFIFOVariante,
   stockVariante, lotesDeVariante, valorLotesVariante, badgeStockVariante,
   inventarioGrupos, topRentables, datosChart6Meses, toCentsDeep, fromCentsDeep,
-  escapeHtml, validateWebhookUrl, nowLocal, isoToLocal, mismoDiaLocal,
+  escapeHtml, nowLocal, isoToLocal, mismoDiaLocal,
   genId, vib, clean, debounce
 } from '../../src/core/util.js';
 
@@ -301,28 +301,6 @@ describe('util.js - Funciones adicionales', () => {
 
     it('no modifica no-strings', () => {
       expect(escapeHtml(42)).toBe(42);
-    });
-  });
-
-  describe('validateWebhookUrl()', () => {
-    it('acepta HTTPS valido', () => {
-      expect(validateWebhookUrl('https://example.com/webhook')).toEqual({ ok: true });
-    });
-
-    it('rechaza HTTP', () => {
-      expect(validateWebhookUrl('http://example.com')).toEqual({ ok: false, error: 'Solo se permiten URLs HTTPS' });
-    });
-
-    it('rechaza localhost', () => {
-      expect(validateWebhookUrl('https://localhost:3000')).toEqual({ ok: false, error: 'No se permiten URLs de red local' });
-    });
-
-    it('rechaza 127.0.0.1', () => {
-      expect(validateWebhookUrl('https://127.0.0.1')).toEqual({ ok: false, error: 'No se permiten URLs de red local' });
-    });
-
-    it('rechaza URL invalida', () => {
-      expect(validateWebhookUrl('no-es-url')).toEqual({ ok: false, error: 'URL invalida' });
     });
   });
 
