@@ -319,7 +319,6 @@ export async function abrirDB(manifiestos = []) {
     gastosOp: '++id, fecha, tiendaId',
     contabilidad: '++id, fecha, tipo, tiendaId',
     webhookLog: '++id, fecha',
-    webhookQueue: '++id, estado, fecha',
     productoVariantes: '++id, productoId, nombre, codigo, archivado',
     ...SYNC_TABLES,
   };
@@ -726,7 +725,7 @@ export async function setSyncState(deviceId, tabla, lastSyncAt, lastSyncVersion)
   return conManejoError(`setSyncState`, async () => {
     const db = getDB();
     const existing = await db.syncState.where({ deviceId, tabla }).first();
-    if (existing?.id != null) {
+    if (existing?.id !== undefined) {
       await db.syncState.update(existing.id, { lastSyncAt, lastSyncVersion });
     } else {
       await db.syncState.put({ deviceId, tabla, lastSyncAt, lastSyncVersion });

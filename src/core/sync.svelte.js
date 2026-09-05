@@ -1,18 +1,1 @@
-import { ui } from './ui.svelte.js';
-import { processQueue, areWebhooksEnabled } from './api.js';
-
-// Escuchar cambios de conexion: procesar cola de webhooks al volver online (solo si activados)
-const onlineHandler = () => {
-  ui.offline = false;
-  areWebhooksEnabled().then(ok => { if (ok) processQueue().catch(() => {}); });
-};
-const offlineHandler = () => { ui.offline = true; };
-window.addEventListener('online', onlineHandler);
-window.addEventListener('offline', offlineHandler);
-
-// Procesar cola periodicamente cada 60s cuando hay conexion (solo si activados)
-setInterval(() => {
-  if (!ui.offline) {
-    areWebhooksEnabled().then(ok => { if (ok) processQueue().catch(() => {}); });
-  }
-}, 60000);
+import { ui } from './ui.svelte.js' ;import { bus } from './bus.js' ;import { getDB } from './db.js' ;import { nowLocal, genId } from './util.js' ;import { avisar } from './ui.svelte.js' ;/* ================================================================ *  SINCRONIZACION - Estado global de conexion y sync *  Reemplaza el sistema de webhooks eliminado por WebRTC/Sync-Engine *  Solo gestiona estado de conexion y notificaciones de sync *  ================================================================ */ // Listeners de conexion (ya existen en registro.js, aqui solo estado) const onlineHandler = () => { ui.offline = false; bus.emit('sync:online'); }; const offlineHandler = () => { ui.offline = true; bus.emit('sync:offline'); }; window.addEventListener('online', onlineHandler); window.addEventListener('offline', offlineHandler); // Estado inicial setTimeout(() => { ui.offline = !navigator.onLine; }, 0);

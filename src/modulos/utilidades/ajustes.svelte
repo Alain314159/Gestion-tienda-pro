@@ -14,10 +14,8 @@
   import { getDB, listar, guardar, limpiar, leerConfig } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
   import { ui, alternarTema, avisar, confirmar, preguntar, pedirPIN } from '../../core/state.svelte.js';
-  import { n, m, fmt, clean, nowLocal, validateWebhookUrl, escapeHtml } from '../../core/util.js';
-  import { getWebhooks, setWebhooks, triggerAll } from '../../core/api.js';
-  import { BluetoothSync } from '../../core/bluetooth.js';
-  import Icono from '../../core/Icono.svelte';
+  import { n, m, fmt, clean, nowLocal, escapeHtml } from '../../core/util.js';
+      import Icono from '../../core/Icono.svelte';
 
   let cfg = $state({});
   const tablas = $state([
@@ -39,13 +37,6 @@
   let conteos = $state({});
   let pinStr = $state('');
   let pinActivo = $state(false);
-  let webhooks = $state([]);
-  let whUrl = $state('');
-  let bt = $state(null);
-  let btStatus = $state('');
-  let btDeviceName = $state('');
-  let btEscaneando = $state(false);
-  let btConectado = $state(false);
 
   async function recargar() {
     cfg = (await leerConfig('cfg')) || { nombre: 'Tienda Pro', moneda: '$', periodoInicio: nowLocal().iso };
@@ -60,7 +51,6 @@
       }
     }
     conteos = counts;
-    webhooks = getWebhooks();
   }
 
   onMount(() => {
@@ -168,76 +158,6 @@
     avisar('Todos los datos eliminados');
   }
 
-  function agregarWebhook() {
-    const url = whUrl.trim();
-    if (!url) return;
-    const validation = validateWebhookUrl(url);
-    if (!validation.ok) return avisar(validation.error, 'bad');
-    webhooks = [...webhooks, { url, activo: true }];
-    setWebhooks(webhooks);
-    whUrl = '';
-    avisar('Webhook agregado');
-  }
-
-  function toggleWebhook(i) {
-    webhooks[i].activo = !webhooks[i].activo;
-    setWebhooks(webhooks);
-    webhooks = [...webhooks];
-  }
-
-  function eliminarWebhook(i) {
-    webhooks.splice(i, 1);
-    setWebhooks(webhooks);
-    webhooks = [...webhooks];
-    avisar('Webhook eliminado');
-  }
-
-  async function probarWebhooks() {
-    const res = await triggerAll('test', { mensaje: 'Prueba desde Tienda Pro' });
-    const ok = res.filter((r) => r.ok).length;
-    avisar(`${ok}/${res.length} webhooks OK`);
-  }
-
-  async function iniciarBT() {
-    bt = new BluetoothSync();
-    btEscaneando = true;
-    btConectado = false;
-    btDeviceName = '';
-    try {
-      btStatus = 'Escaneando dispositivos...';
-      const device = await bt.scan();
-      btDeviceName = device?.name || 'Dispositivo desconocido';
-      btStatus = 'Conectando a ' + btDeviceName + '...';
-      await bt.connect();
-      btStatus = 'Conectado';
-      btConectado = true;
-      btEscaneando = false;
-      bt.onDisconnect = () => {
-        btConectado = false;
-        btStatus = 'Desconectado';
-        btDeviceName = '';
-        bt = null;
-      };
-      avisar('Bluetooth conectado');
-    } catch (e) {
-      btStatus = 'Error';
-      btEscaneando = false;
-      btConectado = false;
-      avisar(e.message, 'bad');
-    }
-  }
-
-  function desconectarBT() {
-    if (bt) {
-      bt.disconnect();
-      bt = null;
-    }
-    btConectado = false;
-    btEscaneando = false;
-    btDeviceName = '';
-    btStatus = 'Desconectado';
-    avisar('Bluetooth desconectado');
-  }
 </script>
 
 <div class="modulo">
@@ -313,136 +233,6 @@
       >
         <Icono nombre="lock" size={16} color="#fff" />
         Activar PIN
-      </button>
-    {/if}
-  </div>
-
-  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
-    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
-      <Icono nombre="link" size={18} />
-      Webhooks (API abierta)
-    </div>
-    <div class="flex items-center justify-between mb-3">
-      <span class="text-sm">Activar webhooks</span>
-      <button
-        class="px-3 py-1 rounded-full text-xs font-bold {cfg.webhooksActivos
-          ? 'bg-success text-white'
-          : 'bg-muted text-white'}"
-        onclick={() => {
-          cfg.webhooksActivos = !cfg.webhooksActivos;
-          guardarCfg();
-        }}
-      >
-        {cfg.webhooksActivos ? 'ON' : 'OFF'}
-      </button>
-    </div>
-    {#if cfg.webhooksActivos}
-      <input
-        class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base mb-2"
-        type="url"
-        placeholder="URL del webhook"
-        bind:value={whUrl}
-      />
-      <button
-        class="w-full py-2 rounded-[var(--radius-md)] bg-primary text-white font-bold text-sm mb-3"
-        onclick={agregarWebhook}>+ Agregar webhook</button
-      >
-      {#each webhooks as wh, i}
-        <div class="flex justify-between items-center py-2 border-b border-border text-sm">
-          <div class="truncate flex-1 text-xs">{wh.url}</div>
-          <div class="flex gap-2">
-            <button class="text-xs {wh.activo ? 'text-success' : 'text-muted'}" onclick={() => toggleWebhook(i)}
-              >{wh.activo ? 'ON' : 'OFF'}</button
-            >
-            <button class="text-xs text-danger" onclick={() => eliminarWebhook(i)}>X</button>
-          </div>
-        </div>
-      {/each}
-      {#if webhooks.length > 0}
-        <button
-          class="w-full py-2 mt-2 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-bold text-sm"
-          onclick={probarWebhooks}>Probar webhooks</button
-        >
-      {/if}
-    {/if}
-  </div>
-
-  <!-- Sync Bluetooth -->
-  <div class="bg-card rounded-[var(--radius-lg)] p-5 shadow-[var(--color-shadow)] mb-4">
-    <div class="flex items-center gap-2 font-extrabold text-primary mb-4">
-      <Icono nombre="wifi" size={18} />
-      Sync Bluetooth
-      <span class="text-xs text-muted font-normal ml-auto">Sin internet</span>
-    </div>
-
-    <!-- Estado visual -->
-    <div class="flex items-center gap-3 mb-4 p-3 rounded-[var(--radius-md)] bg-background">
-      <div class="relative">
-        <div
-          class="w-10 h-10 rounded-full flex items-center justify-center
-          {btConectado ? 'bg-success/15' : btEscaneando ? 'bg-primary/15' : 'bg-muted/15'}"
-        >
-          <Icono
-            nombre={btConectado ? 'wifi' : btEscaneando ? 'wifi' : 'wifi-off'}
-            size={20}
-            color={btConectado ? '#4CAF50' : btEscaneando ? '#2196F3' : '#94a3b8'}
-          />
-        </div>
-        {#if btEscaneando}
-          <div class="absolute inset-0 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
-        {/if}
-      </div>
-      <div class="flex-1 min-w-0">
-        <div class="font-bold text-sm truncate">
-          {btConectado ? btDeviceName : btEscaneando ? 'Buscando...' : 'Desconectado'}
-        </div>
-        <div class="text-xs {btConectado ? 'text-success' : btEscaneando ? 'text-primary' : 'text-muted'}">
-          {btStatus || 'Listo para escanear'}
-        </div>
-      </div>
-      {#if btConectado}
-        <span
-          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-success text-[0.65rem] font-extrabold"
-        >
-          <span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>
-          Activo
-        </span>
-      {/if}
-    </div>
-
-    <!-- Info del dispositivo -->
-    {#if btConectado && btDeviceName}
-      <div class="mb-4 p-3 rounded-[var(--radius-md)] border border-success/20 bg-success/5">
-        <div class="flex items-center gap-2 text-xs text-success font-bold mb-1">
-          <Icono nombre="check" size={12} />
-          Conexion establecida
-        </div>
-        <div class="text-sm text-text font-medium">{btDeviceName}</div>
-      </div>
-    {/if}
-
-    <!-- Botones de accion -->
-    {#if btConectado}
-      <button
-        class="w-full py-3 rounded-[var(--radius-md)] border border-danger/30 bg-danger/10 text-danger font-extrabold text-sm active:scale-[0.97] transition-transform flex items-center justify-center gap-2"
-        onclick={desconectarBT}
-      >
-        <Icono nombre="x" size={16} color="#dc2626" />
-        Desconectar
-      </button>
-    {:else}
-      <button
-        class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm active:scale-[0.97] transition-transform flex items-center justify-center gap-2 disabled:opacity-50"
-        onclick={iniciarBT}
-        disabled={btEscaneando}
-      >
-        {#if btEscaneando}
-          <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-          Escaneando...
-        {:else}
-          <Icono nombre="wifi" size={16} color="#fff" />
-          Escanear dispositivos
-        {/if}
       </button>
     {/if}
   </div>
