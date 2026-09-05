@@ -1,5 +1,6 @@
 import { getDB, txPut, listar, eliminar } from '../core/db.js';
 import { nowLocal, m, n, genId } from '../core/util.js';
+import { toBig, toNumber, mul, round } from '../core/Money.js';
 import { verificarPeriodoCerrado } from '../core/periodos.js';
 
 /**
@@ -12,11 +13,11 @@ export const CompraService = {
   registrarExistente: async function ({ productoId, varianteId, nombre, unidad, cantidad, costo, total }) {
     await verificarPeriodoCerrado(nowLocal().iso);
     const cant = n(cantidad);
-    const cst = n(costo);
-    const ttl = n(total);
-    const esperado = m(cant * cst);
-    if (Math.abs(ttl - esperado) > 0.02) {
-      throw new Error(`El total (${ttl}) no coincide con cantidad x costo (${cant} x ${cst} = ${esperado})`);
+    const cst = toBig(costo);
+    const ttl = toBig(total);
+    const esperado = round(mul(cant, cst), 2);
+    if (toNumber(abs(sub(ttl, esperado))) > 0.02) {
+      throw new Error(`El total (${toNumber(ttl)}) no coincide con cantidad x costo (${cant} x ${toNumber(cst)} = ${toNumber(esperado)})`);
     }
     const db = getDB();
     const compra = {
@@ -28,8 +29,8 @@ export const CompraService = {
       productoNombre: nombre,
       productoUnidad: unidad,
       cantidad: cant,
-      costo: cst,
-      total: esperado,
+      costo: toNumber(cst),
+      total: toNumber(esperado),
       anulada: false,
       unidad,
     };
@@ -41,9 +42,9 @@ export const CompraService = {
       varianteId,
       productoNombre: nombre,
       productoUnidad: unidad,
-      cantidadInicial: cantidad,
+      cantidadInicial: cant,
       cantidadVendida: 0,
-      costo,
+      costo: toNumber(cst),
       compraId: compra.id,
     };
 
@@ -84,11 +85,11 @@ export const CompraService = {
       preciosEscalonados: [],
     };
     const cant = n(cantidad);
-    const cst = n(costo);
-    const ttl = n(total);
-    const esperado = m(cant * cst);
-    if (Math.abs(ttl - esperado) > 0.02) {
-      throw new Error(`El total (${ttl}) no coincide con cantidad x costo (${cant} x ${cst} = ${esperado})`);
+    const cst = toBig(costo);
+    const ttl = toBig(total);
+    const esperado = round(mul(cant, cst), 2);
+    if (toNumber(abs(sub(ttl, esperado))) > 0.02) {
+      throw new Error(`El total (${toNumber(ttl)}) no coincide con cantidad x costo (${cant} x ${toNumber(cst)} = ${toNumber(esperado)})`);
     }
     const compra = {
       id: genId('c'),
@@ -99,8 +100,8 @@ export const CompraService = {
       productoNombre: producto.nombre,
       productoUnidad: unidad,
       cantidad: cant,
-      costo: cst,
-      total: esperado,
+      costo: toNumber(cst),
+      total: toNumber(esperado),
       anulada: false,
       unidad,
     };
@@ -114,7 +115,7 @@ export const CompraService = {
       productoUnidad: unidad,
       cantidadInicial: cant,
       cantidadVendida: 0,
-      costo: cst,
+      costo: toNumber(cst),
       compraId: compra.id,
     };
 
