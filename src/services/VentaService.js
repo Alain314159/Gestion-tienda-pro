@@ -1,6 +1,6 @@
 import { getDB, guardar, guardarBulk, listar } from '../core/db.js';
 import { calcFIFOVariante, stockVariante, nowLocal, m, n, q, genId, lotesDeVariante, lotesDeProducto } from '../core/util.js';
-import { toBig, toNumber, add, sub, mul } from '../core/Money.js';
+import { toBig, toNumber, add, sub, mul, Big } from '../core/Money.js';
 import { verificarPeriodoCerrado } from '../core/periodos.js';
 
 /**

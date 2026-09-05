@@ -1,4 +1,4 @@
-import { toBig, toNumber, add, sub, mul, div, pct } from './Money.js';
+import { toBig, toNumber, add, sub, mul, div, pct, Big } from './Money.js';
 
 export function analisisABC(productos, ventas, lotes) {
   const data = {};

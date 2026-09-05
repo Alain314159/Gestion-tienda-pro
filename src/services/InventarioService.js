@@ -1,5 +1,6 @@
 import { getDB, guardar, listar } from '../core/db.js';
 import { calcFIFOVariante, nowLocal, m, n, q, genId } from '../core/util.js';
+import { toBig, toNumber, mul, round } from '../core/Money.js';
 import { verificarPeriodoCerrado } from '../core/periodos.js';
 
 /**
@@ -49,11 +50,11 @@ export const InventarioService = {
   ajustarPositivo: async function ({ productoId, varianteId, productoNombre, productoUnidad, cantidad, motivo, costo }) {
     await verificarPeriodoCerrado(nowLocal().iso);
     const cant = n(cantidad);
-    const cst = n(costo);
-    if (cst <= 0) throw new Error('El costo debe ser mayor a cero');
+    const cst = toBig(costo);
+    if (toNumber(cst) <= 0) throw new Error('El costo debe ser mayor a cero');
     if (cant <= 0) throw new Error('La cantidad debe ser mayor a cero');
     const db = getDB();
-    const valorSobrante = m(cant * cst);
+    const valorSobrante = toNumber(round(mul(cant, cst), 2));
     const ajuste = {
       id: genId('a'),
       fecha: nowLocal().iso,
@@ -73,9 +74,9 @@ export const InventarioService = {
       varianteId,
       productoNombre,
       productoUnidad: productoUnidad || '',
-      cantidadInicial: cantidad,
+      cantidadInicial: cant,
       cantidadVendida: 0,
-      costo: n(costo),
+      costo: toNumber(cst),
       fecha: ajuste.fecha,
     };
 

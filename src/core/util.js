@@ -2,7 +2,7 @@
  *  MOTOR MATEMATICO NATIVO BLINDADO - Con precision decimal (big.js)
  *  ================================================================ */
 
-import { toBig, m2, m3, toCents as moneyToCents, fromCents as moneyFromCents, toNumber, add, sub, mul, div, round, sum, sumWhere, pct, margin, eq, gt, lt, gte, lte, abs, max, min, allocate, toFixed, toString as moneyToString } from './Money.js';
+import { toBig, m2, m3, toCents as moneyToCents, fromCents as moneyFromCents, toNumber, add, sub, mul, div, round, sum, sumWhere, pct, margin, eq, gt, lt, gte, lte, abs, max, min, allocate, toFixed, toString as moneyToString, Big } from './Money.js';
 
 /** Convierte cualquier valor a numero seguro. null/undefined/'' → 0
  *  ATENCION: Para calculos financieros usar Money.toBig() en lugar de n()
