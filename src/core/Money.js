@@ -1,4 +1,5 @@
-import Big from 'big.js';
+import * as BigModule from 'big.js';
+const Big = BigModule.default || BigModule;
 
 /**
  * Motor de precision decimal para calculos financieros.

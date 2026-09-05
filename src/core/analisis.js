@@ -1,4 +1,4 @@
-import { n } from './util.js';
+import { toBig, toNumber, add, sub, mul, div, pct } from './Money.js';
 
 export function analisisABC(productos, ventas, lotes) {
   const data = {};
@@ -12,28 +12,36 @@ export function analisisABC(productos, ventas, lotes) {
         data[it.productoId] = {
           id: it.productoId,
           nombre: it.nombre,
-          volumen: 0,
-          ganancia: 0,
-          revenue: 0
+          volumen: new Big('0'),
+          ganancia: new Big('0'),
+          revenue: new Big('0')
         };
       }
-      data[it.productoId].volumen += n(it.cantidad);
-      data[it.productoId].ganancia += n(it.ganancia);
-      data[it.productoId].revenue += n(it.precio) * n(it.cantidad);
+      data[it.productoId].volumen = data[it.productoId].volumen.plus(toBig(it.cantidad));
+      data[it.productoId].ganancia = data[it.productoId].ganancia.plus(toBig(it.ganancia));
+      data[it.productoId].revenue = data[it.productoId].revenue.plus(toBig(it.precio).times(toBig(it.cantidad)));
     });
   });
 
-  const arr = Object.values(data).sort((a, b) => b.ganancia - a.ganancia);
-  const totalGan = arr.reduce((s, x) => s + x.ganancia, 0);
-  const totalVol = arr.reduce((s, x) => s + x.volumen, 0);
+  const arr = Object.values(data).sort((a, b) => toNumber(b.ganancia) - toNumber(a.ganancia));
+  const totalGan = arr.reduce((s, x) => s.plus(x.ganancia), new Big('0'));
+  const totalVol = arr.reduce((s, x) => s.plus(x.volumen), new Big('0'));
 
-  let acumG = 0, acumV = 0;
+  let acumG = new Big('0'), acumV = new Big('0');
   return arr.map(x => {
-    acumG += x.ganancia;
-    acumV += x.volumen;
-    const catG = acumG / totalGan <= 0.8 ? 'A' : acumG / totalGan <= 0.95 ? 'B' : 'C';
-    const catV = acumV / totalVol <= 0.8 ? 'A' : acumV / totalVol <= 0.95 ? 'B' : 'C';
-    return { ...x, catGanancia: catG, catVolumen: catV, pctGan: totalGan > 0 ? ((x.ganancia / totalGan) * 100).toFixed(1) : 0 };
+    acumG = acumG.plus(x.ganancia);
+    acumV = acumV.plus(x.volumen);
+    const catG = acumG.div(totalGan).lte('0.8') ? 'A' : acumG.div(totalGan).lte('0.95') ? 'B' : 'C';
+    const catV = acumV.div(totalVol).lte('0.8') ? 'A' : acumV.div(totalVol).lte('0.95') ? 'B' : 'C';
+    return {
+      ...x,
+      volumen: toNumber(x.volumen),
+      ganancia: toNumber(x.ganancia),
+      revenue: toNumber(x.revenue),
+      catGanancia: catG,
+      catVolumen: catV,
+      pctGan: totalGan.gt('0') ? toNumber(pct(x.ganancia, totalGan)) : 0
+    };
   });
 }
 
@@ -44,18 +52,18 @@ export function detectarAnomalias(ventas, compras, ajustes) {
   ventas.filter(v => !v.anulada && v.fecha && v.fecha.slice(0, 10) === hoy).forEach(v => {
     if (!v.items || !Array.isArray(v.items)) return;
     v.items.forEach(it => {
-      const revenue = n(it.precio) * n(it.cantidad);
-      const costo = n(it.costo);
+      const revenue = toBig(it.precio).times(toBig(it.cantidad));
+      const costo = toBig(it.costo);
       let margen;
-      if (revenue > 0) {
-        margen = ((revenue - costo) / revenue) * 100;
-      } else if (costo > 0) {
+      if (revenue.gt('0')) {
+        margen = toNumber(costo.div(revenue).times('100'));
+      } else if (costo.gt('0')) {
         margen = -100;
       } else {
         margen = 0;
       }
       if (margen < 0) alertas.push({ tipo: 'perdida', msg: `${it.nombre} vendido con perdida`, gravedad: 'alta' });
-      else if (margen < 5 && revenue > 0) alertas.push({ tipo: 'margen_bajo', msg: `${it.nombre} margen ${margen.toFixed(1)}%`, gravedad: 'media' });
+      else if (margen < 5 && toNumber(revenue) > 0) alertas.push({ tipo: 'margen_bajo', msg: `${it.nombre} margen ${margen.toFixed(1)}%`, gravedad: 'media' });
     });
   });
 

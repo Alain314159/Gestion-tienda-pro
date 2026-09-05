@@ -1,10 +1,12 @@
 /** ================================================================
- *  MOTOR MATEMÁTICO NATIVO BLINDADO
+ *  MOTOR MATEMATICO NATIVO BLINDADO - Con precision decimal (big.js)
  *  ================================================================ */
-\
+
 import { toBig, m2, m3, toCents as moneyToCents, fromCents as moneyFromCents, toNumber, add, sub, mul, div, round, sum, sumWhere, pct, margin, eq, gt, lt, gte, lte, abs, max, min, allocate, toFixed, toString as moneyToString } from './Money.js';
 
-/** Convierte cualquier valor a número seguro. null/undefined/'' → 0 */
+/** Convierte cualquier valor a numero seguro. null/undefined/'' → 0
+ *  ATENCION: Para calculos financieros usar Money.toBig() en lugar de n()
+ */
 export function n(v) {
   if (v === null || v === undefined || v === '') return 0;
   if (typeof v === 'string') v = parseFloat(v.replace(',', '.'));
@@ -14,12 +16,12 @@ export function n(v) {
 
 /** Convierte valor monetario a centavos enteros (para almacenamiento preciso) */
 export function toCents(v) {
-  return Math.round(n(v) * 100);
+  return moneyToCents(v);
 }
 
-/** Convierte centavos enteros a valor monetario (para display/cálculos) */
+/** Convierte centavos enteros a valor monetario (para display/calculos) */
 export function fromCents(cents) {
-  return (n(cents) / 100);
+  return toNumber(moneyFromCents(cents));
 }
 
 /** Redondea a 2 decimales (moneda) - usa big.js para precision exacta */
@@ -91,7 +93,7 @@ export function genId(p = '') {
   }
 }
 
-/** Vibración táctil */
+/** Vibracion tactil */
 export function vib(ms = 20) {
   try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {}
 }
@@ -115,7 +117,7 @@ export function debounce(fn, ms = 200) {
   };
 }
 
-/** Búsqueda fuzzy: "det 1kg" encuentra "Detergente 1kg"
+/** Busqueda fuzzy: "det 1kg" encuentra "Detergente 1kg"
  *  Cada token del query debe aparecer en alguna parte del texto
  */
 export function fuzzySearch(items, query, getter) {
@@ -128,7 +130,7 @@ export function fuzzySearch(items, query, getter) {
   });
 }
 
-/** Búsqueda fuzzy con scoring (mejores coincidencias primero) */
+/** Busqueda fuzzy con scoring (mejores coincidencias primero) */
 export function fuzzySearchScored(items, query, getter) {
   const qry = (query || '').toLowerCase().trim();
   if (!qry) return items.map(it => ({ item: it, score: 0 }));
@@ -179,6 +181,10 @@ export function fmtFH(iso) {
   } catch (e) { return ''; }
 }
 
+/** ================================================================
+ *  FIFO - First In First Out (con precision decimal via big.js)
+ *  ================================================================ */
+
 /** FIFO por producto (legacy, usa calcFIFOVariante para variantes)
  *  @deprecated Usar calcFIFOVariante con varianteId
  */
@@ -187,17 +193,19 @@ export function calcFIFO(lotes, productoId, cant) {
     .filter(l => l.productoId === productoId && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
     .sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || (a.id < b.id ? -1 : 1));
 
-  let rest = cant, total = 0, usados = [];
+  let rest = cant;
+  let total = new Big('0');
+  const usados = [];
   for (const l of lotesDisp) {
     if (rest <= 0) break;
     const disp = n(l.cantidadInicial) - n(l.cantidadVendida);
     const usar = Math.min(disp, rest);
-    total = m(total + (usar * n(l.costo)));
+    total = total.plus(toBig(usar).times(toBig(l.costo)));
     usados.push({ loteId: l.id, cantidad: usar, costo: l.costo });
     rest -= usar;
   }
   if (q(rest) > 0) return { error: 'Stock insuficiente (faltan ' + q(rest).toFixed(3) + ')' };
-  return { costoTotal: total, usados };
+  return { costoTotal: toNumber(total.round(2, 1)), usados };
 }
 
 /** FIFO por variante (nueva forma preferida) */
@@ -206,18 +214,24 @@ export function calcFIFOVariante(lotes, varianteId, cant) {
     .filter(l => l.varianteId === varianteId && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
     .sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || (a.id < b.id ? -1 : 1));
 
-  let rest = cant, total = 0, usados = [];
+  let rest = cant;
+  let total = new Big('0');
+  const usados = [];
   for (const l of lotesDisp) {
     if (rest <= 0) break;
     const disp = n(l.cantidadInicial) - n(l.cantidadVendida);
     const usar = Math.min(disp, rest);
-    total = m(total + (usar * n(l.costo)));
+    total = total.plus(toBig(usar).times(toBig(l.costo)));
     usados.push({ loteId: l.id, cantidad: usar, costo: l.costo });
     rest -= usar;
   }
   if (q(rest) > 0) return { error: 'Stock insuficiente (faltan ' + q(rest).toFixed(3) + ')' };
-  return { costoTotal: total, usados };
+  return { costoTotal: toNumber(total.round(2, 1)), usados };
 }
+
+/** ================================================================
+ *  STOCK Y VALORACION DE INVENTARIO (con precision decimal)
+ *  ================================================================ */
 
 /** Stock total de un producto (legacy, suma todas las variantes)
  *  @deprecated Usar stockVariante con varianteId
@@ -228,7 +242,7 @@ export function stockProducto(lotes, productoId) {
     .reduce((s, l) => s + Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida)), 0);
 }
 
-/** Stock total de una variante específica */
+/** Stock total de una variante especifica */
 export function stockVariante(lotes, varianteId) {
   return lotes
     .filter(l => l.varianteId === varianteId)
@@ -244,10 +258,10 @@ export function lotesDeVariante(lotes, varianteId) {
 
 /** Valor de lotes de una variante */
 export function valorLotesVariante(lotes, varianteId) {
-  return m(lotesDeVariante(lotes, varianteId).reduce((s, l) => {
-    const disp = n(l.cantidadInicial) - n(l.cantidadVendida);
-    return s + (disp * n(l.costo));
-  }, 0));
+  return toNumber(sum(lotesDeVariante(lotes, varianteId), l => {
+    const disp = Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida));
+    return toNumber(toBig(disp).times(toBig(l.costo)));
+  }));
 }
 
 /** Badge de stock para una variante */
@@ -261,10 +275,10 @@ export function badgeStockVariante(variante, lotes) {
 
 /** Valor del inventario */
 export function valorInventario(lotes) {
-  return m(lotes.reduce((s, l) => {
+  return toNumber(sum(lotes, l => {
     const disp = Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida));
-    return s + (disp * n(l.costo));
-  }, 0));
+    return toNumber(toBig(disp).times(toBig(l.costo)));
+  }));
 }
 
 /** Lotes activos de un producto (legacy, suma todas las variantes)
@@ -278,10 +292,10 @@ export function lotesDeProducto(lotes, productoId) {
 
 /** Valor de lotes de un producto */
 export function valorLotesProducto(lotes, productoId) {
-  return m(lotesDeProducto(lotes, productoId).reduce((s, l) => {
-    const disp = n(l.cantidadInicial) - n(l.cantidadVendida);
-    return s + (disp * n(l.costo));
-  }, 0));
+  return toNumber(sum(lotesDeProducto(lotes, productoId), l => {
+    const disp = Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida));
+    return toNumber(toBig(disp).times(toBig(l.costo)));
+  }));
 }
 
 /** Determina badge de stock */
@@ -321,15 +335,21 @@ export function inventarioGrupos(productos, variantes, lotes) {
         unidad: v?.unidad || l.productoUnidad || '',
         lotes: [],
         stockTotal: 0,
-        valorTotal: 0
+        valorTotal: new Big('0')
       };
     }
     map[vid].lotes.push(l);
     map[vid].stockTotal += disp;
-    map[vid].valorTotal = m(map[vid].valorTotal + (disp * n(l.costo)));
+    map[vid].valorTotal = map[vid].valorTotal.plus(toBig(disp).times(toBig(l.costo)));
   }
-  return Object.values(map).sort((a, b) => b.valorTotal - a.valorTotal);
+  return Object.values(map)
+    .sort((a, b) => toNumber(b.valorTotal) - toNumber(a.valorTotal))
+    .map(g => ({ ...g, valorTotal: toNumber(g.valorTotal.round(2, 1)) }));
 }
+
+/** ================================================================
+ *  CAJA Y MOVIMIENTOS (con precision decimal)
+ *  ================================================================ */
 
 /** Movimientos de caja desnormalizados */
 export function movimientosCaja({ cfg, capital, ventas, compras, retiros, movCaja }) {
@@ -358,12 +378,12 @@ export function movimientosCaja({ cfg, capital, ventas, compras, retiros, movCaj
 
 /** Saldo de caja */
 export function saldoCaja({ cfg, capital, ventas, compras, retiros, movCaja }) {
-  const aportes = capital.reduce((s, c) => s + n(c.monto), 0);
-  const vta = ventas.filter(v => !v.anulada).reduce((s, v) => s + n(v.total), 0);
-  const cmp = compras.filter(c => !c.anulada).reduce((s, c) => s + n(c.total), 0);
-  const ret = retiros.reduce((s, r) => s + n(r.monto), 0);
-  const movs = (movCaja || []).reduce((s, mv) => mv.tipo === 'ingreso' ? s + n(mv.monto) : s - n(mv.monto), 0);
-  return m(n(cfg.capitalInicial) + aportes + vta - cmp - ret + movs);
+  const aportes = toNumber(sum(capital, 'monto'));
+  const vta = toNumber(sumWhere(ventas, v => !v.anulada, 'total'));
+  const cmp = toNumber(sumWhere(compras, c => !c.anulada, 'total'));
+  const ret = toNumber(sum(retiros, 'monto'));
+  const movs = toNumber(sum(movCaja || [], mv => mv.tipo === 'ingreso' ? mv.monto : -mv.monto));
+  return toNumber(add(cfg.capitalInicial || 0, aportes, vta, -cmp, -ret, movs));
 }
 
 /** Ganancia disponible para retiro
@@ -374,23 +394,23 @@ export function saldoCaja({ cfg, capital, ventas, compras, retiros, movCaja }) {
  */
 export function gananciaDisponible({ cfg, capital, ventas, compras, retiros, movCaja, ajustes, cierres, lotes, periodoInicio }) {
   const ventasArr = ventas.filter(v => !v.anulada && isoToLocal(v.fecha) >= isoToLocal(periodoInicio));
-  const ganBruta = m(ventasArr.reduce((s, v) => s + n(v.ganancia), 0));
-  const gastosOp = m(ajustes.filter(a => a.cantidad < 0 && isoToLocal(a.fecha) >= isoToLocal(periodoInicio))
-    .reduce((s, a) => s + n(a.costoPerdida), 0));
-  const ganNeta = m(ganBruta - gastosOp);
-  const retirosTotal = retiros.reduce((s, r) => s + n(r.monto), 0);
-  const acum = m(cierres.reduce((s, x) => s + n(x.neta), 0) + ganNeta - retirosTotal);
+  const ganBruta = toNumber(sum(ventasArr, 'ganancia'));
+  const gastosOp = toNumber(sumWhere(ajustes, a => a.cantidad < 0 && isoToLocal(a.fecha) >= isoToLocal(periodoInicio), 'costoPerdida'));
+  const ganNeta = toNumber(sub(ganBruta, gastosOp));
+  const retirosTotal = toNumber(sum(retiros, 'monto'));
+  const acum = toNumber(add(sum(cierres, 'neta'), ganNeta, -retirosTotal));
   if (acum <= 0) return 0;
-  const capTotal = m(n(cfg.capitalInicial) + capital.reduce((s, c) => s + n(c.monto), 0));
+  const capTotal = toNumber(add(cfg.capitalInicial || 0, sum(capital, 'monto')));
   const valInv = valorInventario(lotes);
   const saldo = saldoCaja({ cfg, capital, ventas, compras, retiros, movCaja });
-  // El capital debe cubrir: inventario + parte de caja
-  // Efectivo libre = lo que sobra en caja despues de reservar el capital
-  // Si el inventario ya cubre parte del capital, esa parte no necesita estar en caja
   const capReservadoEnCaja = Math.max(0, capTotal - valInv);
   const efectivoLibre = Math.max(0, saldo - capReservadoEnCaja);
   return Math.max(0, Math.min(acum, efectivoLibre));
 }
+
+/** ================================================================
+ *  ANALISIS Y REPORTES (con precision decimal)
+ *  ================================================================ */
 
 /** Top rentables del mes actual */
 export function topRentables(ventas) {
@@ -400,28 +420,61 @@ export function topRentables(ventas) {
     const f = new Date(v.fecha);
     if (f.getMonth() === mes && f.getFullYear() === an) {
       v.items.forEach(it => {
-        if (!r[it.productoId]) r[it.productoId] = { id: it.productoId, nombre: it.nombre, gan: 0 };
-        r[it.productoId].gan = m(r[it.productoId].gan + n(it.ganancia));
+        if (!r[it.productoId]) r[it.productoId] = { id: it.productoId, nombre: it.nombre, gan: new Big('0') };
+        r[it.productoId].gan = r[it.productoId].gan.plus(toBig(it.ganancia));
       });
     }
   });
-  return Object.values(r).sort((a, b) => b.gan - a.gan).slice(0, 5);
+  return Object.values(r)
+    .sort((a, b) => toNumber(b.gan) - toNumber(a.gan))
+    .slice(0, 5)
+    .map(x => ({ ...x, gan: toNumber(x.gan.round(2, 1)) }));
 }
 
-/** Datos para gráfica de 6 meses */
+/** Datos para grafica de 6 meses */
 export function datosChart6Meses(ventas) {
   const meses = [];
   const now = new Date();
   for (let i = 5; i >= 0; i--) {
     const f = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    meses.push({ m: f.getMonth(), y: f.getFullYear(), label: f.toLocaleDateString('es', { month: 'short' }), v: 0, g: 0 });
+    meses.push({ m: f.getMonth(), y: f.getFullYear(), label: f.toLocaleDateString('es', { month: 'short' }), v: new Big('0'), g: new Big('0') });
   }
   ventas.filter(v => !v.anulada).forEach(v => {
     const f = new Date(v.fecha);
     const mes = meses.find(x => x.m === f.getMonth() && x.y === f.getFullYear());
-    if (mes) { mes.v = m(mes.v + n(v.total)); mes.g = m(mes.g + n(v.ganancia)); }
+    if (mes) {
+      mes.v = mes.v.plus(toBig(v.total));
+      mes.g = mes.g.plus(toBig(v.ganancia));
+    }
   });
-  return meses;
+  return meses.map(m => ({
+    ...m,
+    v: toNumber(m.v.round(2, 1)),
+    g: toNumber(m.g.round(2, 1))
+  }));
+}
+
+/** Reporte por periodo */
+export function generarReporte({ ventas, ajustes, gastosOp }, fechaInicio, fechaFin) {
+  const i = new Date(fechaInicio), f = new Date(fechaFin);
+  f.setHours(23, 59, 59);
+  if (i > f) return { error: 'Fecha inicio > fin' };
+
+  const vp = ventas.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
+  const ing = toNumber(sum(vp, 'total'));
+  const cogs = toNumber(sum(vp, v => toNumber(sum(v.items, 'costo'))));
+  const bruta = toNumber(sub(ing, cogs));
+  const mermas = toNumber(sumWhere(ajustes, a => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f, 'costoPerdida'));
+  const gastos = toNumber(sumWhere(gastosOp || [], g => new Date(g.fecha) >= i && new Date(g.fecha) <= f, 'monto'));
+  const neta = toNumber(sub(bruta, add(mermas, gastos)));
+
+  return {
+    ingresos: ing, cogs, bruta, mermas, gastos, neta,
+    numVentas: vp.length,
+    margenB: ing > 0 ? toNumber(pct(bruta, ing)) : 0,
+    margenN: ing > 0 ? toNumber(pct(neta, ing)) : 0,
+    _vp: vp
+  };
 }
 
 /** ================================================================
@@ -484,28 +537,4 @@ export function fromCentsDeep(obj, fields, nested = {}) {
     }
   }
   return result;
-}
-/** Reporte por período */
-export function generarReporte({ ventas, ajustes, gastosOp }, fechaInicio, fechaFin) {
-  const i = new Date(fechaInicio), f = new Date(fechaFin);
-  f.setHours(23, 59, 59);
-  if (i > f) return { error: 'Fecha inicio > fin' };
-
-  const vp = ventas.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
-  const ing = m(vp.reduce((s, v) => s + n(v.total), 0));
-  const cogs = m(vp.reduce((s, v) => s + v.items.reduce((ss, it) => ss + n(it.costo), 0), 0));
-  const bruta = m(ing - cogs);
-  const mermas = m(ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f)
-    .reduce((s, a) => s + n(a.costoPerdida), 0));
-  const gastos = m((gastosOp || []).filter(g => new Date(g.fecha) >= i && new Date(g.fecha) <= f)
-    .reduce((s, g) => s + n(g.monto), 0));
-  const neta = m(bruta - mermas - gastos);
-
-  return {
-    ingresos: ing, cogs, bruta, mermas, gastos, neta,
-    numVentas: vp.length,
-    margenB: ing > 0 ? m((bruta / ing) * 100) : 0,
-    margenN: ing > 0 ? m((neta / ing) * 100) : 0,
-    _vp: vp
-  };
 }
