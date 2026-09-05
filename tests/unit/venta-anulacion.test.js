@@ -49,7 +49,7 @@ describe('VentaService - Anulacion y FIFO inverso', () => {
       expect(lotes[0].cantidadVendida).toBe(2);
     });
 
-    it('restaura stock de multiples lotes cuando el mas reciente no cubre todo', async () => {
+    it('restaura stock de multiples lotes usando FIFO (mas antiguos primero)', async () => {
       const lotes = [
         {
           id: 'l1',
@@ -71,10 +71,11 @@ describe('VentaService - Anulacion y FIFO inverso', () => {
       const item = { productoId: 'p1', cantidad: 5 };
       const usados = VentaService.restaurarStockSinLotesUsados(item, lotes);
       expect(usados.length).toBe(2);
-      expect(usados[0].loteId).toBe('l2');
-      expect(usados[0].cantidad).toBe(3);
-      expect(usados[1].loteId).toBe('l1');
-      expect(usados[1].cantidad).toBe(2);
+      // FIFO: lote mas antiguo primero (l1), luego el siguiente (l2)
+      expect(usados[0].loteId).toBe('l1');
+      expect(usados[0].cantidad).toBe(2);
+      expect(usados[1].loteId).toBe('l2');
+      expect(usados[1].cantidad).toBe(3);
       expect(lotes[0].cantidadVendida).toBe(0);
       expect(lotes[1].cantidadVendida).toBe(0);
     });
@@ -170,7 +171,7 @@ describe('VentaService - Anulacion y FIFO inverso', () => {
   });
 
   describe('anular() - sin lotesUsados (FIFO inverso)', () => {
-    it('restaura stock usando FIFO inverso', async () => {
+    it('restaura stock usando FIFO correcto', async () => {
       await guardar('lotes', {
         id: 'l1',
         productoId: 'p1',

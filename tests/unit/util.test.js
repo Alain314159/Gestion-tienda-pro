@@ -20,7 +20,7 @@ describe('Motor matematico', () => {
 describe('FIFO', () => {
   const lotes = [
     { id: 'l1', productoId: 'p1', cantidadInicial: 10, cantidadVendida: 0, costo: 5, fecha: '2024-01-01' },
-    { id: 'l2', productoId: 'p1', cantidadInicial: 5, cantidadVendida: 0, costo: 6, fecha: '2024-01-02' }
+    { id: 'l2', productoId: 'p1', cantidadInicial: 5, cantidadVendida: 0, costo: 6, fecha: '2024-01-02' },
   ];
 
   it('calcula costo FIFO correcto', () => {
@@ -37,14 +37,21 @@ describe('FIFO', () => {
 });
 
 describe('Analisis ABC', () => {
-  const productos = [{ id: 'p1', nombre: 'A' }, { id: 'p2', nombre: 'B' }];
+  const productos = [
+    { id: 'p1', nombre: 'A' },
+    { id: 'p2', nombre: 'B' },
+  ];
   const ventas = [
-    { anulada: false, fecha: new Date().toISOString(), items: [
-      { productoId: 'p1', nombre: 'A', cantidad: 10, precio: 10, ganancia: 50 }
-    ]},
-    { anulada: false, fecha: new Date().toISOString(), items: [
-      { productoId: 'p2', nombre: 'B', cantidad: 2, precio: 10, ganancia: 5 }
-    ]}
+    {
+      anulada: false,
+      fecha: new Date().toISOString(),
+      items: [{ productoId: 'p1', nombre: 'A', cantidad: 10, precio: 10, ganancia: 50 }],
+    },
+    {
+      anulada: false,
+      fecha: new Date().toISOString(),
+      items: [{ productoId: 'p2', nombre: 'B', cantidad: 2, precio: 10, ganancia: 5 }],
+    },
   ];
 
   it('clasifica A correctamente', () => {
@@ -56,32 +63,55 @@ describe('Analisis ABC', () => {
 
 describe('Deteccion de anomalias', () => {
   it('detecta venta con perdida', () => {
-    const ventas = [{ anulada: false, fecha: new Date().toISOString(), total: 5, items: [
-      { nombre: 'X', precio: 5, cantidad: 1, costo: 10, ganancia: -5 }
-    ]}];
+    const ventas = [
+      {
+        anulada: false,
+        fecha: new Date().toISOString(),
+        total: 5,
+        items: [{ nombre: 'X', precio: 5, cantidad: 1, costo: 10, ganancia: -5 }],
+      },
+    ];
     const a = detectarAnomalias(ventas, [], []);
-    expect(a.some(x => x.tipo === 'perdida')).toBe(true);
+    expect(a.some((x) => x.tipo === 'perdida')).toBe(true);
   });
 });
 
 describe('Estado PyG', () => {
   it('calcula ganancia neta con gastos', () => {
-    const r = estadoPyG({
-      ventas: [{ anulada: false, fecha: '2024-01-15', total: 100, items: [{ costo: 40 }] }],
-      compras: [], ajustes: [], gastosOp: [{ fecha: '2024-01-15', monto: 10 }]
-    }, '2024-01-01', '2024-01-31');
+    const r = estadoPyG(
+      {
+        ventas: [{ anulada: false, fecha: '2024-01-15', total: 100, items: [{ costo: 40 }] }],
+        compras: [],
+        ajustes: [],
+        gastosOp: [{ fecha: '2024-01-15', monto: 10 }],
+      },
+      '2024-01-01',
+      '2024-01-31'
+    );
     expect(r.gananciaNeta).toBe(50);
   });
 });
 
 describe('Libro diario', () => {
-  it('registra movimientos', () => {
-    const r = libroDiario({
-      ventas: [{ anulada: false, fecha: '2024-01-15', total: 100, id: 'v1' }],
-      compras: [], retiros: [], capital: [], gastosOp: [], ajustes: []
-    }, '2024-01-01', '2024-01-31');
-    expect(r.length).toBe(1);
-    expect(r[0].cuenta).toBe('Ventas');
+  it('registra movimientos con partida doble', () => {
+    const r = libroDiario(
+      {
+        ventas: [{ anulada: false, fecha: '2024-01-15', total: 100, id: 'v1' }],
+        compras: [],
+        retiros: [],
+        capital: [],
+        gastosOp: [],
+        ajustes: [],
+      },
+      '2024-01-01',
+      '2024-01-31'
+    );
+    // Partida doble: cada transaccion genera 2 registros (Debe y Haber)
+    expect(r.length).toBe(2);
+    const caja = r.find((x) => x.cuenta === 'Caja');
+    const ventas = r.find((x) => x.cuenta === 'Ventas');
+    expect(caja.debe).toBe(100);
+    expect(ventas.haber).toBe(100);
   });
 });
 
@@ -94,7 +124,7 @@ describe('Balance general', () => {
       ventas: [],
       compras: [],
       lotes: [{ cantidadInicial: 10, cantidadVendida: 0, costo: 5 }],
-      cierres: [{ neta: 200 }]
+      cierres: [{ neta: 200 }],
     });
     expect(r.activos.inventario).toBe(50);
     expect(r.patrimonio.capital).toBe(1500);

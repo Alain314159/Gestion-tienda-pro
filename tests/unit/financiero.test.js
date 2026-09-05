@@ -1,12 +1,47 @@
 import { describe, it, expect } from 'vitest';
 import {
-  n, m, q, toCents, fromCents, toCentsDeep, fromCentsDeep,
-  calcFIFO, calcFIFOVariante, stockProducto, stockVariante,
-  valorInventario, saldoCaja, movimientosCaja, gananciaDisponible,
-  generarReporte, topRentables, datosChart6Meses,
-  MONEY_SCHEMA
+  n,
+  m,
+  q,
+  toCents,
+  fromCents,
+  toCentsDeep,
+  fromCentsDeep,
+  calcFIFO,
+  calcFIFOVariante,
+  stockProducto,
+  stockVariante,
+  valorInventario,
+  saldoCaja,
+  movimientosCaja,
+  gananciaDisponible,
+  generarReporte,
+  topRentables,
+  datosChart6Meses,
+  MONEY_SCHEMA,
 } from '../../src/core/util.js';
-import { toBig, toNumber, add, sub, mul, div, round, m2, m3, sum, sumWhere, pct, margin, eq, gt, lt, gte, lte, toCents as moneyToCents, fromCents as moneyFromCents } from '../../src/core/Money.js';
+import {
+  toBig,
+  toNumber,
+  add,
+  sub,
+  mul,
+  div,
+  round,
+  m2,
+  m3,
+  sum,
+  sumWhere,
+  pct,
+  margin,
+  eq,
+  gt,
+  lt,
+  gte,
+  lte,
+  toCents as moneyToCents,
+  fromCents as moneyFromCents,
+} from '../../src/core/Money.js';
 import { analisisABC, detectarAnomalias } from '../../src/core/analisis.js';
 import { libroDiario, estadoPyG, balanceGeneral } from '../../src/core/contabilidad.js';
 import { ConversionService } from '../../src/services/ConversionService.js';
@@ -69,8 +104,12 @@ describe('Motor Money.js (big.js)', () => {
   });
 
   it('sumWhere() suma con filtro', () => {
-    const arr = [{ ok: true, val: 10 }, { ok: false, val: 20 }, { ok: true, val: 5 }];
-    expect(toNumber(sumWhere(arr, x => x.ok, 'val'))).toBe(15);
+    const arr = [
+      { ok: true, val: 10 },
+      { ok: false, val: 20 },
+      { ok: true, val: 5 },
+    ];
+    expect(toNumber(sumWhere(arr, (x) => x.ok, 'val'))).toBe(15);
   });
 
   it('pct() calcula porcentaje sin division por cero', () => {
@@ -151,8 +190,24 @@ describe('Motor matematico nativo', () => {
 
 describe('FIFO - First In First Out', () => {
   const lotes = [
-    { id: 'l1', productoId: 'p1', varianteId: 'v1', cantidadInicial: 10, cantidadVendida: 0, costo: 5, fecha: '2024-01-01' },
-    { id: 'l2', productoId: 'p1', varianteId: 'v1', cantidadInicial: 5, cantidadVendida: 0, costo: 6, fecha: '2024-01-02' }
+    {
+      id: 'l1',
+      productoId: 'p1',
+      varianteId: 'v1',
+      cantidadInicial: 10,
+      cantidadVendida: 0,
+      costo: 5,
+      fecha: '2024-01-01',
+    },
+    {
+      id: 'l2',
+      productoId: 'p1',
+      varianteId: 'v1',
+      cantidadInicial: 5,
+      cantidadVendida: 0,
+      costo: 6,
+      fecha: '2024-01-02',
+    },
   ];
 
   it('calcula costo FIFO correcto con multiples lotes', () => {
@@ -177,8 +232,24 @@ describe('FIFO - First In First Out', () => {
 
   it('respeta lotes parcialmente vendidos', () => {
     const lotesParcial = [
-      { id: 'l1', productoId: 'p1', varianteId: 'v1', cantidadInicial: 10, cantidadVendida: 7, costo: 5, fecha: '2024-01-01' },
-      { id: 'l2', productoId: 'p1', varianteId: 'v1', cantidadInicial: 5, cantidadVendida: 0, costo: 6, fecha: '2024-01-02' }
+      {
+        id: 'l1',
+        productoId: 'p1',
+        varianteId: 'v1',
+        cantidadInicial: 10,
+        cantidadVendida: 7,
+        costo: 5,
+        fecha: '2024-01-01',
+      },
+      {
+        id: 'l2',
+        productoId: 'p1',
+        varianteId: 'v1',
+        cantidadInicial: 5,
+        cantidadVendida: 0,
+        costo: 6,
+        fecha: '2024-01-02',
+      },
     ];
     const r = calcFIFOVariante(lotesParcial, 'v1', 5);
     expect(r.costoTotal).toBe(27); // 3*5 + 2*6 = 27
@@ -195,7 +266,7 @@ describe('Stock y Valor de Inventario', () => {
   const lotes = [
     { id: 'l1', productoId: 'p1', varianteId: 'v1', cantidadInicial: 10, cantidadVendida: 3, costo: 5 },
     { id: 'l2', productoId: 'p1', varianteId: 'v1', cantidadInicial: 5, cantidadVendida: 1, costo: 6 },
-    { id: 'l3', productoId: 'p2', varianteId: 'v2', cantidadInicial: 20, cantidadVendida: 20, costo: 10 }
+    { id: 'l3', productoId: 'p2', varianteId: 'v2', cantidadInicial: 20, cantidadVendida: 20, costo: 10 },
   ];
 
   it('stockVariante calcula disponible correctamente', () => {
@@ -214,71 +285,136 @@ describe('Stock y Valor de Inventario', () => {
 });
 
 describe('Contabilidad - Libro Diario', () => {
-  it('registra ventas en haber y compras en debe', () => {
-    const r = libroDiario({
-      ventas: [{ anulada: false, fecha: '2024-01-15T10:00:00Z', total: 100, id: 'v1' }],
-      compras: [{ anulada: false, fecha: '2024-01-15T12:00:00Z', total: 60, id: 'c1' }],
-      retiros: [], capital: [], gastosOp: [], ajustes: []
-    }, '2024-01-01', '2024-01-31');
-    expect(r.length).toBe(2);
-    expect(r[0].cuenta).toBe('Ventas');
-    expect(r[0].haber).toBe(100);
-    expect(r[0].debe).toBe(0);
-    expect(r[1].cuenta).toBe('Compras');
-    expect(r[1].debe).toBe(60);
+  it('registra ventas en haber y compras en debe (partida doble)', () => {
+    const r = libroDiario(
+      {
+        ventas: [{ anulada: false, fecha: '2024-01-15T10:00:00Z', total: 100, id: 'v1' }],
+        compras: [{ anulada: false, fecha: '2024-01-15T12:00:00Z', total: 60, id: 'c1' }],
+        retiros: [],
+        capital: [],
+        gastosOp: [],
+        ajustes: [],
+      },
+      '2024-01-01',
+      '2024-01-31'
+    );
+    // Partida doble: cada transaccion genera 2 registros
+    expect(r.length).toBe(4);
+    // Venta: Caja (Debe) + Ventas (Haber)
+    const cajaVenta = r.find((x) => x.cuenta === 'Caja' && x.doc === 'v1');
+    const ventasReg = r.find((x) => x.cuenta === 'Ventas' && x.doc === 'v1');
+    expect(cajaVenta.debe).toBe(100);
+    expect(cajaVenta.haber).toBe(0);
+    expect(ventasReg.haber).toBe(100);
+    expect(ventasReg.debe).toBe(0);
+    // Compra: Compras (Debe) + Caja (Haber)
+    const compraReg = r.find((x) => x.cuenta === 'Compras' && x.doc === 'c1');
+    const cajaCompra = r.find((x) => x.cuenta === 'Caja' && x.doc === 'c1');
+    expect(compraReg.debe).toBe(60);
+    expect(cajaCompra.haber).toBe(60);
+    // Balance Debe = Haber
+    const totalDebe = r.reduce((s, x) => s + (x.debe || 0), 0);
+    const totalHaber = r.reduce((s, x) => s + (x.haber || 0), 0);
+    expect(totalDebe).toBe(totalHaber);
   });
 
   it('ignora ventas anuladas', () => {
-    const r = libroDiario({
-      ventas: [{ anulada: true, fecha: '2024-01-15', total: 100, id: 'v1' }],
-      compras: [], retiros: [], capital: [], gastosOp: [], ajustes: []
-    }, '2024-01-01', '2024-01-31');
+    const r = libroDiario(
+      {
+        ventas: [{ anulada: true, fecha: '2024-01-15', total: 100, id: 'v1' }],
+        compras: [],
+        retiros: [],
+        capital: [],
+        gastosOp: [],
+        ajustes: [],
+      },
+      '2024-01-01',
+      '2024-01-31'
+    );
     expect(r.length).toBe(0);
   });
 
-  it('registra ajustes negativos (mermas) en haber', () => {
-    const r = libroDiario({
-      ventas: [], compras: [], retiros: [], capital: [], gastosOp: [],
-      ajustes: [{ fecha: '2024-01-15', cantidad: -2, costoPerdida: 10, id: 'a1' }]
-    }, '2024-01-01', '2024-01-31');
-    expect(r.length).toBe(1);
-    expect(r[0].cuenta).toBe('Ajuste negativo (merma)');
-    expect(r[0].haber).toBe(10);
+  it('registra ajustes negativos (mermas) en partida doble', () => {
+    const r = libroDiario(
+      {
+        ventas: [],
+        compras: [],
+        retiros: [],
+        capital: [],
+        gastosOp: [],
+        ajustes: [{ fecha: '2024-01-15', cantidad: -2, costoPerdida: 10, id: 'a1' }],
+      },
+      '2024-01-01',
+      '2024-01-31'
+    );
+    expect(r.length).toBe(2);
+    const merma = r.find((x) => x.cuenta === 'Merma');
+    const inv = r.find((x) => x.cuenta === 'Inventario');
+    expect(merma.debe).toBe(10);
+    expect(inv.haber).toBe(10);
+    const totalDebe = r.reduce((s, x) => s + (x.debe || 0), 0);
+    const totalHaber = r.reduce((s, x) => s + (x.haber || 0), 0);
+    expect(totalDebe).toBe(totalHaber);
   });
 
-  it('registra ajustes positivos (sobrantes) en debe con valor de costo', () => {
-    const r = libroDiario({
-      ventas: [], compras: [], retiros: [], capital: [], gastosOp: [],
-      ajustes: [{ fecha: '2024-01-15', cantidad: 2, costoPerdida: 15, id: 'a1' }]
-    }, '2024-01-01', '2024-01-31');
-    expect(r.length).toBe(1);
-    expect(r[0].cuenta).toBe('Ajuste positivo (sobrante)');
-    expect(r[0].debe).toBe(15);
+  it('registra ajustes positivos (sobrantes) en partida doble', () => {
+    const r = libroDiario(
+      {
+        ventas: [],
+        compras: [],
+        retiros: [],
+        capital: [],
+        gastosOp: [],
+        ajustes: [{ fecha: '2024-01-15', cantidad: 2, costoPerdida: 15, id: 'a1' }],
+      },
+      '2024-01-01',
+      '2024-01-31'
+    );
+    expect(r.length).toBe(2);
+    const inv = r.find((x) => x.cuenta === 'Inventario');
+    const ajuste = r.find((x) => x.cuenta === 'Ajuste positivo (sobrante)');
+    expect(inv.debe).toBe(15);
+    expect(ajuste.haber).toBe(15);
+    const totalDebe = r.reduce((s, x) => s + (x.debe || 0), 0);
+    const totalHaber = r.reduce((s, x) => s + (x.haber || 0), 0);
+    expect(totalDebe).toBe(totalHaber);
   });
 
-  it('filtra correctamente por rango de fechas', () => {
-    const r = libroDiario({
-      ventas: [
-        { anulada: false, fecha: '2024-01-10', total: 50, id: 'v1' },
-        { anulada: false, fecha: '2024-02-10', total: 100, id: 'v2' }
-      ],
-      compras: [], retiros: [], capital: [], gastosOp: [], ajustes: []
-    }, '2024-01-01', '2024-01-31');
-    expect(r.length).toBe(1);
-    expect(r[0].doc).toBe('v1');
+  it('filtra correctamente por rango de fechas (partida doble)', () => {
+    const r = libroDiario(
+      {
+        ventas: [
+          { anulada: false, fecha: '2024-01-10', total: 50, id: 'v1' },
+          { anulada: false, fecha: '2024-02-10', total: 100, id: 'v2' },
+        ],
+        compras: [],
+        retiros: [],
+        capital: [],
+        gastosOp: [],
+        ajustes: [],
+      },
+      '2024-01-01',
+      '2024-01-31'
+    );
+    // Partida doble: 1 venta = 2 registros
+    expect(r.length).toBe(2);
+    expect(r.some((x) => x.doc === 'v1')).toBe(true);
+    expect(r.some((x) => x.doc === 'v2')).toBe(false);
   });
 });
 
 describe('Contabilidad - Estado de Perdidas y Ganancias (PyG)', () => {
   it('calcula ganancia neta correctamente con todos los componentes', () => {
-    const r = estadoPyG({
-      ventas: [
-        { anulada: false, fecha: '2024-01-15', total: 200, items: [{ costo: 80 }, { costo: 20 }] }
-      ],
-      compras: [],
-      ajustes: [{ fecha: '2024-01-15', cantidad: -1, costoPerdida: 10 }],
-      gastosOp: [{ fecha: '2024-01-15', monto: 20 }]
-    }, '2024-01-01', '2024-01-31');
+    const r = estadoPyG(
+      {
+        ventas: [{ anulada: false, fecha: '2024-01-15', total: 200, items: [{ costo: 80 }, { costo: 20 }] }],
+        compras: [],
+        ajustes: [{ fecha: '2024-01-15', cantidad: -1, costoPerdida: 10 }],
+        gastosOp: [{ fecha: '2024-01-15', monto: 20 }],
+      },
+      '2024-01-01',
+      '2024-01-31'
+    );
     expect(r.ingresos).toBe(200);
     expect(r.cogs).toBe(100);
     expect(r.gananciaBruta).toBe(100);
@@ -294,23 +430,33 @@ describe('Contabilidad - Estado de Perdidas y Ganancias (PyG)', () => {
   });
 
   it('ignora ventas anuladas', () => {
-    const r = estadoPyG({
-      ventas: [{ anulada: true, fecha: '2024-01-15', total: 100, items: [{ costo: 50 }] }],
-      compras: [], ajustes: [], gastosOp: []
-    }, '2024-01-01', '2024-01-31');
+    const r = estadoPyG(
+      {
+        ventas: [{ anulada: true, fecha: '2024-01-15', total: 100, items: [{ costo: 50 }] }],
+        compras: [],
+        ajustes: [],
+        gastosOp: [],
+      },
+      '2024-01-01',
+      '2024-01-31'
+    );
     expect(r.ingresos).toBe(0);
   });
 
   it('solo incluye mermas (ajustes negativos), no sobrantes', () => {
-    const r = estadoPyG({
-      ventas: [{ anulada: false, fecha: '2024-01-15', total: 100, items: [{ costo: 50 }] }],
-      compras: [],
-      ajustes: [
-        { fecha: '2024-01-15', cantidad: -2, costoPerdida: 10 },
-        { fecha: '2024-01-15', cantidad: 2, costoPerdida: 15 }
-      ],
-      gastosOp: []
-    }, '2024-01-01', '2024-01-31');
+    const r = estadoPyG(
+      {
+        ventas: [{ anulada: false, fecha: '2024-01-15', total: 100, items: [{ costo: 50 }] }],
+        compras: [],
+        ajustes: [
+          { fecha: '2024-01-15', cantidad: -2, costoPerdida: 10 },
+          { fecha: '2024-01-15', cantidad: 2, costoPerdida: 15 },
+        ],
+        gastosOp: [],
+      },
+      '2024-01-01',
+      '2024-01-31'
+    );
     expect(r.mermas).toBe(10);
     expect(r.sobrantes).toBe(15);
     // gananciaBruta = 100 - 50 + 15 = 65 (sobrantes reducen COGS)
@@ -330,7 +476,7 @@ describe('Contabilidad - Balance General', () => {
       lotes: [{ cantidadInicial: 10, cantidadVendida: 0, costo: 5 }],
       cierres: [{ neta: 50 }],
       movCaja: [],
-      ajustes: []
+      ajustes: [],
     });
     // caja = 1000 + 500 + 300 - 200 - 100 = 1500
     // inventario = 10 * 5 = 50
@@ -352,22 +498,22 @@ describe('Contabilidad - Balance General', () => {
       ventas: [
         { anulada: false, total: 2000, ganancia: 600 },
         { anulada: false, total: 1500, ganancia: 400 },
-        { anulada: true, total: 500, ganancia: 100 }
+        { anulada: true, total: 500, ganancia: 100 },
       ],
       compras: [
         { anulada: false, total: 1200 },
-        { anulada: true, total: 300 }
+        { anulada: true, total: 300 },
       ],
       lotes: [
         { cantidadInicial: 50, cantidadVendida: 20, costo: 10 },
-        { cantidadInicial: 30, cantidadVendida: 5, costo: 8 }
+        { cantidadInicial: 30, cantidadVendida: 5, costo: 8 },
       ],
       // cierres reflejan ganancias acumuladas consistentes con el escenario
       // ganancias del periodo: 600 + 400 = 1000, retiros: 300, neto: 700
       // ganancias retenidas históricas: 2000 (para que cuadre con activos)
       cierres: [{ neta: 2000 }],
       movCaja: [{ tipo: 'ingreso', monto: 50, concepto: 'Otro' }],
-      ajustes: [{ cantidad: -2, costoPerdida: 20 }]
+      ajustes: [{ cantidad: -2, costoPerdida: 20 }],
     });
     // Nota: con motor big.js activos y patrimonio pueden diferir
     // Verificamos que ambos sean positivos
@@ -377,8 +523,15 @@ describe('Contabilidad - Balance General', () => {
 
   it('maneja arrays vacios y undefined', () => {
     const r = balanceGeneral({
-      cfg: {}, capital: [], retiros: [], ventas: [], compras: [],
-      lotes: [], cierres: [], movCaja: [], ajustes: []
+      cfg: {},
+      capital: [],
+      retiros: [],
+      ventas: [],
+      compras: [],
+      lotes: [],
+      cierres: [],
+      movCaja: [],
+      ajustes: [],
     });
     expect(r.activos.caja).toBe(0);
     expect(r.activos.inventario).toBe(0);
@@ -392,10 +545,13 @@ describe('Caja - Saldo y Movimientos', () => {
     const r = saldoCaja({
       cfg: { capitalInicial: 1000 },
       capital: [{ monto: 200 }],
-      ventas: [{ anulada: false, total: 500 }, { anulada: true, total: 100 }],
+      ventas: [
+        { anulada: false, total: 500 },
+        { anulada: true, total: 100 },
+      ],
       compras: [{ anulada: false, total: 300 }],
       retiros: [{ monto: 150 }],
-      movCaja: []
+      movCaja: [],
     });
     expect(r).toBe(1250); // 1000 + 200 + 500 - 300 - 150
   });
@@ -409,8 +565,8 @@ describe('Caja - Saldo y Movimientos', () => {
       retiros: [],
       movCaja: [
         { tipo: 'ingreso', monto: 100, concepto: 'Prestamo' },
-        { tipo: 'egreso', monto: 30, concepto: 'Pago servicio' }
-      ]
+        { tipo: 'egreso', monto: 30, concepto: 'Pago servicio' },
+      ],
     });
     expect(r).toBe(70); // 100 - 30 = 70 directamente, solo capital+ventas-compras-retiros
   });
@@ -424,8 +580,8 @@ describe('Caja - Saldo y Movimientos', () => {
       retiros: [],
       movCaja: [
         { tipo: 'ingreso', monto: 10, concepto: 'Sobrante de arqueo' },
-        { tipo: 'egreso', monto: 5, concepto: 'Faltante de arqueo' }
-      ]
+        { tipo: 'egreso', monto: 5, concepto: 'Faltante de arqueo' },
+      ],
     });
     // saldoCaja suma capital inicial + ventas - compras - retiros + movCaja
     // 1000 + 0 + 10 - 5 = 1005
@@ -439,11 +595,11 @@ describe('Caja - Saldo y Movimientos', () => {
       ventas: [{ anulada: false, total: 300, fecha: '2024-01-03', id: 'v1' }],
       compras: [{ anulada: false, total: 150, fecha: '2024-01-04', id: 'cp1', productoNombre: 'Test' }],
       retiros: [{ monto: 50, fecha: '2024-01-05', id: 'r1', concepto: 'Personal' }],
-      movCaja: [{ tipo: 'ingreso', monto: 25, fecha: '2024-01-06', id: 'm1', concepto: 'Extra' }]
+      movCaja: [{ tipo: 'ingreso', monto: 25, fecha: '2024-01-06', id: 'm1', concepto: 'Extra' }],
     });
     expect(r.length).toBe(6);
-    const ingresos = r.filter(x => x.tipo === 'ingreso');
-    const egresos = r.filter(x => x.tipo === 'egreso');
+    const ingresos = r.filter((x) => x.tipo === 'ingreso');
+    const egresos = r.filter((x) => x.tipo === 'egreso');
     expect(ingresos.length).toBe(4); // capital inicial + aporte + venta + movCaja ingreso
     expect(egresos.length).toBe(2); // compra + retiro
   });
@@ -461,7 +617,7 @@ describe('Ganancia Disponible', () => {
       ajustes: [],
       cierres: [{ neta: 100 }],
       lotes: [{ cantidadInicial: 10, cantidadVendida: 0, costo: 10 }],
-      periodoInicio: '2024-01-01'
+      periodoInicio: '2024-01-01',
     });
     // ganBruta = 200, gastosOp = 0, ganNeta = 200
     // acum = 100 + 200 - 50 = 250
@@ -483,7 +639,7 @@ describe('Ganancia Disponible', () => {
       ajustes: [],
       cierres: [],
       lotes: [],
-      periodoInicio: '2024-01-01'
+      periodoInicio: '2024-01-01',
     });
     expect(r).toBe(0);
   });
@@ -491,13 +647,15 @@ describe('Ganancia Disponible', () => {
 
 describe('Reporte por Periodo', () => {
   it('genera reporte completo con margenes como numeros', () => {
-    const r = generarReporte({
-      ventas: [
-        { anulada: false, fecha: '2024-01-15', total: 200, items: [{ costo: 80 }], ganancia: 120 }
-      ],
-      ajustes: [{ fecha: '2024-01-15', cantidad: -1, costoPerdida: 10 }],
-      gastosOp: [{ fecha: '2024-01-15', monto: 20 }]
-    }, '2024-01-01', '2024-01-31');
+    const r = generarReporte(
+      {
+        ventas: [{ anulada: false, fecha: '2024-01-15', total: 200, items: [{ costo: 80 }], ganancia: 120 }],
+        ajustes: [{ fecha: '2024-01-15', cantidad: -1, costoPerdida: 10 }],
+        gastosOp: [{ fecha: '2024-01-15', monto: 20 }],
+      },
+      '2024-01-01',
+      '2024-01-31'
+    );
     expect(r.error).toBeUndefined();
     expect(r.ingresos).toBe(200);
     expect(r.cogs).toBe(80);
@@ -527,15 +685,23 @@ describe('Analisis ABC', () => {
   const productos = [
     { id: 'p1', nombre: 'Producto A' },
     { id: 'p2', nombre: 'Producto B' },
-    { id: 'p3', nombre: 'Producto C' }
+    { id: 'p3', nombre: 'Producto C' },
   ];
 
   it('clasifica productos en A, B, C por ganancia', () => {
     const hoy = new Date().toISOString();
     const ventas = [
-      { anulada: false, fecha: hoy, items: [{ productoId: 'p1', nombre: 'A', cantidad: 10, precio: 100, ganancia: 800 }] },
-      { anulada: false, fecha: hoy, items: [{ productoId: 'p2', nombre: 'B', cantidad: 5, precio: 50, ganancia: 150 }] },
-      { anulada: false, fecha: hoy, items: [{ productoId: 'p3', nombre: 'C', cantidad: 2, precio: 20, ganancia: 20 }] }
+      {
+        anulada: false,
+        fecha: hoy,
+        items: [{ productoId: 'p1', nombre: 'A', cantidad: 10, precio: 100, ganancia: 800 }],
+      },
+      {
+        anulada: false,
+        fecha: hoy,
+        items: [{ productoId: 'p2', nombre: 'B', cantidad: 5, precio: 50, ganancia: 150 }],
+      },
+      { anulada: false, fecha: hoy, items: [{ productoId: 'p3', nombre: 'C', cantidad: 2, precio: 20, ganancia: 20 }] },
     ];
     const r = analisisABC(productos, ventas, []);
     expect(r[0].catGanancia).toBe('B'); // 800/970 = 82.5%
@@ -552,45 +718,64 @@ describe('Analisis ABC', () => {
 describe('Deteccion de Anomalias', () => {
   it('detecta venta con perdida (margen negativo)', () => {
     const hoy = new Date().toISOString();
-    const ventas = [{
-      anulada: false, fecha: hoy, total: 5, items: [
-        { nombre: 'X', precio: 5, cantidad: 1, costo: 10, ganancia: -5 }
-      ]
-    }];
+    const ventas = [
+      {
+        anulada: false,
+        fecha: hoy,
+        total: 5,
+        items: [{ nombre: 'X', precio: 5, cantidad: 1, costo: 10, ganancia: -5 }],
+      },
+    ];
     const a = detectarAnomalias(ventas, [], []);
-    expect(a.some(x => x.tipo === 'perdida')).toBe(true);
+    expect(a.some((x) => x.tipo === 'perdida')).toBe(true);
   });
 
   it('detecta margen bajo (< 5%)', () => {
     const hoy = new Date().toISOString();
-    const ventas = [{
-      anulada: false, fecha: hoy, total: 100, items: [
-        { nombre: 'Y', precio: 100, cantidad: 1, costo: 97, ganancia: 3 }
-      ]
-    }];
+    const ventas = [
+      {
+        anulada: false,
+        fecha: hoy,
+        total: 100,
+        items: [{ nombre: 'Y', precio: 100, cantidad: 1, costo: 97, ganancia: 3 }],
+      },
+    ];
     const a = detectarAnomalias(ventas, [], []);
-    expect(a.some(x => x.tipo === 'margen_bajo')).toBe(true);
+    expect(a.some((x) => x.tipo === 'margen_bajo')).toBe(true);
   });
 
   it('NO falla con precio cero (regalo/promocion)', () => {
     const hoy = new Date().toISOString();
-    const ventas = [{
-      anulada: false, fecha: hoy, total: 0, items: [
-        { nombre: 'Z', precio: 0, cantidad: 1, costo: 5, ganancia: -5 }
-      ]
-    }];
+    const ventas = [
+      {
+        anulada: false,
+        fecha: hoy,
+        total: 0,
+        items: [{ nombre: 'Z', precio: 0, cantidad: 1, costo: 5, ganancia: -5 }],
+      },
+    ];
     const a = detectarAnomalias(ventas, [], []);
     // No debe haber NaN ni error, debe detectar la perdida
     // Con revenue=0 y costo=5, margen=-100, se detecta como perdida
-    expect(a.some(x => x.tipo === 'perdida')).toBe(true);
-    expect(a.every(x => typeof x.msg === 'string' && x.msg.length > 0)).toBe(true);
+    expect(a.some((x) => x.tipo === 'perdida')).toBe(true);
+    expect(a.every((x) => typeof x.msg === 'string' && x.msg.length > 0)).toBe(true);
   });
 
   it('detecta ventas duplicadas', () => {
     const hoy = new Date().toISOString();
     const ventas = [
-      { anulada: false, fecha: hoy, total: 50, items: [{ nombre: 'Test', precio: 50, cantidad: 1, costo: 30, ganancia: 20 }] },
-      { anulada: false, fecha: new Date(Date.now() + 50000).toISOString(), total: 50, items: [{ nombre: 'Test', precio: 50, cantidad: 1, costo: 30, ganancia: 20 }] }
+      {
+        anulada: false,
+        fecha: hoy,
+        total: 50,
+        items: [{ nombre: 'Test', precio: 50, cantidad: 1, costo: 30, ganancia: 20 }],
+      },
+      {
+        anulada: false,
+        fecha: new Date(Date.now() + 50000).toISOString(),
+        total: 50,
+        items: [{ nombre: 'Test', precio: 50, cantidad: 1, costo: 30, ganancia: 20 }],
+      },
     ];
     expect(() => detectarAnomalias(ventas, [], [])).not.toThrow();
     const a = detectarAnomalias(ventas, [], []);
@@ -602,10 +787,10 @@ describe('Deteccion de Anomalias', () => {
     const ajustes = [
       { motivo: 'robo', fecha: hoy },
       { motivo: 'robo', fecha: hoy },
-      { motivo: 'robo', fecha: hoy }
+      { motivo: 'robo', fecha: hoy },
     ];
     const a = detectarAnomalias([], [], ajustes);
-    expect(a.some(x => x.tipo === 'robo')).toBe(true);
+    expect(a.some((x) => x.tipo === 'robo')).toBe(true);
   });
 });
 
@@ -642,7 +827,7 @@ describe('ConversionService', () => {
     const lotes = [
       { varianteId: 'v1', cantidadInicial: 10, cantidadVendida: 0, costo: 5 },
       { varianteId: 'v1', cantidadInicial: 10, cantidadVendida: 5, costo: 6 },
-      { varianteId: 'v2', cantidadInicial: 5, cantidadVendida: 0, costo: 10 }
+      { varianteId: 'v2', cantidadInicial: 5, cantidadVendida: 0, costo: 10 },
     ];
     const r = ConversionService.costoPromedioVariante(lotes, 'v1');
     // disp1 = 10, disp2 = 5, totalCosto = 10*5 + 5*6 = 80, totalCant = 15, promedio = 80/15 = 5.33
@@ -650,9 +835,7 @@ describe('ConversionService', () => {
   });
 
   it('costo promedio devuelve 0 cuando no hay stock', () => {
-    const lotes = [
-      { varianteId: 'v1', cantidadInicial: 10, cantidadVendida: 10, costo: 5 }
-    ];
+    const lotes = [{ varianteId: 'v1', cantidadInicial: 10, cantidadVendida: 10, costo: 5 }];
     expect(ConversionService.costoPromedioVariante(lotes, 'v1')).toBe(0);
   });
 });
@@ -663,7 +846,7 @@ describe('Top Rentables', () => {
     const ventas = [
       { anulada: false, fecha: now.toISOString(), items: [{ productoId: 'p1', nombre: 'A', ganancia: 100 }] },
       { anulada: false, fecha: now.toISOString(), items: [{ productoId: 'p2', nombre: 'B', ganancia: 200 }] },
-      { anulada: false, fecha: now.toISOString(), items: [{ productoId: 'p3', nombre: 'C', ganancia: 50 }] }
+      { anulada: false, fecha: now.toISOString(), items: [{ productoId: 'p3', nombre: 'C', ganancia: 50 }] },
     ];
     const r = topRentables(ventas);
     expect(r.length).toBe(3);
@@ -674,7 +857,7 @@ describe('Top Rentables', () => {
   it('ignora ventas anuladas', () => {
     const now = new Date();
     const ventas = [
-      { anulada: true, fecha: now.toISOString(), items: [{ productoId: 'p1', nombre: 'A', ganancia: 100 }] }
+      { anulada: true, fecha: now.toISOString(), items: [{ productoId: 'p1', nombre: 'A', ganancia: 100 }] },
     ];
     const r = topRentables(ventas);
     expect(r.length).toBe(0);
@@ -692,14 +875,166 @@ describe('Datos Chart 6 Meses', () => {
 
   it('acumula ventas y ganancias en el mes correcto', () => {
     const now = new Date();
-    const ventas = [
-      { anulada: false, fecha: now.toISOString(), total: 100, ganancia: 30 }
-    ];
+    const ventas = [{ anulada: false, fecha: now.toISOString(), total: 100, ganancia: 30 }];
     const r = datosChart6Meses(ventas);
-    const mesActual = r.find(x => x.m === now.getMonth() && x.y === now.getFullYear());
+    const mesActual = r.find((x) => x.m === now.getMonth() && x.y === now.getFullYear());
     expect(mesActual).toBeDefined();
     expect(mesActual.v).toBe(100);
     expect(mesActual.g).toBe(30);
+  });
+});
+
+describe('Correcciones financieras - Partida Doble completa', () => {
+  it('retiro genera Retiros (Debe) y Caja (Haber)', () => {
+    const r = libroDiario(
+      {
+        ventas: [],
+        compras: [],
+        retiros: [{ fecha: '2024-01-15', monto: 30, id: 'r1', concepto: 'Personal' }],
+        capital: [],
+        gastosOp: [],
+        ajustes: [],
+      },
+      '2024-01-01',
+      '2024-01-31'
+    );
+    expect(r.length).toBe(2);
+    const ret = r.find((x) => x.cuenta === 'Retiros');
+    const caja = r.find((x) => x.cuenta === 'Caja' && x.doc === 'r1');
+    expect(ret.debe).toBe(30);
+    expect(caja.haber).toBe(30);
+    const totalDebe = r.reduce((s, x) => s + (x.debe || 0), 0);
+    const totalHaber = r.reduce((s, x) => s + (x.haber || 0), 0);
+    expect(totalDebe).toBe(totalHaber);
+  });
+
+  it('capital genera Caja (Debe) y Capital (Haber)', () => {
+    const r = libroDiario(
+      {
+        ventas: [],
+        compras: [],
+        retiros: [],
+        capital: [{ fecha: '2024-01-15', monto: 500, id: 'cap1', nota: 'Aporte' }],
+        gastosOp: [],
+        ajustes: [],
+      },
+      '2024-01-01',
+      '2024-01-31'
+    );
+    expect(r.length).toBe(2);
+    const caja = r.find((x) => x.cuenta === 'Caja' && x.doc === 'cap1');
+    const cap = r.find((x) => x.cuenta === 'Capital');
+    expect(caja.debe).toBe(500);
+    expect(cap.haber).toBe(500);
+  });
+
+  it('gasto operativo genera Gasto (Debe) y Caja (Haber)', () => {
+    const r = libroDiario(
+      {
+        ventas: [],
+        compras: [],
+        retiros: [],
+        capital: [],
+        gastosOp: [{ fecha: '2024-01-15', monto: 25, id: 'g1', concepto: 'Luz' }],
+        ajustes: [],
+      },
+      '2024-01-01',
+      '2024-01-31'
+    );
+    expect(r.length).toBe(2);
+    const gasto = r.find((x) => x.cuenta === 'Luz');
+    const caja = r.find((x) => x.cuenta === 'Caja' && x.doc === 'g1');
+    expect(gasto.debe).toBe(25);
+    expect(caja.haber).toBe(25);
+  });
+
+  it('balance general incluye pasivos en el resultado', () => {
+    const r = balanceGeneral({
+      cfg: { capitalInicial: 1000 },
+      capital: [],
+      retiros: [],
+      ventas: [],
+      compras: [],
+      lotes: [],
+      cierres: [],
+      movCaja: [],
+      ajustes: [],
+      pasivos: [{ monto: 200, concepto: 'Prestamo' }],
+    });
+    expect(r.pasivos.total).toBe(200);
+    expect(r.pasivos.items.length).toBe(1);
+    expect(r.pasivos.items[0].concepto).toBe('Prestamo');
+    // Cuando hay pasivos sin que afecten caja, el balance no cuadra
+    // (la app requiere que el usuario registre el ingreso del prestamo en movCaja)
+    expect(r.activos.total).toBe(1000);
+    expect(r.patrimonio.total).toBe(1000);
+  });
+
+  it('balance general detecta descuadre', () => {
+    const r = balanceGeneral({
+      cfg: { capitalInicial: 1000 },
+      capital: [],
+      retiros: [],
+      ventas: [],
+      compras: [],
+      lotes: [{ cantidadInicial: 10, cantidadVendida: 0, costo: 5 }],
+      cierres: [{ neta: 9999 }],
+      movCaja: [],
+      ajustes: [],
+      pasivos: [],
+    });
+    expect(r.cuadra).toBe(false);
+  });
+
+  it('reporte incluye compras en el resultado', () => {
+    const r = generarReporte(
+      {
+        ventas: [{ anulada: false, fecha: '2024-01-15', total: 200, items: [{ costo: 80 }], ganancia: 120 }],
+        compras: [{ anulada: false, fecha: '2024-01-10', total: 100, productoNombre: 'X' }],
+        ajustes: [],
+        gastosOp: [],
+      },
+      '2024-01-01',
+      '2024-01-31'
+    );
+    expect(r.compras).toBeDefined();
+    expect(r.compras).toBe(100);
+  });
+
+  it('ganancia disponible no depende del efectivo en caja (formula simplificada)', () => {
+    // Escenario: mucho capital en inventario, poco en caja
+    // La ganancia disponible debe ser igual a la ganancia neta acumulada - retiros
+    const r = gananciaDisponible({
+      cfg: { capitalInicial: 10000 },
+      capital: [],
+      ventas: [{ anulada: false, fecha: '2024-01-15', ganancia: 500, total: 1000 }],
+      compras: [],
+      retiros: [{ monto: 100 }],
+      movCaja: [],
+      ajustes: [],
+      cierres: [{ neta: 0 }],
+      lotes: [{ cantidadInicial: 100, cantidadVendida: 0, costo: 100 }],
+      periodoInicio: '2024-01-01',
+    });
+    // Antes: se limitaba por efectivoLibre (caja - capitalReservado)
+    // Ahora: simplemente gananciaNetaAcum - retiros = 500 - 100 = 400
+    expect(r).toBe(400);
+  });
+
+  it('ganancia disponible nunca es negativa', () => {
+    const r = gananciaDisponible({
+      cfg: { capitalInicial: 1000 },
+      capital: [],
+      ventas: [],
+      compras: [],
+      retiros: [{ monto: 500 }],
+      movCaja: [],
+      ajustes: [],
+      cierres: [],
+      lotes: [],
+      periodoInicio: '2024-01-01',
+    });
+    expect(r).toBe(0);
   });
 });
 
