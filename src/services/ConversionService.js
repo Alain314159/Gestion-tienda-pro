@@ -1,5 +1,5 @@
 import { n, m, q } from '../core/util.js';
-import { toBig, toNumber, mul, div, add, sub, round } from '../core/Money.js';
+import { toBig, toNumber, mul, div, add, sub, round, Big } from '../core/Money.js';
 
 /**
  * Servicio de Conversion entre presentaciones

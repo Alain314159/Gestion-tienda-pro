@@ -1,6 +1,6 @@
 import { getDB, txPut, listar, eliminar } from '../core/db.js';
 import { nowLocal, m, n, genId } from '../core/util.js';
-import { toBig, toNumber, mul, round, abs } from '../core/Money.js';
+import { toBig, toNumber, mul, round, abs, sub } from '../core/Money.js';
 import { verificarPeriodoCerrado } from '../core/periodos.js';
 
 /**

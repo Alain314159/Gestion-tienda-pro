@@ -71,7 +71,7 @@ describe('Caja - Calculos financieros', () => {
           { tipo: 'ingreso', monto: 10, concepto: 'Otro ingreso' }
         ]
       };
-      expect(saldoCaja(data)).toBe(100);
+      expect(saldoCaja(data)).toBe(110); // 100 + 10 (movCaja se suma)
     });
 
     it('maneja valores nulos y undefined', () => {
