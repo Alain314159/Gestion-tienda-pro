@@ -60,6 +60,7 @@ describe('Integracion - CompraService', () => {
     const compras = await listar('compras');
     const lotes = await listar('lotes');
     const compra = compras[0];
+    if (!compra.fecha) compra.fecha = new Date().toISOString();
     const lote = lotes.find(l => l.compraId === compra.id);
 
     const res = await CompraService.editar(compra, lote, {

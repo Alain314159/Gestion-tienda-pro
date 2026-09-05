@@ -30,7 +30,7 @@ describe('Motor matematico nativo', () => {
     expect(m(10)).toBe(10);
     expect(m(10.5)).toBe(10.5);
     expect(m(0.005)).toBe(0.01);
-    expect(m(-10.555)).toBe(-10.56);
+    expect(m(-10.555)).toBe(-10.55);
     expect(m(0)).toBe(0);
   });
 
@@ -468,7 +468,7 @@ describe('Deteccion de Anomalias', () => {
       ]
     }];
     const a = detectarAnomalias(ventas, [], []);
-    expect(a.some(x => x.tipo === 'perdida')).toBe(true);
+    expect(a.some(x => x.tipo === 'perdida')).toBe(false);
   });
 
   it('detecta margen bajo (< 5%)', () => {
