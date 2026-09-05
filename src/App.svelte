@@ -124,7 +124,7 @@
     </div>
   </header>
 
-  <main class="px-4 pt-5 pb-32 max-w-2xl mx-auto">
+  <main class="px-4 pt-5 pb-44 max-w-2xl mx-auto">
     {#if activo}
       <div class="animate-fade-up">
         <activo.Componente />

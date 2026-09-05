@@ -86,19 +86,20 @@
   async function recargar() {
     // Productos y lotes: tablas pequenas, cargar completas
     // Ventas/compras: tablas grandes, solo ultimos N para el dashboard
-    [productos, variantes, lotes, ventas, compras, ajustes, movCaja, cierres, capital, retiros, arqueos] = await Promise.all([
-      listar('productos'),
-      listar('productoVariantes'),
-      listar('lotes'),
-      listarPaginado('ventas', 0, 300),
-      listarPaginado('compras', 0, 150),
-      listarPaginado('ajustes', 0, 50),
-      listarPaginado('movCaja', 0, 50),
-      listarPaginado('cierres', 0, 20),
-      listarPaginado('capital', 0, 20),
-      listarPaginado('retiros', 0, 50),
-      listarPaginado('arqueos', 0, 20),
-    ]);
+    [productos, variantes, lotes, ventas, compras, ajustes, movCaja, cierres, capital, retiros, arqueos] =
+      await Promise.all([
+        listar('productos'),
+        listar('productoVariantes'),
+        listar('lotes'),
+        listarPaginado('ventas', 0, 300),
+        listarPaginado('compras', 0, 150),
+        listarPaginado('ajustes', 0, 50),
+        listarPaginado('movCaja', 0, 50),
+        listarPaginado('cierres', 0, 20),
+        listarPaginado('capital', 0, 20),
+        listarPaginado('retiros', 0, 50),
+        listarPaginado('arqueos', 0, 20),
+      ]);
     cfg = (await leerConfig('cfg')) || {
       moneda: '$',
       nombre: 'Tienda Pro',
@@ -111,18 +112,24 @@
     recargar();
     const off = bus.on('recargar', recargar);
 
-    // ResizeObserver para redibujar canvas al cambiar tamaño
+    // ResizeObserver para redibujar canvas al cambiar tamaño (con debounce para evitar loops)
     let ro;
+    let resizeTimeout;
     if (chartCanvas && 'ResizeObserver' in window) {
       ro = new ResizeObserver(() => {
-        // Forzar re-render del $effect del canvas
-        chartCanvas.width = chartCanvas.offsetWidth;
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+          if (chartCanvas) {
+            chartCanvas.width = chartCanvas.offsetWidth;
+          }
+        }, 150);
       });
       ro.observe(chartCanvas.parentElement);
     }
 
     return () => {
       off();
+      clearTimeout(resizeTimeout);
       if (ro) ro.disconnect();
     };
   });
