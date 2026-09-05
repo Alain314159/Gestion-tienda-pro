@@ -14,8 +14,8 @@
   import { getDB, listar, guardar } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
   import { avisar, preguntar, confirmar } from '../../core/state.svelte.js';
-  import { n, m, fmt, genId, valorInventario, stockProducto, nowLocal, sum, sumWhere } from '../../core/util.js';
-  import { toNumber, sub, mul, div } from '../../core/Money.js';
+  import { n, m, fmt, genId, valorInventario, stockProducto, nowLocal } from '../../core/util.js';
+  import { toNumber, sub, mul, div, sum, sumWhere } from '../../core/Money.js';
   import { ventasDelDia } from '../../core/calendario.js';
   import { generarPDFCuadre } from '../../core/pdf.js';
   import Icono from '../../core/Icono.svelte';

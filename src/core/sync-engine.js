@@ -11,7 +11,7 @@
    4. Recalculo de stock post-sync
    ================================================================ */
 
-import pako from 'pako';
+import * as pako from 'pako';
 import {
   getDB,
   getDeviceId,

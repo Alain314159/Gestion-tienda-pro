@@ -25,10 +25,8 @@
     gananciaDisponible,
     clean,
     nowLocal,
-    sum,
-    sumWhere,
   } from '../../core/util.js';
-  import { toNumber, add, sub } from '../../core/Money.js';
+  import { toNumber, add, sub, sum, sumWhere } from '../../core/Money.js';
   import { verificarPeriodoCerrado, obtenerPeriodosCerrados } from '../../core/periodos.js';
   import Icono from '../../core/Icono.svelte';
   let cfg = $state({});
