@@ -1,6 +1,8 @@
+import { safeLocalStorage } from './util.js';
+
 /** Estado global de la UI usando Svelte 5 Runes */
 export const ui = $state({
-  tema: localStorage.getItem('tp-tema') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
+  tema: safeLocalStorage.get('tema') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
   toast: null,
   confirm: null,
   prompt: null,
@@ -23,7 +25,7 @@ export function aplicarTema() {
 /** Alterna tema claro/oscuro */
 export function alternarTema() {
   ui.tema = ui.tema === 'dark' ? 'light' : 'dark';
-  localStorage.setItem('tp-tema', ui.tema);
+  safeLocalStorage.set('tema', ui.tema);
   aplicarTema();
 }
 

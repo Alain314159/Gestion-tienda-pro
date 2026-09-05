@@ -1,7 +1,7 @@
 // API abierta y webhooks con cola offline persistente (IndexedDB) + reintentos exponenciales
 
 import { getDB, guardar, eliminar, listar, leerConfig } from './db.js';
-import { validateWebhookUrl } from './util.js';
+import { validateWebhookUrl, safeLocalStorage, genId } from './util.js';
 
 const WEBHOOKS_KEY = 'webhooks_cfg';
 const MAX_RETRIES = 5;
@@ -24,11 +24,11 @@ export function clearWebhookDedup() {
 }
 
 export function getWebhooks() {
-  try { return JSON.parse(localStorage.getItem(WEBHOOKS_KEY) || '[]'); } catch { return []; }
+  return safeLocalStorage.getJSON(WEBHOOKS_KEY, []);
 }
 
 export function setWebhooks(list) {
-  localStorage.setItem(WEBHOOKS_KEY, JSON.stringify(list));
+  safeLocalStorage.setJSON(WEBHOOKS_KEY, list);
 }
 
 /** Verifica si los webhooks globales estan activados en config (por defecto: desactivados) */
@@ -47,7 +47,7 @@ export async function enqueueWebhook(url, evento, payload) {
   if (isDuplicate(url, evento)) return { queued: false, reason: 'duplicate' };
   const db = getDB();
   const item = {
-    id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2),
+    id: genId('wh'),
     url,
     evento,
     payload,
