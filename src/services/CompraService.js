@@ -11,6 +11,13 @@ export const CompraService = {
   /** Registra una compra existente (producto ya creado) + lote */
   registrarExistente: async function ({ productoId, varianteId, nombre, unidad, cantidad, costo, total }) {
     await verificarPeriodoCerrado(nowLocal().iso);
+    const cant = n(cantidad);
+    const cst = n(costo);
+    const ttl = n(total);
+    const esperado = m(cant * cst);
+    if (Math.abs(ttl - esperado) > 0.02) {
+      throw new Error(`El total (${ttl}) no coincide con cantidad x costo (${cant} x ${cst} = ${esperado})`);
+    }
     const db = getDB();
     const compra = {
       id: genId('c'),
@@ -20,9 +27,9 @@ export const CompraService = {
       varianteId,
       productoNombre: nombre,
       productoUnidad: unidad,
-      cantidad,
-      costo,
-      total,
+      cantidad: cant,
+      costo: cst,
+      total: esperado,
       anulada: false,
       unidad,
     };
@@ -76,6 +83,13 @@ export const CompraService = {
       varianteUnidadId: '',
       preciosEscalonados: [],
     };
+    const cant = n(cantidad);
+    const cst = n(costo);
+    const ttl = n(total);
+    const esperado = m(cant * cst);
+    if (Math.abs(ttl - esperado) > 0.02) {
+      throw new Error(`El total (${ttl}) no coincide con cantidad x costo (${cant} x ${cst} = ${esperado})`);
+    }
     const compra = {
       id: genId('c'),
       fecha: nowLocal().iso,
@@ -84,9 +98,9 @@ export const CompraService = {
       varianteId: variante.id,
       productoNombre: producto.nombre,
       productoUnidad: unidad,
-      cantidad,
-      costo,
-      total,
+      cantidad: cant,
+      costo: cst,
+      total: esperado,
       anulada: false,
       unidad,
     };
@@ -98,9 +112,9 @@ export const CompraService = {
       varianteId: variante.id,
       productoNombre: producto.nombre,
       productoUnidad: unidad,
-      cantidadInicial: cantidad,
+      cantidadInicial: cant,
       cantidadVendida: 0,
-      costo,
+      costo: cst,
       compraId: compra.id,
     };
 

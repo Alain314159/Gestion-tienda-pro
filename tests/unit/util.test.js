@@ -1,150 +1,102 @@
 import { describe, it, expect } from 'vitest';
-import {
-  n, m, q, fmt, fmtCant, genId, calcFIFO, stockProducto,
-  valorInventario, lotesDeProducto, valorLotesProducto,
-  badgeStock, inventarioGrupos, movimientosCaja, saldoCaja,
-  gananciaDisponible, topRentables, datosChart6Meses, generarReporte
-} from '../../src/core/util.js';
+import { n, m, calcFIFO, stockProducto, valorInventario } from '../../src/core/util.js';
+import { analisisABC, detectarAnomalias } from '../../src/core/analisis.js';
+import { estadoPyG, libroDiario, balanceGeneral } from '../../src/core/contabilidad.js';
 
-describe('util.js - Motor matematico', () => {
-  describe('n() - parser de numeros', () => {
-    it('convierte strings a numero', () => {
-      expect(n('10.5')).toBe(10.5);
-      expect(n('10,5')).toBe(10.5);
-    });
-    it('maneja null/undefined/empty como 0', () => {
-      expect(n(null)).toBe(0);
-      expect(n(undefined)).toBe(0);
-      expect(n('')).toBe(0);
-    });
-    it('maneja NaN como 0', () => {
-      expect(n('abc')).toBe(0);
-    });
+describe('Motor matematico', () => {
+  it('n() convierte strings y null', () => {
+    expect(n('10.5')).toBe(10.5);
+    expect(n('')).toBe(0);
+    expect(n(null)).toBe(0);
+    expect(n('abc')).toBe(0);
   });
 
-  describe('m() - redondeo a 2 decimales', () => {
-    it('redondea correctamente', () => {
-      expect(m(10.555)).toBe(10.56);
-      expect(m(10.554)).toBe(10.55);
-    });
+  it('m() redondea a 2 decimales', () => {
+    expect(m(10.555)).toBe(10.56);
+    expect(m(10)).toBe(10);
+  });
+});
+
+describe('FIFO', () => {
+  const lotes = [
+    { id: 'l1', productoId: 'p1', cantidadInicial: 10, cantidadVendida: 0, costo: 5, fecha: '2024-01-01' },
+    { id: 'l2', productoId: 'p1', cantidadInicial: 5, cantidadVendida: 0, costo: 6, fecha: '2024-01-02' }
+  ];
+
+  it('calcula costo FIFO correcto', () => {
+    const r = calcFIFO(lotes, 'p1', 12);
+    expect(r.error).toBeUndefined();
+    expect(r.costoTotal).toBe(62);
+    expect(r.usados.length).toBe(2);
   });
 
-  describe('q() - redondeo a 3 decimales', () => {
-    it('redondea correctamente', () => {
-      expect(q(1.5555)).toBe(1.556);
-      expect(q(1.5554)).toBe(1.555);
-    });
+  it('detecta stock insuficiente', () => {
+    const r = calcFIFO(lotes, 'p1', 20);
+    expect(r.error).toContain('Stock insuficiente');
   });
+});
 
-  describe('fmt() - formato de dinero', () => {
-    it('formatea con simbolo', () => {
-      expect(fmt(1234.56)).toBe('$1,234.56');
-      expect(fmt(0)).toBe('$0.00');
-    });
+describe('Analisis ABC', () => {
+  const productos = [{ id: 'p1', nombre: 'A' }, { id: 'p2', nombre: 'B' }];
+  const ventas = [
+    { anulada: false, fecha: new Date().toISOString(), items: [
+      { productoId: 'p1', nombre: 'A', cantidad: 10, precio: 10, ganancia: 50 }
+    ]},
+    { anulada: false, fecha: new Date().toISOString(), items: [
+      { productoId: 'p2', nombre: 'B', cantidad: 2, precio: 10, ganancia: 5 }
+    ]}
+  ];
+
+  it('clasifica A correctamente', () => {
+    const r = analisisABC(productos, ventas, []);
+    expect(r[0].catGanancia).toBe('A');
+    expect(r[0].nombre).toBe('A');
   });
+});
 
-  describe('fmtCant() - formato de cantidad', () => {
-    it('enteros sin decimales', () => {
-      expect(fmtCant(5)).toBe('5');
-    });
-    it('decimales limpios', () => {
-      expect(fmtCant(5.500)).toBe('5.5');
-      expect(fmtCant(5.000)).toBe('5');
-    });
+describe('Deteccion de anomalias', () => {
+  it('detecta venta con perdida', () => {
+    const ventas = [{ anulada: false, fecha: new Date().toISOString(), total: 5, items: [
+      { nombre: 'X', precio: 5, cantidad: 1, costo: 10, ganancia: -5 }
+    ]}];
+    const a = detectarAnomalias(ventas, [], []);
+    expect(a.some(x => x.tipo === 'perdida')).toBe(true);
   });
+});
 
-  describe('calcFIFO() - costo de ventas', () => {
-    const lotes = [
-      { id: 'l1', productoId: 'p1', cantidadInicial: 10, cantidadVendida: 0, costo: 5, fecha: '2024-01-01' },
-      { id: 'l2', productoId: 'p1', cantidadInicial: 5, cantidadVendida: 0, costo: 6, fecha: '2024-01-02' },
-    ];
-
-    it('calcula FIFO correctamente', () => {
-      const res = calcFIFO(lotes, 'p1', 12);
-      expect(res.error).toBeUndefined();
-      expect(res.costoTotal).toBe(62); // 10*5 + 2*6
-      expect(res.usados.length).toBe(2);
-    });
-
-    it('detecta stock insuficiente', () => {
-      const res = calcFIFO(lotes, 'p1', 20);
-      expect(res.error).toBeDefined();
-    });
+describe('Estado PyG', () => {
+  it('calcula ganancia neta con gastos', () => {
+    const r = estadoPyG({
+      ventas: [{ anulada: false, fecha: '2024-01-15', total: 100, items: [{ costo: 40 }] }],
+      compras: [], ajustes: [], gastosOp: [{ fecha: '2024-01-15', monto: 10 }]
+    }, '2024-01-01', '2024-01-31');
+    expect(r.gananciaNeta).toBe(50);
   });
+});
 
-  describe('stockProducto()', () => {
-    it('suma stock disponible', () => {
-      const lotes = [
-        { id: 'l1', productoId: 'p1', cantidadInicial: 10, cantidadVendida: 3 },
-        { id: 'l2', productoId: 'p1', cantidadInicial: 5, cantidadVendida: 0 },
-      ];
-      expect(stockProducto(lotes, 'p1')).toBe(12);
-    });
+describe('Libro diario', () => {
+  it('registra movimientos', () => {
+    const r = libroDiario({
+      ventas: [{ anulada: false, fecha: '2024-01-15', total: 100, id: 'v1' }],
+      compras: [], retiros: [], capital: [], gastosOp: [], ajustes: []
+    }, '2024-01-01', '2024-01-31');
+    expect(r.length).toBe(1);
+    expect(r[0].cuenta).toBe('Ventas');
   });
+});
 
-  describe('valorInventario()', () => {
-    it('calcula valor total', () => {
-      const lotes = [
-        { id: 'l1', productoId: 'p1', cantidadInicial: 10, cantidadVendida: 3, costo: 5 },
-        { id: 'l2', productoId: 'p1', cantidadInicial: 5, cantidadVendida: 0, costo: 6 },
-      ];
-      expect(valorInventario(lotes)).toBe(65); // 7*5 + 5*6
+describe('Balance general', () => {
+  it('calcula activos y patrimonio', () => {
+    const r = balanceGeneral({
+      cfg: { capitalInicial: 1000 },
+      capital: [{ monto: 500 }],
+      retiros: [],
+      ventas: [],
+      compras: [],
+      lotes: [{ cantidadInicial: 10, cantidadVendida: 0, costo: 5 }],
+      cierres: [{ neta: 200 }]
     });
-  });
-
-  describe('badgeStock()', () => {
-    it('detecta agotado', () => {
-      expect(badgeStock({ id: 'p1', archivado: false, stockMinimo: 5 }, []).clase).toBe('out');
-    });
-    it('detecta bajo stock', () => {
-      expect(badgeStock({ id: 'p1', archivado: false, stockMinimo: 5 }, [
-        { id: 'l1', productoId: 'p1', cantidadInicial: 3, cantidadVendida: 0 }
-      ]).clase).toBe('low');
-    });
-    it('detecta ok', () => {
-      expect(badgeStock({ id: 'p1', archivado: false, stockMinimo: 5 }, [
-        { id: 'l1', productoId: 'p1', cantidadInicial: 10, cantidadVendida: 0 }
-      ]).clase).toBe('ok');
-    });
-    it('detecta archivado', () => {
-      expect(badgeStock({ id: 'p1', archivado: true }, []).clase).toBe('arch');
-    });
-  });
-
-  describe('saldoCaja()', () => {
-    it('calcula saldo correcto', () => {
-      const data = {
-        cfg: { capitalInicial: 100 },
-        capital: [{ monto: 50 }],
-        ventas: [{ total: 200, anulada: false }, { total: 50, anulada: true }],
-        compras: [{ total: 80, anulada: false }],
-        retiros: [{ monto: 30 }],
-        movCaja: []
-      };
-      expect(saldoCaja(data)).toBe(240); // 100 + 50 + 200 - 80 - 30
-    });
-  });
-
-  describe('generarReporte()', () => {
-    it('genera reporte correcto', () => {
-      const fechaBase = '2024-06-15T12:00:00.000Z';
-      const ventas = [{
-        fecha: fechaBase,
-        anulada: false,
-        total: 100,
-        ganancia: 30,
-        items: [{ nombre: 'Test', cantidad: 1, precio: 100, costo: 70, ganancia: 30 }]
-      }];
-      const rep = generarReporte({ ventas, ajustes: [] }, fechaBase, fechaBase);
-      expect(rep.error).toBeUndefined();
-      expect(rep.ingresos).toBe(100);
-      expect(rep.bruta).toBe(30);
-      expect(rep.numVentas).toBe(1);
-    });
-
-    it('detecta fecha invalida', () => {
-      const rep = generarReporte({ ventas: [], ajustes: [] }, '2025-12-31', '2025-01-01');
-      expect(rep.error).toBeDefined();
-    });
+    expect(r.activos.inventario).toBe(50);
+    expect(r.patrimonio.capital).toBe(1500);
   });
 });

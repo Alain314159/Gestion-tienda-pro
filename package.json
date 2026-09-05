@@ -16,6 +16,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "big.js": "^7.0.1",
     "dexie": "^4.0.10",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
@@ -44,7 +45,12 @@
     "vitest": "^3.0.0"
   },
   "lint-staged": {
-    "*.{js,svelte}": ["eslint --fix", "prettier --write"],
-    "*.{css,html,json}": ["prettier --write"]
+    "*.{js,svelte}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{css,html,json}": [
+      "prettier --write"
+    ]
   }
 }

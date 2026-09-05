@@ -41,11 +41,21 @@ export function detectarAnomalias(ventas, compras, ajustes) {
   const alertas = [];
   const hoy = new Date().toISOString().slice(0, 10);
 
-  ventas.filter(v => !v.anulada && v.fecha.slice(0, 10) === hoy).forEach(v => {
+  ventas.filter(v => !v.anulada && v.fecha && v.fecha.slice(0, 10) === hoy).forEach(v => {
+    if (!v.items || !Array.isArray(v.items)) return;
     v.items.forEach(it => {
-      const margen = it.precio > 0 ? ((it.precio * it.cantidad - it.costo) / (it.precio * it.cantidad)) * 100 : 0;
+      const revenue = n(it.precio) * n(it.cantidad);
+      const costo = n(it.costo);
+      let margen;
+      if (revenue > 0) {
+        margen = ((revenue - costo) / revenue) * 100;
+      } else if (costo > 0) {
+        margen = -100;
+      } else {
+        margen = 0;
+      }
       if (margen < 0) alertas.push({ tipo: 'perdida', msg: `${it.nombre} vendido con perdida`, gravedad: 'alta' });
-      else if (margen < 5) alertas.push({ tipo: 'margen_bajo', msg: `${it.nombre} margen ${margen.toFixed(1)}%`, gravedad: 'media' });
+      else if (margen < 5 && revenue > 0) alertas.push({ tipo: 'margen_bajo', msg: `${it.nombre} margen ${margen.toFixed(1)}%`, gravedad: 'media' });
     });
   });
 

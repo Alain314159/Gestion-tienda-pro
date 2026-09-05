@@ -42,12 +42,18 @@ export const InventarioService = {
     return { ajuste, costoPerdida: res.costoTotal };
   },
 
-  /** Ajuste positivo (sobrante): crea ajuste + lote nuevo */
+  /** Ajuste positivo (sobrante): crea ajuste + lote nuevo
+   *  El costoPerdida guarda el valor del sobrante para reflejarlo
+   *  contablemente como reduccion de COGS o ingreso extraordinario.
+   */
   ajustarPositivo: async function ({ productoId, varianteId, productoNombre, productoUnidad, cantidad, motivo, costo }) {
     await verificarPeriodoCerrado(nowLocal().iso);
-    if (n(costo) <= 0) throw new Error('El costo debe ser mayor a cero');
-    if (n(cantidad) <= 0) throw new Error('La cantidad debe ser mayor a cero');
+    const cant = n(cantidad);
+    const cst = n(costo);
+    if (cst <= 0) throw new Error('El costo debe ser mayor a cero');
+    if (cant <= 0) throw new Error('La cantidad debe ser mayor a cero');
     const db = getDB();
+    const valorSobrante = m(cant * cst);
     const ajuste = {
       id: genId('a'),
       fecha: nowLocal().iso,
@@ -55,9 +61,9 @@ export const InventarioService = {
       productoId,
       varianteId,
       productoNombre,
-      cantidad,
+      cantidad: cant,
       motivo,
-      costoPerdida: 0,
+      costoPerdida: valorSobrante,
       lotesUsados: [],
     };
     const lote = {

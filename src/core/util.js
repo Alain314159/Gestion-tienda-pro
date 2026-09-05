@@ -360,24 +360,33 @@ export function saldoCaja({ cfg, capital, ventas, compras, retiros, movCaja }) {
   const vta = ventas.filter(v => !v.anulada).reduce((s, v) => s + n(v.total), 0);
   const cmp = compras.filter(c => !c.anulada).reduce((s, c) => s + n(c.total), 0);
   const ret = retiros.reduce((s, r) => s + n(r.monto), 0);
-  const arq = movCaja
-    .filter(mv => mv.concepto && mv.concepto.toLowerCase().includes('arqueo'))
-    .reduce((s, mv) => mv.tipo === 'ingreso' ? s + n(mv.monto) : s - n(mv.monto), 0);
-  return m(n(cfg.capitalInicial) + aportes + vta - cmp - ret + arq);
+  const movs = (movCaja || []).reduce((s, mv) => mv.tipo === 'ingreso' ? s + n(mv.monto) : s - n(mv.monto), 0);
+  return m(n(cfg.capitalInicial) + aportes + vta - cmp - ret + movs);
 }
 
-/** Ganancia disponible para retiro */
+/** Ganancia disponible para retiro
+ *  Formula: min(ganancias acumuladas, efectivo en caja que excede el capital)
+ *  El capital debe permanecer en el negocio (caja + inventario).
+ *  Solo se puede retirar el excedente de efectivo sobre el capital,
+ *  limitado por las ganancias reales acumuladas.
+ */
 export function gananciaDisponible({ cfg, capital, ventas, compras, retiros, movCaja, ajustes, cierres, lotes, periodoInicio }) {
-  const ventasArr = ventas.filter(v => !v.anulada && new Date(v.fecha) >= new Date(periodoInicio));
+  const ventasArr = ventas.filter(v => !v.anulada && isoToLocal(v.fecha) >= isoToLocal(periodoInicio));
   const ganBruta = m(ventasArr.reduce((s, v) => s + n(v.ganancia), 0));
-  const gastosOp = m(ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= new Date(periodoInicio))
+  const gastosOp = m(ajustes.filter(a => a.cantidad < 0 && isoToLocal(a.fecha) >= isoToLocal(periodoInicio))
     .reduce((s, a) => s + n(a.costoPerdida), 0));
   const ganNeta = m(ganBruta - gastosOp);
-  const acum = m(cierres.reduce((s, x) => s + n(x.neta), 0) + ganNeta - retiros.reduce((s, r) => s + n(r.monto), 0));
+  const retirosTotal = retiros.reduce((s, r) => s + n(r.monto), 0);
+  const acum = m(cierres.reduce((s, x) => s + n(x.neta), 0) + ganNeta - retirosTotal);
   if (acum <= 0) return 0;
   const capTotal = m(n(cfg.capitalInicial) + capital.reduce((s, c) => s + n(c.monto), 0));
-  const capEnCaja = Math.max(0, capTotal - valorInventario(lotes));
-  const efectivoLibre = Math.max(0, saldoCaja({ cfg, capital, ventas, compras, retiros, movCaja }) - capEnCaja);
+  const valInv = valorInventario(lotes);
+  const saldo = saldoCaja({ cfg, capital, ventas, compras, retiros, movCaja });
+  // El capital debe cubrir: inventario + parte de caja
+  // Efectivo libre = lo que sobra en caja despues de reservar el capital
+  // Si el inventario ya cubre parte del capital, esa parte no necesita estar en caja
+  const capReservadoEnCaja = Math.max(0, capTotal - valInv);
+  const efectivoLibre = Math.max(0, saldo - capReservadoEnCaja);
   return Math.max(0, Math.min(acum, efectivoLibre));
 }
 
@@ -493,8 +502,8 @@ export function generarReporte({ ventas, ajustes, gastosOp }, fechaInicio, fecha
   return {
     ingresos: ing, cogs, bruta, mermas, gastos, neta,
     numVentas: vp.length,
-    margenB: ing > 0 ? ((bruta / ing) * 100).toFixed(1) : '0.0',
-    margenN: ing > 0 ? ((neta / ing) * 100).toFixed(1) : '0.0',
+    margenB: ing > 0 ? m((bruta / ing) * 100) : 0,
+    margenN: ing > 0 ? m((neta / ing) * 100) : 0,
     _vp: vp
   };
 }

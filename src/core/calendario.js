@@ -1,9 +1,10 @@
-import { n } from './util.js';
+import { n, isoToLocal } from './util.js';
 
 export function diasConVentas(ventas, mes, anio) {
   const map = {};
   ventas.filter(v => !v.anulada).forEach(v => {
-    const d = new Date(v.fecha);
+    const local = isoToLocal(v.fecha);
+    const d = new Date(local + 'T00:00:00');
     if (d.getMonth() === mes && d.getFullYear() === anio) {
       const dia = d.getDate();
       if (!map[dia]) map[dia] = { ventas: 0, ganancia: 0, count: 0 };
@@ -16,12 +17,9 @@ export function diasConVentas(ventas, mes, anio) {
 }
 
 export function ventasDelDia(ventas, fechaStr) {
-  const f = new Date(fechaStr);
-  f.setHours(0, 0, 0, 0);
-  const next = new Date(f);
-  next.setDate(next.getDate() + 1);
+  const f = isoToLocal(fechaStr);
   return ventas.filter(v => {
-    const vf = new Date(v.fecha);
-    return !v.anulada && vf >= f && vf < next;
+    const vf = isoToLocal(v.fecha);
+    return !v.anulada && vf === f;
   });
 }

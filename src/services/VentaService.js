@@ -18,8 +18,8 @@ export const VentaService = {
 
     // 1. Calcular items, totales y lotes usados (fuera de la transaccion, es solo lectura)
     const items = [];
-    let total = 0,
-      ganancia = 0;
+    let totalRaw = 0,
+      gananciaRaw = 0;
     const lotesUsados = []; // { loteId, cantidad }
 
     for (const it of carrito) {
@@ -28,7 +28,8 @@ export const VentaService = {
       const fifo = calcFIFOVariante(lotes, it.varianteId, cant);
       if (fifo.error) throw new Error(fifo.error + ' en ' + it.nombre);
 
-      const subtotal = m(precio * cant);
+      const subtotal = precio * cant; // sin redondear intermedio
+      const itemGanancia = subtotal - fifo.costoTotal;
       items.push({
         productoId: it.productoId,
         varianteId: it.varianteId,
@@ -37,13 +38,16 @@ export const VentaService = {
         unidad: it.unidad || '',
         precio,
         costo: fifo.costoTotal,
-        ganancia: m(subtotal - fifo.costoTotal),
+        ganancia: m(itemGanancia),
         lotesUsados: fifo.usados,
       });
-      total = m(total + subtotal);
-      ganancia = m(ganancia + (subtotal - fifo.costoTotal));
+      totalRaw += subtotal;
+      gananciaRaw += itemGanancia;
       lotesUsados.push(...fifo.usados);
     }
+
+    const total = m(totalRaw);
+    const ganancia = m(gananciaRaw);
 
     const venta = {
       id: genId('v'),
