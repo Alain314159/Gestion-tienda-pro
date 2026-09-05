@@ -1,23 +1,23 @@
 import { guardar, leerConfig } from './db.js';
-import { clean } from './util.js';
+import { clean, safeLocalStorage } from './util.js';
 import { avisar, preguntar } from './ui.svelte.js';
 
 /* ================================================================
    SEGURIDAD: SALT + PBKDF2 + RATE LIMITING
    ================================================================ */
 
-const SALT_KEY = 'tp_device_salt';
-const ATTEMPTS_KEY = 'tp_pin_attempts';
-const LOCKED_KEY = 'tp_pin_locked_until';
+const SALT_KEY = 'device_salt';
+const ATTEMPTS_KEY = 'pin_attempts';
+const LOCKED_KEY = 'pin_locked_until';
 
 /** Genera o recupera el salt unico de este dispositivo */
 function getDeviceSalt() {
-  let salt = localStorage.getItem(SALT_KEY);
+  let salt = safeLocalStorage.get(SALT_KEY);
   if (!salt) {
     const arr = new Uint8Array(16);
     crypto.getRandomValues(arr);
     salt = btoa(String.fromCharCode(...arr));
-    localStorage.setItem(SALT_KEY, salt);
+    safeLocalStorage.set(SALT_KEY, salt);
   }
   return salt;
 }
@@ -43,24 +43,24 @@ function getLockDelay(attempts) {
 }
 
 function getAttempts() {
-  return parseInt(localStorage.getItem(ATTEMPTS_KEY) || '0', 10);
+  return parseInt(safeLocalStorage.get(ATTEMPTS_KEY, '0'), 10);
 }
 
 function setAttempts(n) {
-  localStorage.setItem(ATTEMPTS_KEY, String(n));
+  safeLocalStorage.set(ATTEMPTS_KEY, String(n));
 }
 
 function getLockedUntil() {
-  return parseInt(localStorage.getItem(LOCKED_KEY) || '0', 10);
+  return parseInt(safeLocalStorage.get(LOCKED_KEY, '0'), 10);
 }
 
 function setLockedUntil(ts) {
-  localStorage.setItem(LOCKED_KEY, String(ts));
+  safeLocalStorage.set(LOCKED_KEY, String(ts));
 }
 
 function resetAttempts() {
-  localStorage.removeItem(ATTEMPTS_KEY);
-  localStorage.removeItem(LOCKED_KEY);
+  safeLocalStorage.remove(ATTEMPTS_KEY);
+  safeLocalStorage.remove(LOCKED_KEY);
 }
 
 /** Pide PIN si esta activo, con rate limiting y bloqueo exponencial */

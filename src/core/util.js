@@ -31,6 +31,10 @@ import {
   toString as moneyToString,
   Big,
 } from './Money.js';
+import { nanoid } from 'nanoid';
+import Fuse from 'fuse.js';
+import { parseISO, isAfter, isBefore, isSameDay, format, addDays, subDays, startOfDay, endOfDay, differenceInDays } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 /** Convierte cualquier valor a numero seguro. null/undefined/'' → 0
  *  ATENCION: Para calculos financieros usar Money.toBig() en lugar de n()
@@ -77,6 +81,57 @@ export function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+
+/** ================================================================
+ *  SAFE LOCALSTORAGE - Wrapper con try/catch para entornos restringidos
+ *  Previene crashes en modo incognito, Safari ITP, storage lleno
+ *  ================================================================ */
+
+const LS_PREFIX = 'tp_';
+
+export const safeLocalStorage = {
+  get(key, fallback = null) {
+    try {
+      const val = localStorage.getItem(LS_PREFIX + key);
+      return val !== null ? val : fallback;
+    } catch {
+      return fallback;
+    }
+  },
+  set(key, value) {
+    try {
+      localStorage.setItem(LS_PREFIX + key, String(value));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  remove(key) {
+    try {
+      localStorage.removeItem(LS_PREFIX + key);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  getJSON(key, fallback = null) {
+    try {
+      const val = localStorage.getItem(LS_PREFIX + key);
+      return val !== null ? JSON.parse(val) : fallback;
+    } catch {
+      return fallback;
+    }
+  },
+  setJSON(key, value) {
+    try {
+      localStorage.setItem(LS_PREFIX + key, JSON.stringify(value));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+};
+
 /** Valida que una URL de webhook sea segura (HTTPS, no localhost) */
 export function validateWebhookUrl(url) {
   try {
@@ -119,12 +174,11 @@ export function isoToLocal(iso) {
 export function mismoDiaLocal(iso1, iso2) {
   return isoToLocal(iso1) === isoToLocal(iso2);
 }
+/** Genera IDs unicos seguros usando nanoid (criptograficamente seguro, 21 chars)
+ *  Reemplaza el fallback manual de crypto.randomUUID que era predecible
+ */
 export function genId(p = '') {
-  try {
-    return p + crypto.randomUUID();
-  } catch (e) {
-    return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
-  }
+  return p + nanoid(12);
 }
 
 /** Vibracion tactil */
@@ -155,35 +209,73 @@ export function debounce(fn, ms = 200) {
   };
 }
 
-/** Busqueda fuzzy: "det 1kg" encuentra "Detergente 1kg"
- *  Cada token del query debe aparecer en alguna parte del texto
+/** ================================================================
+ *  BUSQUEDA FUZZY - Fuse.js (algoritmo Bitap probado, maneja typos)
+ *  Reemplaza la busqueda manual con .includes() que no manejaba typos
+ *  ================================================================ */
+
+let _fuseCache = null;
+let _fuseItems = null;
+let _fuseGetter = null;
+
+/** Busqueda fuzzy con Fuse.js: "detrgente" encuentra "Detergente"
+ *  Maneja typos, multi-token, scoring profesional
+ *  @param {Array} items - Array de objetos a buscar
+ *  @param {string} query - Texto de busqueda
+ *  @param {Function} getter - Funcion que extrae el texto de cada item
+ *  @param {Object} options - Opciones adicionales de Fuse.js
+ *  @returns {Array} - Items filtrados y ordenados por relevancia
  */
-export function fuzzySearch(items, query, getter) {
-  const qry = (query || '').toLowerCase().trim();
+export function fuzzySearch(items, query, getter, options = {}) {
+  const qry = (query || '').trim();
   if (!qry) return items;
-  const tokens = qry.split(/\s+/).filter((t) => t.length > 0);
-  return items.filter((item) => {
-    const text = (getter ? getter(item) : item).toLowerCase();
-    return tokens.every((t) => text.includes(t));
-  });
+
+  const fuseOptions = {
+    threshold: 0.4,
+    distance: 100,
+    includeScore: false,
+    keys: getter ? [{ getter: (item) => getter(item), name: 'text' }] : ['text'],
+    ...options,
+  };
+
+  // Preparar items para Fuse (necesita objetos con la key)
+  const fuseItems = getter
+    ? items.map((item) => ({ item, text: getter(item) }))
+    : items.map((item) => ({ item, text: item }));
+
+  const fuse = new Fuse(fuseItems, fuseOptions);
+  const results = fuse.search(qry);
+  return results.map((r) => r.item.item);
 }
 
-/** Busqueda fuzzy con scoring (mejores coincidencias primero) */
-export function fuzzySearchScored(items, query, getter) {
-  const qry = (query || '').toLowerCase().trim();
+/** Busqueda fuzzy con scoring (mejores coincidencias primero)
+ *  Devuelve {item, score} donde score es 0-1 (1 = match perfecto)
+ */
+export function fuzzySearchScored(items, query, getter, options = {}) {
+  const qry = (query || '').trim();
   if (!qry) return items.map((it) => ({ item: it, score: 0 }));
-  const tokens = qry.split(/\s+/).filter((t) => t.length > 0);
-  const scored = items.map((item) => {
-    const text = (getter ? getter(item) : item).toLowerCase();
-    let score = 0;
-    for (const t of tokens) {
-      if (text.startsWith(t)) score += 3;
-      else if (text.includes(' ' + t)) score += 2;
-      else if (text.includes(t)) score += 1;
-    }
-    return { item, score };
-  });
-  return scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score);
+
+  const fuseOptions = {
+    threshold: 0.4,
+    distance: 100,
+    includeScore: true,
+    keys: getter ? [{ getter: (item) => getter(item), name: 'text' }] : ['text'],
+    ...options,
+  };
+
+  const fuseItems = getter
+    ? items.map((item) => ({ item, text: getter(item) }))
+    : items.map((item) => ({ item, text: item }));
+
+  const fuse = new Fuse(fuseItems, fuseOptions);
+  const results = fuse.search(qry);
+
+  // Invertir score: Fuse devuelve 0 = perfecto, 1 = peor
+  // Nosotros queremos: 1 = perfecto, 0 = peor
+  return results.map((r) => ({
+    item: r.item.item,
+    score: Math.max(0, 1 - (r.score || 0)),
+  }));
 }
 
 /** Formato de dinero */
