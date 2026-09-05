@@ -1,4 +1,4 @@
-import { getDB, txPut, listar, eliminar } from '../core/db.js';
+import { getDB, txPut, listar, eliminarLogico } from '../core/db.js';
 import { nowLocal, m, n, genId } from '../core/util.js';
 import { toBig, toNumber, mul, round, abs, sub } from '../core/Money.js';
 import { verificarPeriodoCerrado } from '../core/periodos.js';
@@ -149,8 +149,8 @@ export const CompraService = {
     const db = getDB();
     const compra = await db.compras.get(compraId);
     if (compra) await verificarPeriodoCerrado(compra.fecha);
-    await eliminar('compras', compraId);
-    await eliminar('lotes', loteId);
+    await eliminarLogico('compras', compraId);
+    await eliminarLogico('lotes', loteId);
   },
 
   recargar: async function () {
