@@ -26,7 +26,7 @@ test.describe('Productos y Variantes', () => {
     await esperarToast(page, 'Producto agregado');
 
     await page.click('text=Jabon Test');
-    await page.click('button[title="Agregar variante"]');
+    await page.locator('button[aria-label="Agregar variante"]').first().click();
 
     await page.fill('input[placeholder*="Nombre de variante"]', '500gr');
     await page.fill('input[placeholder="Precio base"]', '25.50');
@@ -43,7 +43,7 @@ test.describe('Productos y Variantes', () => {
     await esperarToast(page, 'Producto agregado');
 
     await page.click('text=Shampoo Test');
-    await page.click('button[title="Duplicar variante"]');
+    await page.locator('button[aria-label="Duplicar variante"]').first().click();
 
     await expect(page.locator('input[placeholder*="Nombre de variante"]')).toHaveValue(/copia/);
 
@@ -57,7 +57,7 @@ test.describe('Productos y Variantes', () => {
     await esperarToast(page, 'Producto agregado');
 
     await page.click('text=Crema Test');
-    await page.click('button[title="Editar variante"]');
+    await page.locator('button[aria-label="Editar variante"]').first().click();
 
     await page.fill('input[placeholder*="Nombre de variante"]', 'Crema Test Editada');
     await page.click('button:has-text("Actualizar Variante")');

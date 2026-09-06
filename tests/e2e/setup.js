@@ -2,13 +2,12 @@
 
 /**
  * Espera a que la app termine de cargar.
- * Usa waitForLoadState en lugar de esperar un texto transitorio
- * que podria no aparecer si la carga es rapida.
+ * NO usa networkidle porque la PWA tiene SW y precargas que lo bloquean indefinidamente.
+ * Espera a que el header (elemento estable) esté visible.
  */
 async function esperarCarga(page) {
-  await page.waitForLoadState('networkidle');
-  // Esperamos a que el header o el nav esten visibles (elementos estables)
-  await page.locator('h1:has-text("Tienda Pro"), nav').first().waitFor({ state: 'visible', timeout: 15000 });
+  await page.locator('h1:has-text("Tienda Pro")')
+    .waitFor({ state: 'visible', timeout: 15000 });
 }
 
 export async function limpiarDB(page) {

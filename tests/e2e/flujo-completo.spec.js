@@ -12,7 +12,7 @@ test.describe('Flujo completo: Producto -> Compra -> Venta -> Inventario', () =>
     await esperarToast(page, 'Producto agregado');
 
     await page.click('text=Cereal E2E');
-    await page.click('button[title="Agregar variante"]');
+    await page.locator('button[aria-label="Agregar variante"]').first().click();
     await page.fill('input[placeholder*="Nombre de variante"]', 'Caja x12');
     await page.fill('input[placeholder="Precio base"]', '45.00');
     await page.fill('input[placeholder="Stock min."]', '5');
