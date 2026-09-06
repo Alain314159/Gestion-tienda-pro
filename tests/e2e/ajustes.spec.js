@@ -7,19 +7,26 @@ test.describe('Ajustes', () => {
     await navegarA(page, 'ajustes');
   });
 
-  test('muestra panel de ajustes', async ({ page }) => {
-    await expect(page.locator('text=Ajustes')).toBeVisible();
+  test('muestra configuracion', async ({ page }) => {
+    await expect(page.locator('text=Configuracion')).toBeVisible();
+    await expect(page.locator('text=Nombre del negocio')).toBeVisible();
+    await expect(page.locator('text=Simbolo de moneda')).toBeVisible();
   });
 
-  test('cambia moneda', async ({ page }) => {
-    await page.selectOption('select[name="moneda"]', 'USD');
-    await page.click('button:has-text("Guardar")');
-    await esperarToast(page, 'Guardado');
+  test('cambia el nombre del negocio', async ({ page }) => {
+    await page.fill('#cfg-nombre', 'Negocio Test E2E');
+    await page.locator('#cfg-nombre').blur();
+    await esperarToast(page, 'Configuracion guardada');
   });
 
-  test('configura webhook', async ({ page }) => {
-    await page.fill('input[placeholder*="URL webhook"]', 'https://example.com/webhook');
-    await page.click('button:has-text("Guardar")');
-    await esperarToast(page, 'Guardado');
+  test('alterna tema claro/oscuro', async ({ page }) => {
+    const btn = page.locator('button:has-text("Modo claro"), button:has-text("Modo oscuro")').first();
+    await btn.click();
+    await expect(page.locator('button:has-text("Modo claro"), button:has-text("Modo oscuro")').first()).toBeVisible();
+  });
+
+  test('exporta backup JSON', async ({ page }) => {
+    await page.click('button:has-text("Exportar datos")');
+    await esperarToast(page, 'Backup');
   });
 });

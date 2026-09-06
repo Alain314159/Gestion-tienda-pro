@@ -8,12 +8,21 @@ test.describe('Tiendas', () => {
   });
 
   test('muestra lista de tiendas', async ({ page }) => {
-    await expect(page.locator('text=Tiendas')).toBeVisible();
+    await expect(page.locator('text=Mis Tiendas')).toBeVisible();
   });
 
-  test('crea una tienda nueva', async ({ page }) => {
-    await page.fill('input[placeholder*="Nombre"]', 'Tienda Test');
+  test('crea una tienda', async ({ page }) => {
+    await page.fill('input[placeholder*="Nombre unico"]', 'Tienda Test E2E');
     await page.click('button:has-text("Crear Tienda")');
-    await esperarToast(page, 'Tienda');
+    await esperarToast(page, 'Tienda creada');
+    await expect(page.locator('text=Tienda Test E2E')).toBeVisible();
+  });
+
+  test('activa una tienda', async ({ page }) => {
+    await page.fill('input[placeholder*="Nombre unico"]', 'Tienda Activa');
+    await page.click('button:has-text("Crear Tienda")');
+    await esperarToast(page, 'Tienda creada');
+    await page.click('button:has-text("Activar")');
+    await esperarToast(page, 'Activada');
   });
 });

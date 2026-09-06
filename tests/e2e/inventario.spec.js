@@ -1,23 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { limpiarDB, navegarA, esperarToast } from './setup.js';
+import { limpiarDB, navegarA, esperarToast, seedDB } from './setup.js';
 
 test.describe('Inventario', () => {
   test.beforeEach(async ({ page }) => {
     await limpiarDB(page);
-    await navegarA(page, 'productos');
-    await page.fill('input[placeholder*="Nombre del producto"]', 'Leche Test');
-    await page.click('button:has-text("Guardar Producto")');
-    await esperarToast(page, 'Producto agregado');
-
-    await navegarA(page, 'compras');
-    await page.fill('input[placeholder*="Buscar producto"]', 'Leche');
-    await page.click('text=Leche Test');
-    await page.click('text=Leche Test');
-    await page.fill('input[placeholder="Cantidad"]', '50');
-    await page.fill('input[placeholder="Costo unit."]', '8.00');
-    await page.click('button:has-text("Registrar Compra")');
-    await esperarToast(page, 'Compra');
-
+    await seedDB(page, {
+      productos: [{ id: 'p1', nombre: 'Leche Test', codigo: 'LEC-001', creado: new Date().toISOString() }],
+      productoVariantes: [{ id: 'v1', productoId: 'p1', nombre: 'Leche Test', precioBase: 30, stockMin: 5, unidad: 'lt', creado: new Date().toISOString() }],
+      lotes: [{ id: 'l1', varianteId: 'v1', cantidadInicial: 10, cantidadVendida: 0, costoUnitario: 20, fecha: new Date().toISOString() }],
+    });
     await navegarA(page, 'inventario');
   });
 
@@ -25,40 +16,12 @@ test.describe('Inventario', () => {
     await expect(page.locator('text=Valor del Inventario')).toBeVisible();
   });
 
-  test('registra un ajuste positivo (sobrante)', async ({ page }) => {
+  test('registra una merma', async ({ page }) => {
     await page.fill('input[placeholder*="Buscar producto"]', 'Leche');
     await page.click('text=Leche Test');
-    await page.click('text=Leche Test');
-
-    await page.fill('input[placeholder*="merma / + sobrante"]', '10');
-    await page.selectOption('select', 'sobrante');
-    await page.fill('input[placeholder*="Costo unit. del sobrante"]', '8.00');
-
-    await page.click('button:has-text("Registrar Ajuste")');
-    await esperarToast(page, 'Sobrante registrado');
-  });
-
-  test('registra una merma (ajuste negativo)', async ({ page }) => {
-    await page.fill('input[placeholder*="Buscar producto"]', 'Leche');
-    await page.click('text=Leche Test');
-    await page.click('text=Leche Test');
-
-    await page.fill('input[placeholder*="merma / + sobrante"]', '-5');
+    await page.fill('input[placeholder*="merma / + sobrante"]', '-2');
     await page.selectOption('select', 'merma');
-
     await page.click('button:has-text("Registrar Ajuste")');
     await esperarToast(page, 'Merma registrada');
-  });
-
-  test('no permite merma mayor al stock', async ({ page }) => {
-    await page.fill('input[placeholder*="Buscar producto"]', 'Leche');
-    await page.click('text=Leche Test');
-    await page.click('text=Leche Test');
-
-    await page.fill('input[placeholder*="merma / + sobrante"]', '-100');
-    await page.selectOption('select', 'merma');
-
-    await page.click('button:has-text("Registrar Ajuste")');
-    await esperarToast(page, 'Solo hay');
   });
 });

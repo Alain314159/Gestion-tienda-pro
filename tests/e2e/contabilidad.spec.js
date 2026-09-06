@@ -7,20 +7,18 @@ test.describe('Contabilidad', () => {
     await navegarA(page, 'contabilidad');
   });
 
-  test('muestra libro diario', async ({ page }) => {
+  test('muestra tabs de contabilidad', async ({ page }) => {
     await expect(page.locator('text=Libro Diario')).toBeVisible();
   });
 
-  test('muestra estado de resultados', async ({ page }) => {
-    await expect(page.locator('text=Estado de Resultados')).toBeVisible();
+  test('navega a Estado de Resultados', async ({ page }) => {
+    await page.click('button:has-text("Estado de Resultados")');
+    await expect(page.locator('text=Ingresos')).toBeVisible();
   });
 
-  test('muestra balance general', async ({ page }) => {
-    await expect(page.locator('text=Balance General')).toBeVisible();
-  });
-
-  test('cambia entre pestanas', async ({ page }) => {
-    await page.click('text=Balance General');
+  test('navega a Balance General', async ({ page }) => {
+    await page.click('button:has-text("Balance General")');
     await expect(page.locator('text=Activos')).toBeVisible();
+    await expect(page.locator('text=Patrimonio')).toBeVisible();
   });
 });

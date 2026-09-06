@@ -7,18 +7,28 @@ test.describe('Patrimonio', () => {
     await navegarA(page, 'patrimonio');
   });
 
-  test('muestra lista de activos', async ({ page }) => {
-    await expect(page.locator('text=Patrimonio')).toBeVisible();
+  test('muestra patrimonio total', async ({ page }) => {
+    await expect(page.locator('text=Patrimonio Total')).toBeVisible();
+    await expect(page.locator('text=Resumen')).toBeVisible();
   });
 
-  test('muestra valor total', async ({ page }) => {
-    await expect(page.locator('text=Valor Total')).toBeVisible();
+  test('registra un retiro', async ({ page }) => {
+    await page.locator('input[type="number"]').first().fill('50');
+    await page.locator('input[type="text"]').first().fill('Retiro test');
+    await page.click('button:has-text("Retirar Ganancia")');
+    await esperarToast(page, 'Retiro');
   });
 
-  test('agrega un activo', async ({ page }) => {
-    await page.fill('input[placeholder*="Nombre"]', 'Computadora');
-    await page.fill('input[placeholder*="Valor"]', '5000');
-    await page.click('button:has-text("Agregar")');
-    await esperarToast(page, 'Activo');
+  test('registra un aporte', async ({ page }) => {
+    const inputs = page.locator('input[type="number"]');
+    await inputs.nth(1).fill('100');
+    await page.locator('input[type="text"]').nth(1).fill('Aporte test');
+    await page.click('button:has-text("Registrar Aporte")');
+    await esperarToast(page, 'Aporte');
+  });
+
+  test('cambia a tab Movimientos', async ({ page }) => {
+    await page.click('button:has-text("Movimientos")');
+    await expect(page.locator('text=Historial')).toBeVisible();
   });
 });

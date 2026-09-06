@@ -7,25 +7,15 @@ test.describe('Caja', () => {
     await navegarA(page, 'caja');
   });
 
-  test('muestra saldo de caja', async ({ page }) => {
-    await expect(page.locator('text=Saldo de Caja')).toBeVisible();
-  });
-
-  test('muestra movimientos de caja', async ({ page }) => {
+  test('muestra saldo y movimientos', async ({ page }) => {
+    await expect(page.locator('text=Caja')).toBeVisible();
     await expect(page.locator('text=Movimientos')).toBeVisible();
   });
 
-  test('registra un arqueo con sobrante', async ({ page }) => {
-    await page.fill('input[placeholder*="Monto fisico"]', '150');
-    await page.fill('input[placeholder*="Nota"]', 'Arqueo test');
+  test('registra un arqueo', async ({ page }) => {
+    await page.fill('input[type="number"]', '1000');
+    await page.fill('input[type="text"]', 'Arqueo inicial');
     await page.click('button:has-text("Registrar Arqueo")');
     await esperarToast(page, 'Arqueo');
-  });
-
-  test('registra un retiro de ganancia', async ({ page }) => {
-    await page.fill('input[placeholder*="Monto"]', '50');
-    await page.fill('input[placeholder*="Concepto"]', 'Retiro test');
-    await page.click('button:has-text("Retirar")');
-    await esperarToast(page, 'Retiro');
   });
 });

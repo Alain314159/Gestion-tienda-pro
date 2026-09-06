@@ -7,15 +7,9 @@ test.describe('Analisis', () => {
     await navegarA(page, 'analisis');
   });
 
-  test('muestra graficos de ventas', async ({ page }) => {
-    await expect(page.locator('text=Analisis')).toBeVisible();
-  });
-
-  test('muestra productos top', async ({ page }) => {
-    await expect(page.locator('text=Top Productos')).toBeVisible();
-  });
-
-  test('muestra tendencias', async ({ page }) => {
-    await expect(page.locator('text=Tendencias')).toBeVisible();
+  test('muestra KPIs de analisis', async ({ page }) => {
+    await expect(page.locator('text=PRODUCTOS')).toBeVisible();
+    await expect(page.locator('text=GANANCIA')).toBeVisible();
+    await expect(page.locator('text=VOLUMEN')).toBeVisible();
   });
 });
