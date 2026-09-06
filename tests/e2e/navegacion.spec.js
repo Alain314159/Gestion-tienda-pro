@@ -5,7 +5,6 @@ test.describe('Navegacion', () => {
   test.beforeEach(async ({ page }) => {
     await limpiarDB(page);
     await page.goto('/');
-    await page.waitForSelector('text=Cargando Tienda Pro...', { state: 'detached', timeout: 15000 });
   });
 
   test('carga la app y muestra el header', async ({ page }) => {
@@ -13,22 +12,24 @@ test.describe('Navegacion', () => {
     await expect(page.locator('nav')).toBeVisible();
   });
 
-  test('navega a Productos desde el menu', async ({ page }) => {
-    await page.locator('button[aria-label="Productos"]').click();
-    await expect(page.locator('text=Agregar Producto Base')).toBeVisible();
-  });
-
-  test('navega a Ventas desde el menu', async ({ page }) => {
+  test('navega a Ventas desde el menu principal', async ({ page }) => {
     await page.locator('button[aria-label="Ventas"]').click();
     await expect(page.locator('text=Registrar Venta')).toBeVisible();
   });
 
-  test('navega a Compras desde el menu', async ({ page }) => {
+  test('navega a Compras desde el menu principal', async ({ page }) => {
     await page.locator('button[aria-label="Compras"]').click();
     await expect(page.locator('text=Registrar Compra')).toBeVisible();
   });
 
-  test('navega a Inventario desde el menu', async ({ page }) => {
+  test('navega a Productos desde el menu Mas', async ({ page }) => {
+    await page.locator('button[aria-label="Menu de modulos"]').click();
+    await page.locator('button[aria-label="Productos"]').click();
+    await expect(page.locator('text=Agregar Producto Base')).toBeVisible();
+  });
+
+  test('navega a Inventario desde el menu Mas', async ({ page }) => {
+    await page.locator('button[aria-label="Menu de modulos"]').click();
     await page.locator('button[aria-label="Inventario"]').click();
     await expect(page.locator('text=Valor del Inventario')).toBeVisible();
   });

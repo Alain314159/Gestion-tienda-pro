@@ -1,7 +1,19 @@
 /** Helpers compartidos para tests e2e */
 
+/**
+ * Espera a que la app termine de cargar.
+ * Usa waitForLoadState en lugar de esperar un texto transitorio
+ * que podria no aparecer si la carga es rapida.
+ */
+async function esperarCarga(page) {
+  await page.waitForLoadState('networkidle');
+  // Esperamos a que el header o el nav esten visibles (elementos estables)
+  await page.locator('h1:has-text("Tienda Pro"), nav').first().waitFor({ state: 'visible', timeout: 15000 });
+}
+
 export async function limpiarDB(page) {
   await page.goto('/');
+  await esperarCarga(page);
   await page.evaluate(async () => {
     return new Promise((resolve) => {
       const req = indexedDB.open('gestion-tienda-db');
@@ -53,7 +65,7 @@ export async function seedDB(page, data) {
  */
 export async function navegarA(page, ruta) {
   await page.goto('/#' + ruta);
-  await page.waitForSelector('text=Cargando Tienda Pro...', { state: 'detached', timeout: 15000 });
+  await esperarCarga(page);
 }
 
 /**
