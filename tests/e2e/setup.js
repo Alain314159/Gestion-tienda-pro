@@ -1,9 +1,7 @@
 /** Helpers compartidos para tests e2e */
 
-const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:4173';
-
 export async function limpiarDB(page) {
-  await page.goto(BASE_URL + '/');
+  await page.goto('/');
   await page.evaluate(async () => {
     return new Promise((resolve) => {
       const req = indexedDB.open('gestion-tienda-db');
@@ -51,10 +49,10 @@ export async function seedDB(page, data) {
 
 /**
  * Navega a un modulo de la app usando hash routing.
- * La app usa base '/Gestion-tienda-pro/' y navega con hash (#productos, #ventas, etc.)
+ * Usa URL relativa al baseURL configurado en playwright.config.js.
  */
 export async function navegarA(page, ruta) {
-  await page.goto(BASE_URL + '/Gestion-tienda-pro/#' + ruta);
+  await page.goto('/#' + ruta);
   await page.waitForSelector('text=Cargando Tienda Pro...', { state: 'detached', timeout: 15000 });
 }
 
