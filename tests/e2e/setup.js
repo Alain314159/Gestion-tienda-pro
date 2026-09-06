@@ -48,3 +48,21 @@ export async function seedDB(page, data) {
     });
   }, data);
 }
+
+/**
+ * Navega a un modulo de la app usando hash routing.
+ * La app usa base '/Gestion-tienda-pro/' y navega con hash (#productos, #ventas, etc.)
+ */
+export async function navegarA(page, ruta) {
+  await page.goto(BASE_URL + '/Gestion-tienda-pro/#' + ruta);
+  await page.waitForSelector('text=Cargando Tienda Pro...', { state: 'detached', timeout: 15000 });
+}
+
+/**
+ * Espera a que aparezca un toast con texto que contenga la cadena dada.
+ * El toast de la app es un div con clase 'fixed bottom-20'.
+ */
+export async function esperarToast(page, texto) {
+  const toast = page.locator('div.fixed.bottom-20').filter({ hasText: new RegExp(texto) });
+  await toast.waitFor({ state: 'visible', timeout: 10000 });
+}
