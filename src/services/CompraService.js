@@ -10,14 +10,24 @@ import { verificarPeriodoCerrado } from '../core/periodos.js';
 
 export const CompraService = {
   /** Registra una compra existente (producto ya creado) + lote */
-  registrarExistente: async function ({ productoId, varianteId, nombre, unidad, cantidad, costo, total }) {
+  registrarExistente: async function ({
+    productoId,
+    varianteId,
+    nombre,
+    unidad,
+    cantidad,
+    costo,
+    total,
+  }) {
     await verificarPeriodoCerrado(nowLocal().iso);
     const cant = n(cantidad);
     const cst = toBig(costo);
     const ttl = toBig(total);
     const esperado = round(mul(cant, cst), 2);
     if (toNumber(abs(sub(ttl, esperado))) > 0.02) {
-      throw new Error(`El total (${toNumber(ttl)}) no coincide con cantidad x costo (${cant} x ${toNumber(cst)} = ${toNumber(esperado)})`);
+      throw new Error(
+        `El total (${toNumber(ttl)}) no coincide con cantidad x costo (${cant} x ${toNumber(cst)} = ${toNumber(esperado)})`
+      );
     }
     const db = getDB();
     const compra = {
@@ -57,7 +67,16 @@ export const CompraService = {
   },
 
   /** Registra compra de producto nuevo: crea producto + variante + compra + lote */
-  registrarNuevo: async function ({ nombre, codigo, unidad, cantidad, costo, total, precio, stockMin }) {
+  registrarNuevo: async function ({
+    nombre,
+    codigo,
+    unidad,
+    cantidad,
+    costo,
+    total,
+    precio,
+    stockMin,
+  }) {
     await verificarPeriodoCerrado(nowLocal().iso);
     const db = getDB();
     const nombreLimpio = nombre.trim().toLowerCase();
@@ -89,7 +108,9 @@ export const CompraService = {
     const ttl = toBig(total);
     const esperado = round(mul(cant, cst), 2);
     if (toNumber(abs(sub(ttl, esperado))) > 0.02) {
-      throw new Error(`El total (${toNumber(ttl)}) no coincide con cantidad x costo (${cant} x ${toNumber(cst)} = ${toNumber(esperado)})`);
+      throw new Error(
+        `El total (${toNumber(ttl)}) no coincide con cantidad x costo (${cant} x ${toNumber(cst)} = ${toNumber(esperado)})`
+      );
     }
     const compra = {
       id: genId('c'),
@@ -119,12 +140,19 @@ export const CompraService = {
       compraId: compra.id,
     };
 
-    await db.transaction('rw', db.productos, db.productoVariantes, db.compras, db.lotes, async (trans) => {
-      await txPut('productos', producto, trans);
-      await txPut('productoVariantes', variante, trans);
-      await txPut('compras', compra, trans);
-      await txPut('lotes', lote, trans);
-    });
+    await db.transaction(
+      'rw',
+      db.productos,
+      db.productoVariantes,
+      db.compras,
+      db.lotes,
+      async (trans) => {
+        await txPut('productos', producto, trans);
+        await txPut('productoVariantes', variante, trans);
+        await txPut('compras', compra, trans);
+        await txPut('lotes', lote, trans);
+      }
+    );
 
     return { producto, variante, compra, lote };
   },
@@ -155,7 +183,10 @@ export const CompraService = {
 
   recargar: async function () {
     const [productos, lotes, compras, variantes] = await Promise.all([
-      listar('productos'), listar('lotes'), listar('compras'), listar('productoVariantes')
+      listar('productos'),
+      listar('lotes'),
+      listar('compras'),
+      listar('productoVariantes'),
     ]);
     return { productos, lotes, compras, variantes };
   },

@@ -38,7 +38,13 @@ export const ConversionService = {
   /**
    * Verifica si se puede vender una cantidad dada
    */
-  puedeVender: function (cantidadSolicitada, stockVariante, stockUnidadSuelta, unidadesPorCaja, esCaja) {
+  puedeVender: function (
+    cantidadSolicitada,
+    stockVariante,
+    stockUnidadSuelta,
+    unidadesPorCaja,
+    esCaja
+  ) {
     const req = n(cantidadSolicitada);
     if (esCaja) {
       return req <= n(stockVariante);
@@ -53,7 +59,9 @@ export const ConversionService = {
    * Calcula costo promedio ponderado de una variante
    */
   costoPromedioVariante: function (lotes, varianteId) {
-    const lotesVar = lotes.filter(l => l.varianteId === varianteId && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0);
+    const lotesVar = lotes.filter(
+      (l) => l.varianteId === varianteId && n(l.cantidadInicial) - n(l.cantidadVendida) > 0
+    );
     let totalCosto = new Big('0');
     let totalCant = new Big('0');
     for (const l of lotesVar) {

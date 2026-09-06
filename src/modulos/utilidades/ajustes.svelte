@@ -13,9 +13,16 @@
   import { onMount } from 'svelte';
   import { getDB, listar, guardar, limpiar, leerConfig } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
-  import { ui, alternarTema, avisar, confirmar, preguntar, pedirPIN } from '../../core/state.svelte.js';
+  import {
+    ui,
+    alternarTema,
+    avisar,
+    confirmar,
+    preguntar,
+    pedirPIN,
+  } from '../../core/state.svelte.js';
   import { n, m, fmt, clean, nowLocal, escapeHtml } from '../../core/util.js';
-      import Icono from '../../core/Icono.svelte';
+  import Icono from '../../core/Icono.svelte';
 
   let cfg = $state({});
   const tablas = $state([
@@ -39,7 +46,11 @@
   let pinActivo = $state(false);
 
   async function recargar() {
-    cfg = (await leerConfig('cfg')) || { nombre: 'Tienda Pro', moneda: '$', periodoInicio: nowLocal().iso };
+    cfg = (await leerConfig('cfg')) || {
+      nombre: 'Tienda Pro',
+      moneda: '$',
+      periodoInicio: nowLocal().iso,
+    };
     pinActivo = !!cfg.pinActivo;
     const counts = {};
     const db = getDB();
@@ -147,7 +158,10 @@
     if (!pinOk) return;
     const ok = await confirmar('Borrar todo', 'Eliminar TODOS los datos? No se puede deshacer.');
     if (!ok) return;
-    const confirmText = await preguntar('Confirmacion final', 'Escribe BORRAR para eliminar todos los datos');
+    const confirmText = await preguntar(
+      'Confirmacion final',
+      'Escribe BORRAR para eliminar todos los datos'
+    );
     if (confirmText !== 'BORRAR') return avisar('Cancelado', 'bad');
     const db = getDB();
     await db.transaction('rw', db.tables, async () => {
@@ -157,7 +171,6 @@
     bus.emit('recargar');
     avisar('Todos los datos eliminados');
   }
-
 </script>
 
 <div class="modulo">
@@ -167,7 +180,9 @@
       Configuracion
     </div>
     <div class="mb-3">
-      <label for="cfg-nombre" class="text-xs text-muted font-bold mb-1.5 block">Nombre del negocio</label>
+      <label for="cfg-nombre" class="text-xs text-muted font-bold mb-1.5 block"
+        >Nombre del negocio</label
+      >
       <input
         id="cfg-nombre"
         class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]"
@@ -177,7 +192,9 @@
       />
     </div>
     <div class="mb-3">
-      <label for="cfg-moneda" class="text-xs text-muted font-bold mb-1.5 block">Simbolo de moneda</label>
+      <label for="cfg-moneda" class="text-xs text-muted font-bold mb-1.5 block"
+        >Simbolo de moneda</label
+      >
       <input
         id="cfg-moneda"
         class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]"
@@ -187,7 +204,9 @@
       />
     </div>
     <div class="mb-3">
-      <label for="cfg-periodo" class="text-xs text-muted font-bold mb-1.5 block">Fecha de inicio del negocio</label>
+      <label for="cfg-periodo" class="text-xs text-muted font-bold mb-1.5 block"
+        >Fecha de inicio del negocio</label
+      >
       <input
         id="cfg-periodo"
         type="date"
@@ -249,7 +268,11 @@
     </div>
     <button
       class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm active:scale-[0.97] transition-transform flex items-center justify-center gap-2"
-      onclick={() => { try { window.location.hash = 'sync'; } catch {} }}
+      onclick={() => {
+        try {
+          window.location.hash = 'sync';
+        } catch {}
+      }}
     >
       <Icono nombre="sync" size={16} color="#fff" />
       Abrir sincronizacion

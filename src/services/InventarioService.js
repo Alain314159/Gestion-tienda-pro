@@ -10,7 +10,14 @@ import { verificarPeriodoCerrado } from '../core/periodos.js';
 
 export const InventarioService = {
   /** Ajuste negativo (merma): reduce stock usando FIFO */
-  ajustarNegativo: async function ({ productoId, varianteId, productoNombre, cantidad, motivo, lotes }) {
+  ajustarNegativo: async function ({
+    productoId,
+    varianteId,
+    productoNombre,
+    cantidad,
+    motivo,
+    lotes,
+  }) {
     await verificarPeriodoCerrado(nowLocal().iso);
     const db = getDB();
     const res = calcFIFOVariante(lotes, varianteId, cantidad);

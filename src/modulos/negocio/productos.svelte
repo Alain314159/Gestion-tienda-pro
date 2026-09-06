@@ -65,11 +65,15 @@
       const p = mostrarArchivados ? productos : productos.filter((x) => !x.archivado);
       const qry = busqDebounced.toLowerCase().trim();
       if (!qry) return p;
-      return p.filter((x) => x.nombre.toLowerCase().includes(qry) || (x.codigo || '').toLowerCase().includes(qry));
+      return p.filter(
+        (x) => x.nombre.toLowerCase().includes(qry) || (x.codigo || '').toLowerCase().includes(qry)
+      );
     })()
   );
   const totalPaginas = $derived(Math.max(1, Math.ceil(filtrados.length / itemsPorPagina)));
-  const filtradosPaginados = $derived(filtrados.slice((pagina - 1) * itemsPorPagina, pagina * itemsPorPagina));
+  const filtradosPaginados = $derived(
+    filtrados.slice((pagina - 1) * itemsPorPagina, pagina * itemsPorPagina)
+  );
   async function recargar() {
     [productos, variantes, lotes] = await Promise.all([
       listar('productos'),
@@ -92,7 +96,8 @@
     const nombre = (formProd.nombre || '').trim();
     if (!nombre) return avisar('Nombre obligatorio', 'bad');
     const dup = productos.find(
-      (x) => x.nombre.toLowerCase() === nombre.toLowerCase() && x.id !== formProd.editId && !x.archivado
+      (x) =>
+        x.nombre.toLowerCase() === nombre.toLowerCase() && x.id !== formProd.editId && !x.archivado
     );
     if (dup) return avisar('Ya existe ese nombre', 'bad');
     if (formProd.editId) {
@@ -100,7 +105,12 @@
       await guardar('productos', { ...o, nombre, codigo: (formProd.codigo || '').trim() });
       avisar('Producto actualizado');
     } else {
-      const prod = { id: genId('p'), nombre, codigo: (formProd.codigo || '').trim(), archivado: false };
+      const prod = {
+        id: genId('p'),
+        nombre,
+        codigo: (formProd.codigo || '').trim(),
+        archivado: false,
+      };
       await guardar('productos', prod);
       await ProductoVarianteService.crear({
         productoId: prod.id,
@@ -127,7 +137,10 @@
     const vars = variantesDeProducto(p.id);
     const hayStock = vars.some((v) => stockVariante(lotes, v.id) > 0);
     if (hayStock) return avisar('No archivar: hay variantes con stock > 0', 'bad');
-    const ok = await confirmar('Archivar producto', 'Archivar ' + p.nombre + '? Se archivaran todas sus variantes.');
+    const ok = await confirmar(
+      'Archivar producto',
+      'Archivar ' + p.nombre + '? Se archivaran todas sus variantes.'
+    );
     if (!ok) return;
     await guardar('productos', { ...p, archivado: true });
     for (const v of vars) {
@@ -198,7 +211,10 @@
     };
   }
   function agregarEscalon() {
-    formVar.preciosEscalonados = [...formVar.preciosEscalonados, { cantidadMinima: '', precioUnitario: '' }];
+    formVar.preciosEscalonados = [
+      ...formVar.preciosEscalonados,
+      { cantidadMinima: '', precioUnitario: '' },
+    ];
   }
   function quitarEscalon(i) {
     formVar.preciosEscalonados = formVar.preciosEscalonados.filter((_, idx) => idx !== i);
@@ -333,7 +349,11 @@
       <Icono nombre="tag" size={18} /> Productos
     </div>
     <div class="relative mb-3">
-      <Icono nombre="search" size={16} class="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+      <Icono
+        nombre="search"
+        size={16}
+        class="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+      />
       <input
         class="w-full pl-9 pr-3.5 py-2.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-sm outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]"
         type="text"
@@ -352,7 +372,9 @@
     {#if filtrados.length === 0}
       <div class="text-center text-muted py-6 text-sm">Sin productos</div>
     {:else}
-      <div class="text-xs text-muted mb-2 px-1">{filtrados.length} producto(s) · Pagina {pagina} de {totalPaginas}</div>
+      <div class="text-xs text-muted mb-2 px-1">
+        {filtrados.length} producto(s) · Pagina {pagina} de {totalPaginas}
+      </div>
       {#each filtradosPaginados as p}
         {@const vars = variantesDeProducto(p.id)}
         {@const varsArch = variantesArchivadas(p.id)}
@@ -421,7 +443,9 @@
                     <div class="min-w-0 flex-1">
                       <div class="font-bold text-sm">
                         {v.nombre}
-                        {#if v.codigo}<span class="text-muted font-normal text-xs">({v.codigo})</span>{/if}
+                        {#if v.codigo}<span class="text-muted font-normal text-xs"
+                            >({v.codigo})</span
+                          >{/if}
                         {#if v.esCaja}<span
                             class="inline-block px-1.5 py-0.5 rounded text-[0.6rem] font-extrabold text-white bg-primary ml-1"
                             >CAJA x{v.unidadesPorCaja}</span
@@ -437,10 +461,16 @@
                               : badge.clase === 'out'
                                 ? 'bg-danger'
                                 : 'bg-muted'}">{badge.texto}</span
-                        > <span class="text-primary font-extrabold text-sm">{fmtCant(s)} {v.unidad || ''}</span>
+                        >
+                        <span class="text-primary font-extrabold text-sm"
+                          >{fmtCant(s)} {v.unidad || ''}</span
+                        >
                         <span class="text-muted text-xs">{fmt(v.precioBase)}</span>
                         {#if v.preciosEscalonados && v.preciosEscalonados.length > 0}
-                          <span class="text-xs text-success" title={fmtEscalones(v.preciosEscalonados)}>Escalones</span>
+                          <span
+                            class="text-xs text-success"
+                            title={fmtEscalones(v.preciosEscalonados)}>Escalones</span
+                          >
                         {/if}
                       </div>
                     </div>
@@ -472,10 +502,14 @@
                 {/each}
               {/if}
               {#if varsArch.length > 0}
-                <div class="text-xs text-muted mt-2 px-1">{varsArch.length} variante(s) archivada(s)</div>
+                <div class="text-xs text-muted mt-2 px-1">
+                  {varsArch.length} variante(s) archivada(s)
+                </div>
                 {#each varsArch as v}
                   <div class="flex justify-between items-center gap-2 py-1.5 px-2 opacity-50">
-                    <span class="text-sm">{v.nombre} <span class="text-muted text-xs">(archivada)</span></span>
+                    <span class="text-sm"
+                      >{v.nombre} <span class="text-muted text-xs">(archivada)</span></span
+                    >
                     <button
                       class="w-7 h-7 rounded-lg bg-success/10 flex items-center justify-center border-none cursor-pointer active:scale-[0.92] transition-transform"
                       onclick={() => restaurarVariante(v)}
@@ -529,7 +563,9 @@
           <Icono nombre="tag" size={20} />
           {formVar.editId ? 'Editar' : 'Nueva'} Variante
         </div>
-        <div class="text-xs text-muted mb-3">Producto: <b class="text-primary">{prodSeleccionado.nombre}</b></div>
+        <div class="text-xs text-muted mb-3">
+          Producto: <b class="text-primary">{prodSeleccionado.nombre}</b>
+        </div>
         <input
           class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text text-base outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)] mb-2"
           type="text"
@@ -568,10 +604,9 @@
           list="unidades-list"
         />
         <datalist id="unidades-list"
-          ><option value="u"></option><option value="kg"></option><option value="lb"></option><option value="gr"
-          ></option><option value="litro"></option><option value="m"></option><option value="caja"></option><option
-            value="paq"
-          ></option></datalist
+          ><option value="u"></option><option value="kg"></option><option value="lb"
+          ></option><option value="gr"></option><option value="litro"></option><option value="m"
+          ></option><option value="caja"></option><option value="paq"></option></datalist
         >
         <div class="bg-background rounded-lg p-3 mb-2">
           <label class="flex items-center gap-2 cursor-pointer mb-2">

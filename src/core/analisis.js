@@ -21,7 +21,9 @@ export function analisisABC(productos, ventas, lotes) {
         }
         data[it.productoId].volumen = data[it.productoId].volumen.plus(toBig(it.cantidad));
         data[it.productoId].ganancia = data[it.productoId].ganancia.plus(toBig(it.ganancia));
-        data[it.productoId].revenue = data[it.productoId].revenue.plus(toBig(it.precio).times(toBig(it.cantidad)));
+        data[it.productoId].revenue = data[it.productoId].revenue.plus(
+          toBig(it.precio).times(toBig(it.cantidad))
+        );
       });
     });
 
@@ -67,14 +69,26 @@ export function detectarAnomalias(ventas, compras, ajustes) {
         } else {
           margen = 0;
         }
-        if (margen < 0) alertas.push({ tipo: 'perdida', msg: `${it.nombre} vendido con perdida`, gravedad: 'alta' });
+        if (margen < 0)
+          alertas.push({
+            tipo: 'perdida',
+            msg: `${it.nombre} vendido con perdida`,
+            gravedad: 'alta',
+          });
         else if (margen < 5 && toNumber(revenue) > 0)
-          alertas.push({ tipo: 'margen_bajo', msg: `${it.nombre} margen ${margen.toFixed(1)}%`, gravedad: 'media' });
+          alertas.push({
+            tipo: 'margen_bajo',
+            msg: `${it.nombre} margen ${margen.toFixed(1)}%`,
+            gravedad: 'media',
+          });
       });
     });
 
-  const robos = ajustes.filter((a) => a.motivo === 'robo' && a.fecha.slice(0, 7) === hoy.slice(0, 7));
-  if (robos.length > 2) alertas.push({ tipo: 'robo', msg: `${robos.length} robos este mes`, gravedad: 'alta' });
+  const robos = ajustes.filter(
+    (a) => a.motivo === 'robo' && a.fecha.slice(0, 7) === hoy.slice(0, 7)
+  );
+  if (robos.length > 2)
+    alertas.push({ tipo: 'robo', msg: `${robos.length} robos este mes`, gravedad: 'alta' });
 
   const hoyVentas = ventas
     .filter((v) => !v.anulada && v.fecha.slice(0, 10) === hoy)
@@ -82,7 +96,11 @@ export function detectarAnomalias(ventas, compras, ajustes) {
   for (let i = 1; i < hoyVentas.length; i++) {
     const diff = new Date(hoyVentas[i].fecha) - new Date(hoyVentas[i - 1].fecha);
     if (diff < 30000 && Math.abs(hoyVentas[i].total - hoyVentas[i - 1].total) < 0.01) {
-      alertas.push({ tipo: 'duplicado', msg: `Venta duplicada ${hoyVentas[i].total}`, gravedad: 'media' });
+      alertas.push({
+        tipo: 'duplicado',
+        msg: `Venta duplicada ${hoyVentas[i].total}`,
+        gravedad: 'media',
+      });
     }
   }
 

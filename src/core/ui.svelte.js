@@ -2,7 +2,9 @@ import { safeLocalStorage } from './util.js';
 
 /** Estado global de la UI usando Svelte 5 Runes */
 export const ui = $state({
-  tema: safeLocalStorage.get('tema') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
+  tema:
+    safeLocalStorage.get('tema') ||
+    (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
   toast: null,
   confirm: null,
   prompt: null,

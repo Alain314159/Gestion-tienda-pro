@@ -33,7 +33,18 @@ import {
 } from './Money.js';
 import { nanoid } from 'nanoid';
 import Fuse from 'fuse.js';
-import { parseISO, isAfter, isBefore, isSameDay, format, addDays, subDays, startOfDay, endOfDay, differenceInDays } from 'date-fns';
+import {
+  parseISO,
+  isAfter,
+  isBefore,
+  isSameDay,
+  format,
+  addDays,
+  subDays,
+  startOfDay,
+  endOfDay,
+  differenceInDays,
+} from 'date-fns';
 import { es } from 'date-fns/locale';
 
 /** Convierte cualquier valor a numero seguro. null/undefined/'' → 0
@@ -81,22 +92,68 @@ export function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-
-/** ================================================================ *  SAFE LOCALSTORAGE - Wrapper con try/catch para entornos restringidos *  Previene crashes en modo incognito, Safari ITP, storage lleno *  ================================================================ */ const LS_PREFIX = 'tp_'; export const safeLocalStorage = { get(key, fallback = null) { try { const val = localStorage.getItem(LS_PREFIX + key); return val !== null ? val : fallback; } catch { return fallback; } }, set(key, value) { try { localStorage.setItem(LS_PREFIX + key, String(value)); return true; } catch { return false; } }, remove(key) { try { localStorage.removeItem(LS_PREFIX + key); return true; } catch { return false; } }, getJSON(key, fallback = null) { try { const val = localStorage.getItem(LS_PREFIX + key); return val !== null ? JSON.parse(val) : fallback; } catch { return fallback; } }, setJSON(key, value) { try { localStorage.setItem(LS_PREFIX + key, JSON.stringify(value)); return true; } catch { return false; } }, }; /** Genera fecha actual con informacion local y UTC
+/** ================================================================ *  SAFE LOCALSTORAGE - Wrapper con try/catch para entornos restringidos *  Previene crashes en modo incognito, Safari ITP, storage lleno *  ================================================================ */ const LS_PREFIX =
+  'tp_';
+export const safeLocalStorage = {
+  get(key, fallback = null) {
+    try {
+      const val = localStorage.getItem(LS_PREFIX + key);
+      return val !== null ? val : fallback;
+    } catch {
+      return fallback;
+    }
+  },
+  set(key, value) {
+    try {
+      localStorage.setItem(LS_PREFIX + key, String(value));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  remove(key) {
+    try {
+      localStorage.removeItem(LS_PREFIX + key);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  getJSON(key, fallback = null) {
+    try {
+      const val = localStorage.getItem(LS_PREFIX + key);
+      return val !== null ? JSON.parse(val) : fallback;
+    } catch {
+      return fallback;
+    }
+  },
+  setJSON(key, value) {
+    try {
+      localStorage.setItem(LS_PREFIX + key, JSON.stringify(value));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+}; /** Genera fecha actual con informacion local y UTC
  *  Usa toLocaleDateString('sv-SE') para evitar bugs de DST y zona horaria
  *  @returns { iso: string, local: string, offset: number }
  */
 export function nowLocal() {
   const d = new Date();
   const offset = d.getTimezoneOffset();
-  const local = d.toLocaleDateString('sv-SE', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  const local = d.toLocaleDateString('sv-SE', {
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  });
   return { iso: d.toISOString(), local, offset };
 }
 
 /** Extrae fecha local (YYYY-MM-DD) de un ISO string respetando zona horaria del usuario */
 export function isoToLocal(iso) {
   const d = new Date(iso);
-  return d.toLocaleDateString('sv-SE', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  return d.toLocaleDateString('sv-SE', {
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  });
 }
 
 /** Compara si dos fechas ISO son el mismo dia en zona horaria local */
@@ -240,7 +297,13 @@ export function fmtFecha(iso) {
 export function fmtFH(iso) {
   try {
     const d = new Date(iso);
-    return fmtFecha(iso) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    return (
+      fmtFecha(iso) +
+      ' ' +
+      String(d.getHours()).padStart(2, '0') +
+      ':' +
+      String(d.getMinutes()).padStart(2, '0')
+    );
   } catch (e) {
     return '';
   }
@@ -514,10 +577,16 @@ export function gananciaDisponible({
   lotes,
   periodoInicio,
 }) {
-  const ventasArr = ventas.filter((v) => !v.anulada && isoToLocal(v.fecha) >= isoToLocal(periodoInicio));
+  const ventasArr = ventas.filter(
+    (v) => !v.anulada && isoToLocal(v.fecha) >= isoToLocal(periodoInicio)
+  );
   const ganBruta = toNumber(sum(ventasArr, 'ganancia'));
   const gastosOp = toNumber(
-    sumWhere(ajustes, (a) => a.cantidad < 0 && isoToLocal(a.fecha) >= isoToLocal(periodoInicio), 'costoPerdida')
+    sumWhere(
+      ajustes,
+      (a) => a.cantidad < 0 && isoToLocal(a.fecha) >= isoToLocal(periodoInicio),
+      'costoPerdida'
+    )
   );
   const ganNeta = toNumber(sub(ganBruta, gastosOp));
   const retirosTotal = toNumber(sum(retiros, 'monto'));
@@ -541,7 +610,8 @@ export function topRentables(ventas) {
       const f = new Date(v.fecha);
       if (f.getMonth() === mes && f.getFullYear() === an) {
         v.items.forEach((it) => {
-          if (!r[it.productoId]) r[it.productoId] = { id: it.productoId, nombre: it.nombre, gan: new Big('0') };
+          if (!r[it.productoId])
+            r[it.productoId] = { id: it.productoId, nombre: it.nombre, gan: new Big('0') };
           r[it.productoId].gan = r[it.productoId].gan.plus(toBig(it.ganancia));
         });
       }
@@ -591,15 +661,23 @@ export function generarReporte({ ventas, compras, ajustes, gastosOp }, fechaInic
   if (i > f) return { error: 'Fecha inicio > fin' };
 
   const vp = ventas.filter((v) => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
-  const cp = (compras || []).filter((c) => !c.anulada && new Date(c.fecha) >= i && new Date(c.fecha) <= f);
+  const cp = (compras || []).filter(
+    (c) => !c.anulada && new Date(c.fecha) >= i && new Date(c.fecha) <= f
+  );
   const ing = toNumber(sum(vp, 'total'));
   const cogs = toNumber(sum(vp, (v) => toNumber(sum(v.items, 'costo'))));
   const comprasTotal = toNumber(sum(cp, 'total'));
   const bruta = toNumber(sub(ing, cogs));
   const mermas = toNumber(
-    sumWhere(ajustes, (a) => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f, 'costoPerdida')
+    sumWhere(
+      ajustes,
+      (a) => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f,
+      'costoPerdida'
+    )
   );
-  const gastos = toNumber(sumWhere(gastosOp || [], (g) => new Date(g.fecha) >= i && new Date(g.fecha) <= f, 'monto'));
+  const gastos = toNumber(
+    sumWhere(gastosOp || [], (g) => new Date(g.fecha) >= i && new Date(g.fecha) <= f, 'monto')
+  );
   const neta = toNumber(sub(bruta, add(mermas, gastos)));
 
   return {

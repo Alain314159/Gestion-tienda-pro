@@ -29,7 +29,9 @@ export function useRecargar(fn, options = {}) {
       if (listenBus) {
         off = bus.on(busEvent, recargar);
       }
-      return () => { if (off) off(); };
+      return () => {
+        if (off) off();
+      };
     });
   }
 

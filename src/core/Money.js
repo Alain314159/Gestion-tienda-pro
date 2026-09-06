@@ -5,15 +5,15 @@ const Big = BigModule.default || BigModule;
  * Motor de precision decimal para calculos financieros.
  * Reemplaza el uso de numeros nativos (float) en toda la app.
  * Basado en big.js - libreria estandar de la industria fintech.
- * 
+ *
  * REGLA DE ORO: Nunca pases un numero JavaScript a new Big().
  * Siempre convierte a string primero: new Big(String(valor))
  * o usa las funciones de utilidad de este archivo.
  */
 
 // Configuracion global de big.js
-Big.DP = 20;  // Decimal places para division (default 20)
-Big.RM = 1;   // Rounding mode: 1 = half-up (redondeo comercial estandar)
+Big.DP = 20; // Decimal places para division (default 20)
+Big.RM = 1; // Rounding mode: 1 = half-up (redondeo comercial estandar)
 
 /**
  * Convierte cualquier valor a Big de forma segura.
@@ -142,11 +142,21 @@ export function fromCents(cents) {
  * Money.gte(10, 10) -> true
  * Money.lte(10, 10) -> true
  */
-export function eq(a, b) { return toBig(a).eq(toBig(b)); }
-export function gt(a, b) { return toBig(a).gt(toBig(b)); }
-export function lt(a, b) { return toBig(a).lt(toBig(b)); }
-export function gte(a, b) { return toBig(a).gte(toBig(b)); }
-export function lte(a, b) { return toBig(a).lte(toBig(b)); }
+export function eq(a, b) {
+  return toBig(a).eq(toBig(b));
+}
+export function gt(a, b) {
+  return toBig(a).gt(toBig(b));
+}
+export function lt(a, b) {
+  return toBig(a).lt(toBig(b));
+}
+export function gte(a, b) {
+  return toBig(a).gte(toBig(b));
+}
+export function lte(a, b) {
+  return toBig(a).lte(toBig(b));
+}
 
 /**
  * Valor absoluto.
@@ -159,10 +169,10 @@ export function abs(value) {
  * Maximo y minimo de un array de valores.
  */
 export function max(...values) {
-  return values.reduce((acc, v) => toBig(v).gt(acc) ? toBig(v) : acc, toBig(values[0]));
+  return values.reduce((acc, v) => (toBig(v).gt(acc) ? toBig(v) : acc), toBig(values[0]));
 }
 export function min(...values) {
-  return values.reduce((acc, v) => toBig(v).lt(acc) ? toBig(v) : acc, toBig(values[0]));
+  return values.reduce((acc, v) => (toBig(v).lt(acc) ? toBig(v) : acc), toBig(values[0]));
 }
 
 /**
@@ -229,7 +239,9 @@ export function allocate(amount, parts, decimals = 2) {
   const total = toBig(amount);
   const n = Math.max(1, parts);
   const base = total.div(String(n)).round(decimals, 1);
-  const result = Array(n).fill(null).map(() => base);
+  const result = Array(n)
+    .fill(null)
+    .map(() => base);
   const baseTotal = base.times(String(n));
   let remainder = total.minus(baseTotal);
   let i = 0;
@@ -252,7 +264,7 @@ export function inspect(value) {
     value: b.toString(),
     fixed2: b.toFixed(2),
     number: b.toNumber(),
-    cents: toCents(b)
+    cents: toCents(b),
   };
 }
 

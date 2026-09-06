@@ -25,7 +25,9 @@ function getOrCreateDeviceId() {
   let id = null;
   try {
     id = localStorage.getItem('tienda-pro-device-id');
-  } catch { /* localStorage no disponible en modo privado */ }
+  } catch {
+    /* localStorage no disponible en modo privado */
+  }
   if (!id) {
     const prefix = Math.random().toString(36).slice(2, 8);
     const ts = Date.now().toString(36);
@@ -33,7 +35,9 @@ function getOrCreateDeviceId() {
     id = `dev-${prefix}-${ts}-${suffix}`;
     try {
       localStorage.setItem('tienda-pro-device-id', id);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
   return id;
 }
@@ -64,7 +68,12 @@ export async function getDeviceName() {
 export async function setDeviceName(name) {
   const db = getDB();
   const info = (await db.deviceInfo.get('this')) || {};
-  await db.deviceInfo.put({ ...info, id: 'this', name: String(name).trim(), deviceId: getDeviceId() });
+  await db.deviceInfo.put({
+    ...info,
+    id: 'this',
+    name: String(name).trim(),
+    deviceId: getDeviceId(),
+  });
 }
 
 /** Persiste el deviceId en la DB (llamar despues de abrirDB) */
@@ -72,7 +81,11 @@ export async function persistDeviceId() {
   const db = getDB();
   const existing = await db.deviceInfo.get('this');
   if (!existing?.deviceId) {
-    await db.deviceInfo.put({ id: 'this', deviceId: getDeviceId(), createdAt: new Date().toISOString() });
+    await db.deviceInfo.put({
+      id: 'this',
+      deviceId: getDeviceId(),
+      createdAt: new Date().toISOString(),
+    });
   }
 }
 
@@ -84,11 +97,12 @@ let db = null;
 
 /** Detecta si un error es por almacenamiento lleno (QuotaExceeded) */
 function esQuotaExceeded(err) {
-  return err && (
-    err.name === 'QuotaExceededError' ||
-    err.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
-    (err.message && err.message.toLowerCase().includes('quota')) ||
-    (err.message && err.message.toLowerCase().includes('storage'))
+  return (
+    err &&
+    (err.name === 'QuotaExceededError' ||
+      err.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+      (err.message && err.message.toLowerCase().includes('quota')) ||
+      (err.message && err.message.toLowerCase().includes('storage')))
   );
 }
 
@@ -97,28 +111,29 @@ export function manejarErrorDB(err, operacion = 'operacion') {
   if (esQuotaExceeded(err)) {
     return {
       tipo: 'quota',
-      mensaje: 'Almacenamiento lleno. Elimina datos antiguos o exporta un backup antes de continuar.',
-      original: err
+      mensaje:
+        'Almacenamiento lleno. Elimina datos antiguos o exporta un backup antes de continuar.',
+      original: err,
     };
   }
   if (err.name === 'VersionError' || err.name === 'UpgradeError') {
     return {
       tipo: 'version',
       mensaje: 'Error de version de base de datos. Recarga la pagina.',
-      original: err
+      original: err,
     };
   }
   if (err.name === 'OpenFailedError') {
     return {
       tipo: 'open',
       mensaje: 'No se pudo abrir la base de datos. Verifica que no haya otra pestana abierta.',
-      original: err
+      original: err,
     };
   }
   return {
     tipo: 'desconocido',
     mensaje: `Error en ${operacion}: ${err.message || err}`,
-    original: err
+    original: err,
   };
 }
 
@@ -172,7 +187,7 @@ function fromCentsObj(tabla, obj) {
 /** Convierte un array de objetos de centavos a float */
 function fromCentsArray(tabla, arr) {
   const cfg = getMoneyConfig(tabla);
-  return cfg ? arr.map(o => fromCentsDeep(o, cfg.fields, cfg.nested || {})) : arr;
+  return cfg ? arr.map((o) => fromCentsDeep(o, cfg.fields, cfg.nested || {})) : arr;
 }
 
 /* ================================================================
@@ -182,14 +197,14 @@ function fromCentsArray(tabla, arr) {
 /** Genera un número de versión estable a partir del schema */
 function schemaVersion(tablas) {
   const keys = Object.keys(tablas).sort();
-  const schemaStr = keys.map(k => `${k}:${tablas[k]}`).join('|');
+  const schemaStr = keys.map((k) => `${k}:${tablas[k]}`).join('|');
   let hash = 0;
   for (let i = 0; i < schemaStr.length; i++) {
     const char = schemaStr.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash;
   }
-  return Math.abs(hash) % 100000 + 1;
+  return (Math.abs(hash) % 100000) + 1;
 }
 
 /* ================================================================
@@ -202,17 +217,17 @@ async function migrateMoneyToCents() {
   if (cfg?.value?._moneyMigrated) return;
 
   for (const [tabla, config] of Object.entries(MONEY_SCHEMA)) {
-    if (!db.tables.some(t => t.name === tabla)) continue;
+    if (!db.tables.some((t) => t.name === tabla)) continue;
     const items = await db.table(tabla).toArray();
     if (items.length === 0) continue;
 
-    const converted = items.map(obj => toCentsDeep(obj, config.fields, config.nested || {}));
+    const converted = items.map((obj) => toCentsDeep(obj, config.fields, config.nested || {}));
     await db.table(tabla).bulkPut(converted);
   }
 
   await db.config.put({
     key: 'cfg',
-    value: { ...(cfg?.value || {}), _moneyMigrated: true }
+    value: { ...(cfg?.value || {}), _moneyMigrated: true },
   });
 }
 
@@ -225,15 +240,15 @@ async function migrarAVariantes() {
   if (cfg?.value?._variantesMigrated) return;
 
   // Solo migrar si existen las tablas necesarias
-  const hasProductos = db.tables.some(t => t.name === 'productos');
-  const hasLotes = db.tables.some(t => t.name === 'lotes');
-  const hasCompras = db.tables.some(t => t.name === 'compras');
-  const hasVentas = db.tables.some(t => t.name === 'ventas');
+  const hasProductos = db.tables.some((t) => t.name === 'productos');
+  const hasLotes = db.tables.some((t) => t.name === 'lotes');
+  const hasCompras = db.tables.some((t) => t.name === 'compras');
+  const hasVentas = db.tables.some((t) => t.name === 'ventas');
 
   if (!hasProductos) {
     await db.config.put({
       key: 'cfg',
-      value: { ...(cfg?.value || {}), _variantesMigrated: true }
+      value: { ...(cfg?.value || {}), _variantesMigrated: true },
     });
     return;
   }
@@ -242,7 +257,7 @@ async function migrarAVariantes() {
   if (productos.length === 0) {
     await db.config.put({
       key: 'cfg',
-      value: { ...(cfg?.value || {}), _variantesMigrated: true }
+      value: { ...(cfg?.value || {}), _variantesMigrated: true },
     });
     return;
   }
@@ -296,7 +311,7 @@ async function migrarAVariantes() {
 
   await db.config.put({
     key: 'cfg',
-    value: { ...(cfg?.value || {}), _variantesMigrated: true }
+    value: { ...(cfg?.value || {}), _variantesMigrated: true },
   });
 }
 
@@ -371,7 +386,7 @@ export async function guardar(tabla, obj) {
 export async function guardarBulk(tabla, objs) {
   return conManejoError(`guardarBulk(${tabla})`, async () => {
     const db = getDB();
-    const converted = objs.map(o => toCentsObj(tabla, deepClone(o)));
+    const converted = objs.map((o) => toCentsObj(tabla, deepClone(o)));
     return db.table(tabla).bulkPut(converted);
   });
 }
@@ -456,7 +471,10 @@ export async function porFecha(tabla, fechaIso) {
   return conManejoError(`porFecha(${tabla})`, async () => {
     const db = getDB();
     const fechaStr = fechaIso.slice(0, 10);
-    const items = await db.table(tabla).filter(it => it.fecha && it.fecha.slice(0, 10) === fechaStr).toArray();
+    const items = await db
+      .table(tabla)
+      .filter((it) => it.fecha && it.fecha.slice(0, 10) === fechaStr)
+      .toArray();
     return fromCentsArray(tabla, items);
   });
 }
@@ -475,7 +493,7 @@ export function txPut(tabla, obj, trans) {
 
 /** Bulk put dentro de una transacción Dexie. */
 export function txBulkPut(tabla, objs, trans) {
-  const converted = objs.map(o => toCentsObj(tabla, deepClone(o)));
+  const converted = objs.map((o) => toCentsObj(tabla, deepClone(o)));
   return trans.table(tabla).bulkPut(converted);
 }
 
@@ -519,10 +537,21 @@ export async function guardarConfig(key, value) {
    Las tablas de control (config, webhook*, deviceInfo, syncState, syncLog)
    NO se sincronizan. */
 export const SYNCABLE_TABLES = [
-  "tiendas", "socios", "gastosOp", "contabilidad",
-  "productoVariantes", "ventas", "lotes", "compras",
-  "productos", "ajustes", "arqueos", "movCaja",
-  "capital", "retiros", "cierres",
+  'tiendas',
+  'socios',
+  'gastosOp',
+  'contabilidad',
+  'productoVariantes',
+  'ventas',
+  'lotes',
+  'compras',
+  'productos',
+  'ajustes',
+  'arqueos',
+  'movCaja',
+  'capital',
+  'retiros',
+  'cierres',
 ];
 
 /** Verifica si una tabla es syncable */
@@ -542,7 +571,7 @@ function installSyncHooks(dbInstance) {
     // Hook creating: se ejecuta al insertar un nuevo registro.
     // Si el objeto ya trae campos de sync (ej. al aplicar un delta),
     // los respetamos para no perder la metadata del origen.
-    table.hook("creating", function (primKey, obj, trans) {
+    table.hook('creating', function (primKey, obj, trans) {
       if (!obj.updatedAt) obj.updatedAt = now();
       if (!obj.updatedBy) obj.updatedBy = deviceId;
       if (!obj.version) obj.version = 1;
@@ -551,7 +580,7 @@ function installSyncHooks(dbInstance) {
     // Hook updating: se ejecuta al actualizar un registro existente.
     // modifications contiene solo los campos que cambian.
     // Si ya vienen campos de sync (ej. delta merge), los respetamos.
-    table.hook("updating", function (modifications, primKey, obj, trans) {
+    table.hook('updating', function (modifications, primKey, obj, trans) {
       if (!modifications.updatedAt) modifications.updatedAt = now();
       if (!modifications.updatedBy) modifications.updatedBy = deviceId;
       if (!modifications.version) modifications.version = (obj.version || 0) + 1;
@@ -570,7 +599,7 @@ export async function eliminarLogico(tabla, id) {
   return conManejoError(`eliminarLogico(${tabla})`, async () => {
     const db = getDB();
     const existing = await db.table(tabla).get(id);
-    if (!existing) return { ok: false, error: "Registro no encontrado" };
+    if (!existing) return { ok: false, error: 'Registro no encontrado' };
     const newVersion = (existing.version || 0) + 1;
     await db.table(tabla).update(id, {
       deletedAt: new Date().toISOString(),
@@ -587,7 +616,7 @@ export async function restaurarLogico(tabla, id) {
   return conManejoError(`restaurarLogico(${tabla})`, async () => {
     const db = getDB();
     const existing = await db.table(tabla).get(id);
-    if (!existing) return { ok: false, error: "Registro no encontrado" };
+    if (!existing) return { ok: false, error: 'Registro no encontrado' };
     const newVersion = (existing.version || 0) + 1;
     await db.table(tabla).update(id, {
       deletedAt: null,
@@ -612,7 +641,10 @@ export async function listarActivos(tabla) {
       const items = await db.table(tabla).toArray();
       return fromCentsArray(tabla, items);
     }
-    const items = await db.table(tabla).filter((it) => !it.deletedAt).toArray();
+    const items = await db
+      .table(tabla)
+      .filter((it) => !it.deletedAt)
+      .toArray();
     return fromCentsArray(tabla, items);
   });
 }
@@ -633,7 +665,10 @@ export async function contarActivos(tabla) {
   return conManejoError(`contarActivos(${tabla})`, async () => {
     const db = getDB();
     if (!esTablaSyncable(tabla)) return db.table(tabla).count();
-    return db.table(tabla).filter((it) => !it.deletedAt).count();
+    return db
+      .table(tabla)
+      .filter((it) => !it.deletedAt)
+      .count();
   });
 }
 
@@ -674,7 +709,7 @@ export async function applyDeltaChanges(tabla, changes, fromDeviceId) {
     const db = getDB();
     const results = { inserted: 0, updated: 0, skipped: 0, conflicts: 0 };
     if (!changes || changes.length === 0) return results;
-    await db.transaction("rw", db[tabla], async (trans) => {
+    await db.transaction('rw', db[tabla], async (trans) => {
       for (const change of changes) {
         if (!change || !change.id) {
           results.conflicts++;
@@ -688,9 +723,9 @@ export async function applyDeltaChanges(tabla, changes, fromDeviceId) {
           continue;
         }
         // Existe: comparar timestamps para LWW
-        const localTime = existing.updatedAt || "1970-01-01T00:00:00.000Z";
+        const localTime = existing.updatedAt || '1970-01-01T00:00:00.000Z';
         const localVer = existing.version || 0;
-        const remoteTime = change.updatedAt || "1970-01-01T00:00:00.000Z";
+        const remoteTime = change.updatedAt || '1970-01-01T00:00:00.000Z';
         const remoteVer = change.version || 0;
         const timeCmp = remoteTime.localeCompare(localTime);
         const remoteIsNewer = timeCmp > 0 || (timeCmp === 0 && remoteVer > localVer);
@@ -716,7 +751,7 @@ export async function getSyncState(deviceId, tabla) {
   return conManejoError(`getSyncState`, async () => {
     const db = getDB();
     const state = await db.syncState.where({ deviceId, tabla }).first();
-    return state || { deviceId, tabla, lastSyncAt: "1970-01-01T00:00:00.000Z", lastSyncVersion: 0 };
+    return state || { deviceId, tabla, lastSyncAt: '1970-01-01T00:00:00.000Z', lastSyncVersion: 0 };
   });
 }
 
@@ -757,7 +792,7 @@ export async function addToSyncLog(tabla, recordId, operation, recordData) {
       recordData: deepClone(recordData),
       timestamp: new Date().toISOString(),
       sourceDevice: getDeviceId(),
-      status: "pending",
+      status: 'pending',
       retryCount: 0,
     });
   });
@@ -767,11 +802,7 @@ export async function addToSyncLog(tabla, recordId, operation, recordData) {
 export async function getPendingSyncLog(limit = 100) {
   return conManejoError(`getPendingSyncLog`, async () => {
     const db = getDB();
-    return db.syncLog
-      .where("status")
-      .equals("pending")
-      .limit(limit)
-      .sortBy("timestamp");
+    return db.syncLog.where('status').equals('pending').limit(limit).sortBy('timestamp');
   });
 }
 
@@ -779,9 +810,9 @@ export async function getPendingSyncLog(limit = 100) {
 export async function markSyncLogStatus(recordIds, status) {
   return conManejoError(`markSyncLogStatus`, async () => {
     const db = getDB();
-    await db.transaction("rw", db.syncLog, async (trans) => {
+    await db.transaction('rw', db.syncLog, async (trans) => {
       for (const id of recordIds) {
-        await trans.table("syncLog").update(id, { status });
+        await trans.table('syncLog').update(id, { status });
       }
     });
   });
@@ -793,8 +824,8 @@ export async function cleanSyncLog(maxAgeDays = 7) {
     const db = getDB();
     const cutoff = new Date(Date.now() - maxAgeDays * 86400000).toISOString();
     const old = await db.syncLog
-      .where("status")
-      .equals("acked")
+      .where('status')
+      .equals('acked')
       .and((it) => it.timestamp < cutoff)
       .toArray();
     await db.syncLog.bulkDelete(old.map((it) => it.id));
@@ -815,14 +846,14 @@ export async function getSyncSchemaHash() {
     tablas[t.name] = t.schema.primKey.src;
   }
   const keys = Object.keys(tablas).sort();
-  const schemaStr = keys.map((k) => `${k}:${tablas[k]}`).join("|");
+  const schemaStr = keys.map((k) => `${k}:${tablas[k]}`).join('|');
   let hash = 0;
   for (let i = 0; i < schemaStr.length; i++) {
     const char = schemaStr.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash;
   }
-  return Math.abs(hash).toString(16).padStart(8, "0");
+  return Math.abs(hash).toString(16).padStart(8, '0');
 }
 
 /* ================================================================
@@ -832,22 +863,22 @@ export async function getSyncSchemaHash() {
 /** Orden en el que deben sincronizarse las tablas para respetar dependencias foreign-key.
    Las tablas padre deben syncarse antes que las hijas. */
 export const SYNC_DEPENDENCY_ORDER = [
-  "tiendas",        // padre: ninguno
-  "socios",         // padre: tiendas
-  "productos",      // padre: ninguno
-  "productoVariantes", // padre: productos
-  "capital",        // padre: ninguno
-  "compras",        // padre: productos, variantes
-  "lotes",          // padre: compras, productos, variantes
-  "ajustes",        // padre: productos, variantes, lotes
-  "ventas",         // padre: productos, variantes, lotes
-  "retiros",        // padre: ninguno
-  "arqueos",        // padre: ninguno
-  "movCaja",        // padre: ninguno
-  "gastosOp",       // padre: tiendas
-  "contabilidad",   // padre: tiendas
-  "cierres",        // padre: ninguno
-  "config",         // NO syncable, pero incluido por completitud
+  'tiendas', // padre: ninguno
+  'socios', // padre: tiendas
+  'productos', // padre: ninguno
+  'productoVariantes', // padre: productos
+  'capital', // padre: ninguno
+  'compras', // padre: productos, variantes
+  'lotes', // padre: compras, productos, variantes
+  'ajustes', // padre: productos, variantes, lotes
+  'ventas', // padre: productos, variantes, lotes
+  'retiros', // padre: ninguno
+  'arqueos', // padre: ninguno
+  'movCaja', // padre: ninguno
+  'gastosOp', // padre: tiendas
+  'contabilidad', // padre: tiendas
+  'cierres', // padre: ninguno
+  'config', // NO syncable, pero incluido por completitud
 ];
 
 /** Devuelve las tablas syncables ordenadas por dependencias. */

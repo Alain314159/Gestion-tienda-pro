@@ -13,7 +13,10 @@ export async function fechaEnPeriodoCerrado(fechaIso) {
   const f = isoToLocal(fechaIso);
   return periodos.some((p) => isoToLocal(p.inicio) <= f && f <= isoToLocal(p.fin));
 }
-export async function verificarPeriodoCerrado(fechaIso, mensaje = 'No se puede modificar un periodo cerrado') {
+export async function verificarPeriodoCerrado(
+  fechaIso,
+  mensaje = 'No se puede modificar un periodo cerrado'
+) {
   if (await fechaEnPeriodoCerrado(fechaIso)) {
     throw new Error(mensaje);
   }

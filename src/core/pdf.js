@@ -27,20 +27,20 @@ export async function generarPDFCuadre(datos, nombreTienda = 'Tienda Pro') {
   doc.autoTable({
     startY: 50,
     head: [['Concepto', 'Monto']],
-    body: body.map(r => [r[0], `$${r[1].toFixed(2)}`]),
+    body: body.map((r) => [r[0], `$${r[1].toFixed(2)}`]),
     theme: 'grid',
     headStyles: { fillColor: [33, 150, 243], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [245, 250, 255] },
-    styles: { fontSize: 11, cellPadding: 3 }
+    styles: { fontSize: 11, cellPadding: 3 },
   });
 
   if (datos.socios?.length) {
     doc.autoTable({
       startY: doc.lastAutoTable.finalY + 10,
       head: [['Socio', '%', 'Monto']],
-      body: datos.socios.map(s => [s.nombre, `${s.porcentaje}%`, `$${s.monto.toFixed(2)}`]),
+      body: datos.socios.map((s) => [s.nombre, `${s.porcentaje}%`, `$${s.monto.toFixed(2)}`]),
       theme: 'grid',
-      headStyles: { fillColor: [124, 58, 237] }
+      headStyles: { fillColor: [124, 58, 237] },
     });
   }
 

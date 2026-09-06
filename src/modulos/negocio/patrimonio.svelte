@@ -48,18 +48,37 @@
   const saldo = $derived(saldoCaja({ cfg, capital, ventas, compras, retiros, movCaja }));
   const valInv = $derived(valorInventario(lotes));
   const capTotal = $derived(toNumber(add(n(cfg.capitalInicial || 0), sum(capital, 'monto'))));
-  const ventasArr = $derived(ventas.filter((v) => !v.anulada && isoToLocal(v.fecha) >= isoToLocal(periodoInicio)));
+  const ventasArr = $derived(
+    ventas.filter((v) => !v.anulada && isoToLocal(v.fecha) >= isoToLocal(periodoInicio))
+  );
   const ganBruta = $derived(toNumber(sum(ventasArr, 'ganancia')));
   const gastosOp = $derived(
     toNumber(
-      sumWhere(ajustes, (a) => a.cantidad < 0 && isoToLocal(a.fecha) >= isoToLocal(periodoInicio), 'costoPerdida')
+      sumWhere(
+        ajustes,
+        (a) => a.cantidad < 0 && isoToLocal(a.fecha) >= isoToLocal(periodoInicio),
+        'costoPerdida'
+      )
     )
   );
   const ganNeta = $derived(toNumber(sub(ganBruta, gastosOp)));
-  const ganAcum = $derived(toNumber(sub(add(sum(cierres, 'neta'), ganNeta), sum(retiros, 'monto'))));
+  const ganAcum = $derived(
+    toNumber(sub(add(sum(cierres, 'neta'), ganNeta), sum(retiros, 'monto')))
+  );
   const patrimonio = $derived(toNumber(add(capTotal, ganAcum)));
   const disp = $derived(
-    gananciaDisponible({ cfg, capital, ventas, compras, retiros, movCaja, ajustes, cierres, lotes, periodoInicio })
+    gananciaDisponible({
+      cfg,
+      capital,
+      ventas,
+      compras,
+      retiros,
+      movCaja,
+      ajustes,
+      cierres,
+      lotes,
+      periodoInicio,
+    })
   );
   const movs = $derived(
     (() => {
@@ -72,7 +91,9 @@
           monto: n(cfg.capitalInicial),
           nota: '',
         });
-      capital.forEach((c) => arr.push({ id: c.id, fecha: c.fecha, tipo: 'Aporte', monto: n(c.monto), nota: c.nota }));
+      capital.forEach((c) =>
+        arr.push({ id: c.id, fecha: c.fecha, tipo: 'Aporte', monto: n(c.monto), nota: c.nota })
+      );
       retiros.forEach((r) =>
         arr.push({ id: r.id, fecha: r.fecha, tipo: 'Retiro', monto: n(r.monto), nota: r.concepto })
       );
@@ -186,8 +207,12 @@
   <div
     class="bg-gradient-to-br from-purple to-[#5b21b6] text-white rounded-[var(--radius-lg)] p-5 text-center mb-3 shadow-[var(--color-shadow)] relative overflow-hidden"
   >
-    <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-    <div class="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2"></div>
+    <div
+      class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2"
+    ></div>
+    <div
+      class="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2"
+    ></div>
     <div class="relative">
       <div class="flex items-center justify-center gap-1.5 text-xs opacity-90 mb-1">
         <Icono nombre="diamond" size={14} color="#fff" /> Patrimonio Total
@@ -243,7 +268,9 @@
         >
           <span>= CAPITAL</span> <span class="text-primary">{fmt(capTotal)}</span>
         </div>
-        <div class="flex justify-between items-center gap-2 py-2.5 border-b border-border text-sm mt-2">
+        <div
+          class="flex justify-between items-center gap-2 py-2.5 border-b border-border text-sm mt-2"
+        >
           <div class="flex items-center gap-2">
             <div class="w-2 h-2 rounded-full bg-primary"></div>
             <span>Caja</span>
@@ -260,9 +287,12 @@
         <div
           class="flex justify-between items-center gap-2 py-2.5 border-t border-text text-sm font-bold bg-primary/5 rounded-lg px-3 mt-1"
         >
-          <span>= ACTIVOS</span> <span class="text-primary">{fmt(toNumber(add(saldo, valInv)))}</span>
+          <span>= ACTIVOS</span>
+          <span class="text-primary">{fmt(toNumber(add(saldo, valInv)))}</span>
         </div>
-        <div class="flex justify-between items-center gap-2 py-2.5 border-b border-border text-sm mt-2">
+        <div
+          class="flex justify-between items-center gap-2 py-2.5 border-b border-border text-sm mt-2"
+        >
           <div class="flex items-center gap-2">
             <div class="w-2 h-2 rounded-full bg-success"></div>
             <span>Ganancia bruta</span>
@@ -282,7 +312,8 @@
         <div
           class="flex justify-between items-center gap-2 py-3 bg-success/10 rounded-xl px-3 mt-2 text-sm font-extrabold"
         >
-          <span>DISPONIBLE PARA RETIRO</span> <span class="text-success text-base">{fmt(disp)}</span>
+          <span>DISPONIBLE PARA RETIRO</span>
+          <span class="text-success text-base">{fmt(disp)}</span>
         </div>
       </div>
     </div>
@@ -352,20 +383,28 @@
       {:else}
         {#each movs as m}
           <div
-            class="flex justify-between items-center gap-2 py-3 border-b border-border {esCerrado(m.fecha)
+            class="flex justify-between items-center gap-2 py-3 border-b border-border {esCerrado(
+              m.fecha
+            )
               ? 'opacity-60'
               : ''}"
           >
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
-                <div class="w-2 h-2 rounded-full {m.tipo === 'Retiro' ? 'bg-danger' : 'bg-success'}"></div>
+                <div
+                  class="w-2 h-2 rounded-full {m.tipo === 'Retiro' ? 'bg-danger' : 'bg-success'}"
+                ></div>
                 <span class="font-bold text-sm">{m.tipo}</span>
               </div>
-              <div class="text-xs text-muted ml-4">{fmtFH(m.fecha)} {m.nota ? '· ' + m.nota : ''}</div>
+              <div class="text-xs text-muted ml-4">
+                {fmtFH(m.fecha)}
+                {m.nota ? '· ' + m.nota : ''}
+              </div>
             </div>
             <div class="flex items-center gap-1 flex-shrink-0">
               {#if esCerrado(m.fecha)}
-                <span class="inline-block px-2 py-0.5 rounded-full text-[0.6rem] font-extrabold text-white bg-warning"
+                <span
+                  class="inline-block px-2 py-0.5 rounded-full text-[0.6rem] font-extrabold text-white bg-warning"
                   >CERRADO</span
                 >
               {:else}

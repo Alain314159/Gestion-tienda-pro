@@ -5,7 +5,7 @@
     icono: 'store',
     grupo: 'negocio',
     orden: -1,
-    tablas: { tiendas: '++id, nombre' }
+    tablas: { tiendas: '++id, nombre' },
   };
 </script>
 
@@ -25,11 +25,19 @@
     tiendaActiva = await leerConfig('tiendaActiva');
   }
 
-  onMount(() => { recargar(); });
+  onMount(() => {
+    recargar();
+  });
 
   async function crearTienda() {
     if (!form.nombre.trim()) return avisar('Nombre obligatorio', 'bad');
-    const t = { id: genId('t'), nombre: form.nombre.trim(), clave: form.clave.trim(), creada: nowLocal().iso, fechaLocal: nowLocal().local };
+    const t = {
+      id: genId('t'),
+      nombre: form.nombre.trim(),
+      clave: form.clave.trim(),
+      creada: nowLocal().iso,
+      fechaLocal: nowLocal().local,
+    };
     await guardar('tiendas', t);
     await activarTienda(t);
     form = { nombre: '', clave: '' };
@@ -58,21 +66,37 @@
       <Icono nombre="store" size={20} />
       Mis Tiendas
     </div>
-    <input class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text mb-3" placeholder="Nombre unico de la tienda" bind:value={form.nombre} />
-    <input type="password" class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text mb-3" placeholder="Clave de acceso (opcional)" bind:value={form.clave} />
-    <button class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm btn-gradient" onclick={crearTienda}>
+    <input
+      class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text mb-3"
+      placeholder="Nombre unico de la tienda"
+      bind:value={form.nombre}
+    />
+    <input
+      type="password"
+      class="w-full px-3.5 py-3 border border-border rounded-[var(--radius-md)] bg-card text-text mb-3"
+      placeholder="Clave de acceso (opcional)"
+      bind:value={form.clave}
+    />
+    <button
+      class="w-full py-3 rounded-[var(--radius-md)] bg-primary text-white font-extrabold text-sm btn-gradient"
+      onclick={crearTienda}
+    >
       Crear Tienda
     </button>
   </div>
 
   {#each tiendas as t}
-    <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3 flex justify-between items-center card-depth">
+    <div
+      class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3 flex justify-between items-center card-depth"
+    >
       <div>
         <div class="font-bold">{t.nombre}</div>
         <div class="text-xs text-muted">{t.clave ? 'Protegida' : 'Publica'}</div>
       </div>
       <button
-        class="px-4 py-2 rounded-lg text-sm font-bold {tiendaActiva === t.id ? 'bg-success text-white' : 'bg-background text-muted'}"
+        class="px-4 py-2 rounded-lg text-sm font-bold {tiendaActiva === t.id
+          ? 'bg-success text-white'
+          : 'bg-background text-muted'}"
         onclick={() => accederTienda(t)}
       >
         {tiendaActiva === t.id ? 'Activa' : 'Activar'}

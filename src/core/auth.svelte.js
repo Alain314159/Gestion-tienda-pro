@@ -27,13 +27,20 @@ async function hashPin(pin) {
   const salt = getDeviceSalt();
   const encoder = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
-    'raw', encoder.encode(pin), { name: 'PBKDF2' }, false, ['deriveBits']
+    'raw',
+    encoder.encode(pin),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits']
   );
   const derived = await crypto.subtle.deriveBits(
     { name: 'PBKDF2', salt: encoder.encode(salt), iterations: 100000, hash: 'SHA-256' },
-    keyMaterial, 256
+    keyMaterial,
+    256
   );
-  return Array.from(new Uint8Array(derived)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return Array.from(new Uint8Array(derived))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 /** Delay exponencial para bloqueo: 5s, 15s, 60s, 5min, 30min */
@@ -114,12 +121,16 @@ export async function guardarCfg(cfg) {
       delete toSave.pin;
     }
     await guardar('config', { key: 'cfg', value: clean(toSave) });
-  } catch (e) { console.error('guardarCfg', e); }
+  } catch (e) {
+    console.error('guardarCfg', e);
+  }
 }
 
 /** Carga configuracion desde DB */
 export async function cargarCfg() {
   try {
-    return await leerConfig('cfg') || {};
-  } catch (e) { return {}; }
+    return (await leerConfig('cfg')) || {};
+  } catch (e) {
+    return {};
+  }
 }

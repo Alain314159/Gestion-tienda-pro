@@ -470,7 +470,11 @@ export async function exportSyncPackage(targetDeviceId) {
   const jsonStr = JSON.stringify(packageData);
   const compressed = pako.deflate(jsonStr);
   const blob = new Blob([compressed], { type: 'application/octet-stream' });
-  return { blob, filename: `sync-${getDeviceId()}-${Date.now()}.tiendasync`, stats: packageData.data };
+  return {
+    blob,
+    filename: `sync-${getDeviceId()}-${Date.now()}.tiendasync`,
+    stats: packageData.data,
+  };
 }
 
 /** Importa un paquete de sync recibido de otro dispositivo.
@@ -483,7 +487,7 @@ export async function importSyncPackage(fileData) {
   } else if (fileData instanceof Uint8Array) {
     compressed = fileData;
   } else if (typeof fileData === 'string') {
-    compressed = Uint8Array.from(atob(fileData), c => c.charCodeAt(0));
+    compressed = Uint8Array.from(atob(fileData), (c) => c.charCodeAt(0));
   } else {
     throw new Error('Formato de archivo no soportado');
   }
@@ -493,10 +497,18 @@ export async function importSyncPackage(fileData) {
 
   const localHash = await getSyncSchemaHash();
   if (packageData.meta.schemaHash !== localHash) {
-    throw new Error(`Incompatibilidad de schema: local=${localHash}, remoto=${packageData.meta.schemaHash}`);
+    throw new Error(
+      `Incompatibilidad de schema: local=${localHash}, remoto=${packageData.meta.schemaHash}`
+    );
   }
 
-  const stats = { tablas: {}, totalInserted: 0, totalUpdated: 0, totalSkipped: 0, totalConflicts: 0 };
+  const stats = {
+    tablas: {},
+    totalInserted: 0,
+    totalUpdated: 0,
+    totalSkipped: 0,
+    totalConflicts: 0,
+  };
   const db = getDB();
 
   for (const tabla of getSyncableTablesOrdered()) {
@@ -518,7 +530,12 @@ export async function importSyncPackage(fileData) {
     stats.totalConflicts += result.conflicts;
 
     const lastChange = changes[changes.length - 1];
-    await setSyncState(packageData.meta.sourceDevice, tabla, lastChange.updatedAt, lastChange.version || 0);
+    await setSyncState(
+      packageData.meta.sourceDevice,
+      tabla,
+      lastChange.updatedAt,
+      lastChange.version || 0
+    );
   }
 
   await recalcularStockLotes();

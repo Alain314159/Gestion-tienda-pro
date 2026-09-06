@@ -43,8 +43,12 @@ export const bus = {
     validarEvento(event);
     const cbs = listeners.get(event);
     if (!cbs) return;
-    cbs.forEach(cb => {
-      try { cb(data); } catch (e) { console.error(`Bus error en "${event}":`, e); }
+    cbs.forEach((cb) => {
+      try {
+        cb(data);
+      } catch (e) {
+        console.error(`Bus error en "${event}":`, e);
+      }
     });
   },
 
@@ -73,5 +77,5 @@ export const bus = {
   /** Limpia todos los listeners (util en tests). */
   clear() {
     listeners.clear();
-  }
+  },
 };

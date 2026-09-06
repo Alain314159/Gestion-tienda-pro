@@ -9,7 +9,11 @@ function getArqueoKey(tiendaId) {
 export async function checkNotificacionesGlobales() {
   try {
     const [productos, lotes, ventas, arqueos, cfg] = await Promise.all([
-      listar('productos'), listar('lotes'), listar('ventas'), listar('arqueos'), leerConfig('cfg')
+      listar('productos'),
+      listar('lotes'),
+      listar('ventas'),
+      listar('arqueos'),
+      leerConfig('cfg'),
     ]);
 
     const ahora = new Date();
@@ -17,7 +21,7 @@ export async function checkNotificacionesGlobales() {
     const tiendaId = cfg?.tiendaActiva || 'default';
     const arqueoKey = getArqueoKey(tiendaId);
 
-    const bajo = productos.filter(p => {
+    const bajo = productos.filter((p) => {
       if (p.archivado) return false;
       const s = stockProducto(lotes, p.id);
       return s > 0 && s <= (p.stockMinimo || 5);
@@ -37,5 +41,7 @@ export async function checkNotificacionesGlobales() {
     if (dias > 30) {
       avisar(`Periodo abierto hace ${Math.floor(dias)} dias. Considera cerrar.`, 'warn');
     }
-  } catch (e) { console.error('checkNotificacionesGlobales', e); }
+  } catch (e) {
+    console.error('checkNotificacionesGlobales', e);
+  }
 }

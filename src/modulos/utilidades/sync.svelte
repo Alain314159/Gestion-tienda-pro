@@ -118,7 +118,10 @@
   }
 
   async function eliminarDispositivo(deviceIdToRemove) {
-    const ok = await confirmar('Eliminar dispositivo', 'Quitar este dispositivo de la lista de emparejados?');
+    const ok = await confirmar(
+      'Eliminar dispositivo',
+      'Quitar este dispositivo de la lista de emparejados?'
+    );
     if (!ok) return;
     await removePairedDevice(deviceIdToRemove);
     avisar('Dispositivo eliminado');
@@ -154,7 +157,12 @@
   function formatearFecha(iso) {
     if (!iso) return 'Nunca';
     const d = new Date(iso);
-    return d.toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleString('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   }
 </script>
 
@@ -176,7 +184,10 @@
     <div class="bg-primary/5 border border-primary/20 rounded-[var(--radius-lg)] p-4 mb-4">
       <div class="flex items-center gap-2 text-sm text-primary font-bold">
         <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-        {sync.pendingChanges} cambio{sync.pendingChanges > 1 ? 's' : ''} pendiente{sync.pendingChanges > 1 ? 's' : ''} de sincronizar
+        {sync.pendingChanges} cambio{sync.pendingChanges > 1 ? 's' : ''} pendiente{sync.pendingChanges >
+        1
+          ? 's'
+          : ''} de sincronizar
       </div>
     </div>
   {/if}
@@ -187,12 +198,22 @@
       <div class="flex items-center gap-3 mb-3">
         <div class="relative w-10 h-10 rounded-full flex items-center justify-center bg-primary/10">
           <Icono
-            nombre={sync.state === SyncConnectionState.CONNECTED ? 'check' : sync.state === SyncConnectionState.ERROR ? 'alert' : 'sync'}
+            nombre={sync.state === SyncConnectionState.CONNECTED
+              ? 'check'
+              : sync.state === SyncConnectionState.ERROR
+                ? 'alert'
+                : 'sync'}
             size={20}
-            color={sync.state === SyncConnectionState.CONNECTED ? '#4CAF50' : sync.state === SyncConnectionState.ERROR ? '#dc2626' : '#2196F3'}
+            color={sync.state === SyncConnectionState.CONNECTED
+              ? '#4CAF50'
+              : sync.state === SyncConnectionState.ERROR
+                ? '#dc2626'
+                : '#2196F3'}
           />
           {#if sync.state === SyncConnectionState.SYNCING || sync.state === SyncConnectionState.CONNECTING}
-            <div class="absolute inset-0 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+            <div
+              class="absolute inset-0 rounded-full border-2 border-primary border-t-transparent animate-spin"
+            ></div>
           {/if}
         </div>
         <div class="flex-1">
@@ -210,27 +231,44 @@
       {#if sync.state === SyncConnectionState.SYNCING && sync.progress.tabla}
         <div class="mb-2">
           <div class="flex justify-between text-xs text-muted mb-1">
-            <span>{sync.progress.tabla} — {sync.progress.phase === 'receiving' ? 'Recibiendo' : sync.progress.phase === 'sending' ? 'Enviando' : 'Listo'}</span>
+            <span
+              >{sync.progress.tabla} — {sync.progress.phase === 'receiving'
+                ? 'Recibiendo'
+                : sync.progress.phase === 'sending'
+                  ? 'Enviando'
+                  : 'Listo'}</span
+            >
             <span>{sync.progress.percent}%</span>
           </div>
           <div class="w-full h-2 bg-background rounded-full overflow-hidden">
-            <div class="h-full bg-primary rounded-full transition-all duration-300" style="width: {sync.progress.percent}%"></div>
+            <div
+              class="h-full bg-primary rounded-full transition-all duration-300"
+              style="width: {sync.progress.percent}%"
+            ></div>
           </div>
         </div>
       {/if}
 
       {#if sync.sasCode}
         <div class="mt-3 p-3 rounded-[var(--radius-md)] bg-background text-center">
-          <div class="text-xs text-muted mb-1">Codigo de verificacion (debe coincidir en ambos dispositivos)</div>
+          <div class="text-xs text-muted mb-1">
+            Codigo de verificacion (debe coincidir en ambos dispositivos)
+          </div>
           <div class="text-3xl font-black tracking-widest text-primary">{sync.sasCode}</div>
         </div>
       {/if}
 
       {#if sync.qrDataUrl && (sync.state === SyncConnectionState.DISPLAYING_QR || sync.state === SyncConnectionState.AWAITING_SCAN)}
         <div class="mt-3 flex flex-col items-center">
-          <img src={sync.qrDataUrl} alt="QR de conexion" class="w-64 h-64 rounded-[var(--radius-md)] border border-border" />
+          <img
+            src={sync.qrDataUrl}
+            alt="QR de conexion"
+            class="w-64 h-64 rounded-[var(--radius-md)] border border-border"
+          />
           <div class="text-xs text-muted mt-2 text-center">
-            {sync.state === SyncConnectionState.DISPLAYING_QR ? 'Escanea este QR con el otro dispositivo' : 'Escanea este QR con el otro dispositivo para completar'}
+            {sync.state === SyncConnectionState.DISPLAYING_QR
+              ? 'Escanea este QR con el otro dispositivo'
+              : 'Escanea este QR con el otro dispositivo para completar'}
           </div>
         </div>
       {/if}
@@ -250,7 +288,10 @@
   {#if modo === 'escanearQR' && sync.state !== SyncConnectionState.CONNECTED}
     <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-4">
       <div class="text-sm font-bold text-text mb-3">Escanear QR del otro dispositivo</div>
-      <div id={scannerElementId} class="w-full aspect-square max-w-sm mx-auto rounded-[var(--radius-md)] overflow-hidden border border-border bg-black"></div>
+      <div
+        id={scannerElementId}
+        class="w-full aspect-square max-w-sm mx-auto rounded-[var(--radius-md)] overflow-hidden border border-border bg-black"
+      ></div>
       <button
         class="w-full mt-3 py-2 rounded-[var(--radius-md)] border border-border bg-transparent text-text font-extrabold text-sm active:scale-[0.97] transition-transform"
         onclick={cancelar}
@@ -281,7 +322,7 @@
         </button>
       </div>
       <div class="text-xs text-muted text-center leading-relaxed">
-        Ambos dispositivos deben estar en la misma red WiFi.<br/>
+        Ambos dispositivos deben estar en la misma red WiFi.<br />
         Uno muestra QR, el otro escanea. Luego intercambian QRs de respuesta.
       </div>
     </div>

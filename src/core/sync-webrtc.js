@@ -74,8 +74,7 @@ function createSyncStore() {
     set,
     update,
     setState: (state) => update((s) => ({ ...s, state, error: null })),
-    setError: (error) =>
-      update((s) => ({ ...s, state: SyncConnectionState.ERROR, error })),
+    setError: (error) => update((s) => ({ ...s, state: SyncConnectionState.ERROR, error })),
     setQR: (qrDataUrl) => update((s) => ({ ...s, qrDataUrl })),
     setSAS: (sasCode) => update((s) => ({ ...s, sasCode })),
     setRemoteDevice: (remoteDevice) => update((s) => ({ ...s, remoteDevice })),
@@ -326,16 +325,22 @@ async function handleDataChannelOpen(channel) {
     syncStore.setState(SyncConnectionState.SYNCING);
 
     const tablasOrdenadas = getSyncableTablesOrdered();
-    const stats = await performFullSync(channel, remoteInfo.deviceId, (tabla, phase, phaseStats) => {
-      const idx = tablasOrdenadas.indexOf(tabla);
-      const percent = Math.round(((idx + (phase === 'done' ? 1 : 0.5)) / tablasOrdenadas.length) * 100);
-      syncStore.setProgress({
-        tabla,
-        phase,
-        stats: phaseStats,
-        percent: Math.min(percent, 100),
-      });
-    });
+    const stats = await performFullSync(
+      channel,
+      remoteInfo.deviceId,
+      (tabla, phase, phaseStats) => {
+        const idx = tablasOrdenadas.indexOf(tabla);
+        const percent = Math.round(
+          ((idx + (phase === 'done' ? 1 : 0.5)) / tablasOrdenadas.length) * 100
+        );
+        syncStore.setProgress({
+          tabla,
+          phase,
+          stats: phaseStats,
+          percent: Math.min(percent, 100),
+        });
+      }
+    );
 
     const now = new Date().toISOString();
     await addPairedDevice(remoteInfo.deviceId, remoteInfo.deviceName, now);
@@ -370,13 +375,25 @@ async function handleDataChannelOpen(channel) {
 /** Cierra la conexion activa y limpia todos los recursos */
 export async function cerrarSyncConnection() {
   if (html5QrCode) {
-    try { await html5QrCode.stop(); } catch { /* ignore */ }
-    try { await html5QrCode.clear(); } catch { /* ignore */ }
+    try {
+      await html5QrCode.stop();
+    } catch {
+      /* ignore */
+    }
+    try {
+      await html5QrCode.clear();
+    } catch {
+      /* ignore */
+    }
     html5QrCode = null;
   }
 
   if (qwbpConnection) {
-    try { qwbpConnection.close(); } catch { /* ignore */ }
+    try {
+      qwbpConnection.close();
+    } catch {
+      /* ignore */
+    }
     qwbpConnection = null;
   }
 
@@ -425,8 +442,16 @@ export async function startQRScanner(elementId, onScan, onError) {
 /** Detiene el escaner de QR y libera la camara */
 export async function stopQRScanner() {
   if (html5QrCode) {
-    try { await html5QrCode.stop(); } catch { /* ignore */ }
-    try { await html5QrCode.clear(); } catch { /* ignore */ }
+    try {
+      await html5QrCode.stop();
+    } catch {
+      /* ignore */
+    }
+    try {
+      await html5QrCode.clear();
+    } catch {
+      /* ignore */
+    }
     html5QrCode = null;
   }
 }

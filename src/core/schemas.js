@@ -11,10 +11,11 @@ import { n } from './util.js';
  *  ================================================================ */
 
 // Fecha ISO valida
-const fechaIsoSchema = z.string().regex(
-  /^20[0-9]{2}-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]/,
-  { message: 'Fecha invalida' }
-);
+const fechaIsoSchema = z
+  .string()
+  .regex(/^20[0-9]{2}-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]/, {
+    message: 'Fecha invalida',
+  });
 
 // Monto positivo
 const montoPositivoSchema = z.number().min(0.01, { message: 'El monto debe ser mayor a 0' });
@@ -23,7 +24,8 @@ const montoPositivoSchema = z.number().min(0.01, { message: 'El monto debe ser m
 const cantidadPositivaSchema = z.number().min(0.01, { message: 'La cantidad debe ser mayor a 0' });
 
 // Nombre no vacio
-const nombreSchema = z.string()
+const nombreSchema = z
+  .string()
   .min(1, { message: 'El nombre es obligatorio' })
   .max(200, { message: 'Maximo 200 caracteres' });
 
@@ -66,33 +68,37 @@ export const ventaSchema = z.object({
   fecha: fechaIsoSchema,
 });
 
-export const compraExistenteSchema = z.object({
-  productoId: idSchema,
-  varianteId: idSchema.optional(),
-  nombre: nombreSchema,
-  unidad: z.string().optional(),
-  cantidad: cantidadPositivaSchema,
-  costo: montoPositivoSchema,
-  total: montoPositivoSchema,
-  precioVenta: z.number().min(0).optional(),
-}).refine(
-  (data) => Math.abs(data.cantidad * data.costo - data.total) < 0.02,
-  { message: 'El total no coincide con cantidad x costo', path: ['total'] }
-);
+export const compraExistenteSchema = z
+  .object({
+    productoId: idSchema,
+    varianteId: idSchema.optional(),
+    nombre: nombreSchema,
+    unidad: z.string().optional(),
+    cantidad: cantidadPositivaSchema,
+    costo: montoPositivoSchema,
+    total: montoPositivoSchema,
+    precioVenta: z.number().min(0).optional(),
+  })
+  .refine((data) => Math.abs(data.cantidad * data.costo - data.total) < 0.02, {
+    message: 'El total no coincide con cantidad x costo',
+    path: ['total'],
+  });
 
-export const compraNuevaSchema = z.object({
-  nombre: nombreSchema,
-  codigo: z.string().max(50).optional(),
-  unidad: z.string().min(1, { message: 'Unidad requerida' }),
-  cantidad: cantidadPositivaSchema,
-  costo: montoPositivoSchema,
-  total: montoPositivoSchema,
-  precio: montoPositivoSchema,
-  stockMin: z.number().min(0).default(0),
-}).refine(
-  (data) => Math.abs(data.cantidad * data.costo - data.total) < 0.02,
-  { message: 'El total no coincide con cantidad x costo', path: ['total'] }
-);
+export const compraNuevaSchema = z
+  .object({
+    nombre: nombreSchema,
+    codigo: z.string().max(50).optional(),
+    unidad: z.string().min(1, { message: 'Unidad requerida' }),
+    cantidad: cantidadPositivaSchema,
+    costo: montoPositivoSchema,
+    total: montoPositivoSchema,
+    precio: montoPositivoSchema,
+    stockMin: z.number().min(0).default(0),
+  })
+  .refine((data) => Math.abs(data.cantidad * data.costo - data.total) < 0.02, {
+    message: 'El total no coincide con cantidad x costo',
+    path: ['total'],
+  });
 
 export const ajusteSchema = z.object({
   productoId: idSchema,
@@ -197,10 +203,14 @@ export function validarSocios(socios) {
 
 /** Valida que un webhook URL sea segura */
 export function validarWebhookUrlZod(url) {
-  const schema = z.string().url().refine((u) => u.startsWith('https://'), {
-    message: 'La URL debe usar HTTPS',
-  }).refine((u) => !/localhost|127.0.0.1|::1/.test(u), {
-    message: 'No se permiten URLs locales',
-  });
+  const schema = z
+    .string()
+    .url()
+    .refine((u) => u.startsWith('https://'), {
+      message: 'La URL debe usar HTTPS',
+    })
+    .refine((u) => !/localhost|127.0.0.1|::1/.test(u), {
+      message: 'No se permiten URLs locales',
+    });
   return schema.safeParse(url);
 }

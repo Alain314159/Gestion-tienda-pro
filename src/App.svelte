@@ -1,6 +1,12 @@
 <script>
   import { onMount } from 'svelte';
-  import { ui, alternarTema, cerrarConfirm, cerrarPrompt, hayCambiosSinGuardar } from './core/state.svelte.js';
+  import {
+    ui,
+    alternarTema,
+    cerrarConfirm,
+    cerrarPrompt,
+    hayCambiosSinGuardar,
+  } from './core/state.svelte.js';
   import { cargarModulos, navMods, modulos, cargarModuloLazy } from './core/registro.js';
   import { checkNotificacionesGlobales } from './core/notificaciones.js';
   import Icono from './core/Icono.svelte';
@@ -87,7 +93,9 @@
 </script>
 
 {#if ui.offline}
-  <div class="fixed top-0 left-0 right-0 z-[120] bg-danger text-white text-center text-xs font-bold py-1.5 no-print">
+  <div
+    class="fixed top-0 left-0 right-0 z-[120] bg-danger text-white text-center text-xs font-bold py-1.5 no-print"
+  >
     Sin conexion — los datos se guardan localmente
   </div>
 {/if}
@@ -116,7 +124,7 @@
     <div class="flex gap-1.5 items-center">
       <button
         class="flex items-center gap-1.5 bg-white/10 hover:bg-white/25 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors"
-        onclick={() => irA(modulos.find(m => m.id === 'tiendas'))}
+        onclick={() => irA(modulos.find((m) => m.id === 'tiendas'))}
         aria-label="Tiendas"
       >
         <Icono nombre="store" size={16} color="#fff" />
@@ -160,10 +168,17 @@
         {#if esActivo(m.id)}
           <span class="absolute inset-x-2 bottom-0 h-0.5 bg-primary rounded-full"></span>
         {/if}
-        <span class="relative flex items-center justify-center w-9 h-9 rounded-xl transition-colors {esActivo(m.id) ? 'bg-primary/10' : ''}">
+        <span
+          class="relative flex items-center justify-center w-9 h-9 rounded-xl transition-colors {esActivo(
+            m.id
+          )
+            ? 'bg-primary/10'
+            : ''}"
+        >
           <Icono nombre={m.icono} size={20} />
         </span>
-        <span class="block leading-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-full mt-0.5"
+        <span
+          class="block leading-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-full mt-0.5"
           >{m.nombre}</span
         >
       </button>

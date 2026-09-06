@@ -32,12 +32,18 @@
   const ventasTotal = $derived(toNumber(sum(vDia, 'total')));
   const costoVendido = $derived(toNumber(sum(vDia, (v) => toNumber(sum(v.items, 'costo')))));
   const gananciaBruta = $derived(toNumber(sub(ventasTotal, costoVendido)));
-  const gastosDia = $derived(toNumber(sumWhere(gastosOp, (g) => g.fecha.slice(0, 10) === fechaSel, 'monto')));
+  const gastosDia = $derived(
+    toNumber(sumWhere(gastosOp, (g) => g.fecha.slice(0, 10) === fechaSel, 'monto'))
+  );
   const mermasDia = $derived(
-    toNumber(sumWhere(ajustes, (a) => a.cantidad < 0 && a.fecha.slice(0, 10) === fechaSel, 'costoPerdida'))
+    toNumber(
+      sumWhere(ajustes, (a) => a.cantidad < 0 && a.fecha.slice(0, 10) === fechaSel, 'costoPerdida')
+    )
   );
   const gananciaNeta = $derived(toNumber(sub(sub(gananciaBruta, gastosDia), mermasDia)));
-  const invFisico = $derived(lotes.reduce((s, l) => s + Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida)), 0));
+  const invFisico = $derived(
+    lotes.reduce((s, l) => s + Math.max(0, n(l.cantidadInicial) - n(l.cantidadVendida)), 0)
+  );
   const valInv = $derived(valorInventario(lotes));
   const distribucion = $derived(
     (() => {
@@ -45,12 +51,20 @@
       if (totalS === 0) return [];
       // Normalizar porcentajes si no suman exactamente 100
       const factor = totalS > 0 ? 100 / totalS : 0;
-      const sociosNormalizados = socios.map((s) => ({ ...s, porcentajeReal: n(s.porcentaje) * factor }));
+      const sociosNormalizados = socios.map((s) => ({
+        ...s,
+        porcentajeReal: n(s.porcentaje) * factor,
+      }));
       // Manejar pérdidas (gananciaNeta negativa): mostrar pérdida proporcional
-      return sociosNormalizados.map((s) => ({ ...s, monto: toNumber(mul(gananciaNeta, div(s.porcentajeReal, 100))) }));
+      return sociosNormalizados.map((s) => ({
+        ...s,
+        monto: toNumber(mul(gananciaNeta, div(s.porcentajeReal, 100))),
+      }));
     })()
   );
-  const maxDist = $derived(distribucion.length > 0 ? Math.max(...distribucion.map((s) => s.monto)) : 1);
+  const maxDist = $derived(
+    distribucion.length > 0 ? Math.max(...distribucion.map((s) => s.monto)) : 1
+  );
   async function recargar() {
     [productos, lotes, ventas, compras, ajustes, socios, gastosOp] = await Promise.all([
       listar('productos'),
@@ -85,7 +99,10 @@
     const pctVal = n(pct);
     const totalActual = socios.reduce((s, x) => s + n(x.porcentaje), 0);
     if (totalActual + pctVal > 100) {
-      avisar('La suma de porcentajes excede 100%. Ajusta los porcentajes existentes primero.', 'bad');
+      avisar(
+        'La suma de porcentajes excede 100%. Ajusta los porcentajes existentes primero.',
+        'bad'
+      );
       return;
     }
     await guardar('socios', { id: genId('s'), nombre, porcentaje: pctVal });
@@ -105,7 +122,12 @@
     if (!concepto) return;
     const monto = await preguntar('Monto', 'Cuanto fue?');
     if (!monto || n(monto) <= 0) return;
-    await guardar('gastosOp', { id: genId('g'), fecha: fechaSel + 'T12:00:00.000Z', concepto, monto: n(monto) });
+    await guardar('gastosOp', {
+      id: genId('g'),
+      fecha: fechaSel + 'T12:00:00.000Z',
+      concepto,
+      monto: n(monto),
+    });
     await recargar();
     bus.emit('recargar');
     avisar('Gasto registrado');
@@ -198,7 +220,11 @@
   </div>
   <!-- Grafico -->
   <div class="bg-card rounded-[var(--radius-lg)] p-4 shadow-[var(--color-shadow)] mb-3">
-    <div class="relative h-[160px] mb-3" role="img" aria-label="Grafico comparando ventas, costo y ganancia del dia">
+    <div
+      class="relative h-[160px] mb-3"
+      role="img"
+      aria-label="Grafico comparando ventas, costo y ganancia del dia"
+    >
       <canvas bind:this={chartCanvas} class="w-full h-full"></canvas>
     </div>
     <button
@@ -218,7 +244,8 @@
     {:else}
       {#each gastosOp.filter((g) => g.fecha.slice(0, 10) === fechaSel) as g}
         <div class="flex justify-between items-center py-2.5 border-b border-border text-sm">
-          <span class="font-medium">{g.concepto}</span> <span class="text-danger font-bold">{fmt(g.monto)}</span>
+          <span class="font-medium">{g.concepto}</span>
+          <span class="text-danger font-bold">{fmt(g.monto)}</span>
         </div>
       {/each}
     {/if}
@@ -247,9 +274,14 @@
             </div>
           </div>
           <div class="w-full h-2 bg-background rounded-full overflow-hidden">
-            <div class="h-full bg-purple rounded-full transition-all" style="width: {(s.monto / maxDist) * 100}%"></div>
+            <div
+              class="h-full bg-purple rounded-full transition-all"
+              style="width: {(s.monto / maxDist) * 100}%"
+            ></div>
           </div>
-          <button class="text-xs text-danger underline mt-1" onclick={() => eliminarSocio(s)}>Quitar</button>
+          <button class="text-xs text-danger underline mt-1" onclick={() => eliminarSocio(s)}
+            >Quitar</button
+          >
         </div>
       {/each}
     {/if}

@@ -14,7 +14,16 @@
   import { listar } from '../../core/db.js';
   import { bus } from '../../core/bus.js';
   import { avisar } from '../../core/state.svelte.js';
-  import { n, m, fmt, fmtCant, fmtFH, stockVariante, valorLotesVariante, lotesDeVariante } from '../../core/util.js';
+  import {
+    n,
+    m,
+    fmt,
+    fmtCant,
+    fmtFH,
+    stockVariante,
+    valorLotesVariante,
+    lotesDeVariante,
+  } from '../../core/util.js';
   import { toNumber, sum, mul } from '../../core/Money.js';
   import { ConversionService } from '../../services/ConversionService.js';
   import { InventarioService } from '../../services/InventarioService.js';
@@ -27,7 +36,13 @@
   const expandido = $state({});
   let procesando = $state(false);
   let periodosCerrados = $state([]);
-  let form = $state({ productoId: '', varianteId: '', cantidad: '', motivo: '', costoSobrante: '' });
+  let form = $state({
+    productoId: '',
+    varianteId: '',
+    cantidad: '',
+    motivo: '',
+    costoSobrante: '',
+  });
   let busqProd = $state('');
   let focusBusqProd = $state(false);
   let busqProdDebounced = $state('');
@@ -59,7 +74,9 @@
       )
     )
   );
-  const lotesActivos = $derived(lotes.filter((l) => n(l.cantidadInicial) - n(l.cantidadVendida) > 0).length);
+  const lotesActivos = $derived(
+    lotes.filter((l) => n(l.cantidadInicial) - n(l.cantidadVendida) > 0).length
+  );
   const ajustesRecientes = $derived(
     ajustes
       .slice()
@@ -96,7 +113,10 @@
     const v = variantes.find((x) => x.id === form.varianteId);
     const prod = productos.find((p) => p.id === v.productoId);
     if (cant < 0 && Math.abs(cant) > stockVariante(lotes, form.varianteId))
-      return avisar('Solo hay ' + stockVariante(lotes, form.varianteId) + ' ' + (v.unidad || ''), 'bad');
+      return avisar(
+        'Solo hay ' + stockVariante(lotes, form.varianteId) + ' ' + (v.unidad || ''),
+        'bad'
+      );
     procesando = true;
     try {
       if (cant < 0) {
@@ -141,14 +161,20 @@
   <div
     class="bg-gradient-to-br from-success to-[#15803d] text-white rounded-[var(--radius-lg)] p-5 text-center mb-3 shadow-[var(--color-shadow)] relative overflow-hidden"
   >
-    <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-    <div class="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2"></div>
+    <div
+      class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2"
+    ></div>
+    <div
+      class="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2"
+    ></div>
     <div class="relative">
       <div class="flex items-center justify-center gap-1.5 text-xs opacity-90 mb-1">
         <Icono nombre="package" size={14} color="#fff" /> Valor del Inventario
       </div>
       <div class="text-3xl font-extrabold my-0.5">{fmt(valInv)}</div>
-      <div class="text-xs opacity-85">{fmtCant(unidadesTotal, true)} unidades · {lotesActivos} lotes</div>
+      <div class="text-xs opacity-85">
+        {fmtCant(unidadesTotal, true)} unidades · {lotesActivos} lotes
+      </div>
     </div>
   </div>
   <!-- Ajuste -->
@@ -157,7 +183,11 @@
       <Icono nombre="alert" size={18} /> Merma / Ajuste
     </div>
     <div class="relative mb-2">
-      <Icono nombre="search" size={16} class="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+      <Icono
+        nombre="search"
+        size={16}
+        class="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+      />
       <input
         class="w-full pl-9 pr-3.5 py-2.5 border border-border rounded-[var(--radius-md)] bg-card text-text text-sm outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(33,150,243,0.15)]"
         type="text"
@@ -215,7 +245,8 @@
             >
               <span class="font-medium"
                 >{v.nombre}
-                {#if v.esCaja}<span class="text-primary text-xs">(Caja x{v.unidadesPorCaja})</span>{/if}</span
+                {#if v.esCaja}<span class="text-primary text-xs">(Caja x{v.unidadesPorCaja})</span
+                  >{/if}</span
               > <span class="text-xs text-muted">Stock: {fmtCant(s)} {v.unidad || ''}</span>
             </button>
           {/each}
@@ -237,8 +268,10 @@
           bind:value={form.motivo}
         >
           <option value="">Motivo...</option> <option value="merma">Merma / Dano</option>
-          <option value="vencimiento">Vencimiento</option> <option value="robo">Robo / Perdida</option>
-          <option value="error">Error de registro</option> <option value="sobrante">Sobrante en conteo</option>
+          <option value="vencimiento">Vencimiento</option>
+          <option value="robo">Robo / Perdida</option>
+          <option value="error">Error de registro</option>
+          <option value="sobrante">Sobrante en conteo</option>
         </select>
       </div>
       {#if n(form.cantidad) > 0}
@@ -292,7 +325,9 @@
                   {@const val = valorLotesVariante(lotes, v.id)}
                   {@const lotesV = lotesDeVariante(lotes, v.id)}
                   <div class="mb-2">
-                    <div class="flex justify-between items-center py-2 px-3 bg-card rounded-lg border border-border/20">
+                    <div
+                      class="flex justify-between items-center py-2 px-3 bg-card rounded-lg border border-border/20"
+                    >
                       <div>
                         <span class="font-bold text-sm">{v.nombre}</span>
                         {#if v.esCaja}
@@ -311,12 +346,17 @@
                       <div class="pl-4 mt-1 space-y-1">
                         {#each lotesV as l}
                           {@const restante = n(l.cantidadInicial) - n(l.cantidadVendida)}
-                          {@const pct = n(l.cantidadInicial) > 0 ? (restante / n(l.cantidadInicial)) * 100 : 0}
-                          <div class="flex justify-between items-center text-xs py-2 px-2 bg-card/50 rounded">
+                          {@const pct =
+                            n(l.cantidadInicial) > 0 ? (restante / n(l.cantidadInicial)) * 100 : 0}
+                          <div
+                            class="flex justify-between items-center text-xs py-2 px-2 bg-card/50 rounded"
+                          >
                             <div class="flex-1 min-w-0">
                               <div class="flex items-center gap-2">
                                 <span>{fmtFH(l.fecha)}</span>
-                                <div class="w-16 h-1.5 bg-border rounded-full overflow-hidden flex-shrink-0">
+                                <div
+                                  class="w-16 h-1.5 bg-border rounded-full overflow-hidden flex-shrink-0"
+                                >
                                   <div
                                     class="h-full rounded-full {pct > 50
                                       ? 'bg-success'
@@ -329,7 +369,10 @@
                               </div>
                             </div>
                             <div class="text-right flex-shrink-0">
-                              <span>{fmtCant(restante)}/{fmtCant(l.cantidadInicial)} {v.unidad || ''}</span>
+                              <span
+                                >{fmtCant(restante)}/{fmtCant(l.cantidadInicial)}
+                                {v.unidad || ''}</span
+                              >
                               <span class="text-muted ml-1">@{fmt(l.costo)}</span>
                             </div>
                           </div>
@@ -355,7 +398,9 @@
     {:else}
       {#each ajustesRecientes as a}
         <div
-          class="flex justify-between items-center gap-2 py-3 border-b border-border {esCerrado(a.fecha)
+          class="flex justify-between items-center gap-2 py-3 border-b border-border {esCerrado(
+            a.fecha
+          )
             ? 'opacity-60'
             : ''}"
         >
@@ -368,7 +413,8 @@
           </div>
           <div class="text-right flex-shrink-0">
             {#if esCerrado(a.fecha)}
-              <span class="inline-block px-2 py-0.5 rounded-full text-[0.6rem] font-extrabold text-white bg-warning"
+              <span
+                class="inline-block px-2 py-0.5 rounded-full text-[0.6rem] font-extrabold text-white bg-warning"
                 >CERRADO</span
               >
             {:else}
