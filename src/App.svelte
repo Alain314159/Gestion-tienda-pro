@@ -107,13 +107,21 @@
   >
 
   <header
-    class="sticky top-0 z-50 mx-2.5 bg-primary/95 text-white rounded-b-[var(--radius-lg)] px-4 py-3.5 flex justify-between items-center shadow-[0_4px_14px_rgba(33,150,243,0.35)] no-print backdrop-blur-md"
+    class="sticky top-0 z-50 mx-2.5 bg-primary/95 text-white rounded-b-[var(--radius-lg)] px-4 py-3 flex justify-between items-center shadow-[0_4px_14px_rgba(33,150,243,0.35)] no-print backdrop-blur-md"
   >
     <h1 class="text-lg font-extrabold flex items-center gap-1.5">
       <Icono nombre="store" size={20} color="#fff" />
       Tienda Pro
     </h1>
-    <div class="flex gap-1.5">
+    <div class="flex gap-1.5 items-center">
+      <button
+        class="flex items-center gap-1.5 bg-white/10 hover:bg-white/25 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors"
+        onclick={() => irA(modulos.find(m => m.id === 'tiendas'))}
+        aria-label="Tiendas"
+      >
+        <Icono nombre="store" size={16} color="#fff" />
+        <span class="hidden sm:inline">Tiendas</span>
+      </button>
       <button
         class="flex items-center gap-1.5 bg-white/0 hover:bg-white/20 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors"
         onclick={alternarTema}
@@ -124,7 +132,7 @@
     </div>
   </header>
 
-  <main class="px-4 pt-5 pb-44 max-w-2xl mx-auto">
+  <main class="px-4 pt-5 pb-[calc(6rem+env(safe-area-inset-bottom))] max-w-2xl mx-auto">
     {#if activo}
       <div class="animate-fade-up">
         <activo.Componente />
@@ -136,21 +144,26 @@
 
   <!-- Navegacion inferior -->
   <nav
-    class="fixed left-2.5 right-2.5 bottom-2.5 z-50 bg-card rounded-[var(--radius-lg)] shadow-[0_-2px_16px_rgba(0,0,0,0.12)] flex p-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))] no-print"
+    class="fixed left-3 right-3 bottom-3 z-50 bg-card/95 backdrop-blur-lg rounded-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.15)] flex items-center justify-around p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] no-print border border-border/40"
   >
     {#each navMods as m}
       <button
-        class="flex-1 flex flex-col items-center justify-center gap-0.5 bg-transparent border-none cursor-pointer py-2 rounded-xl font-bold text-xs transition-all min-w-0 {esActivo(
+        class="relative flex flex-col items-center justify-center gap-0.5 bg-transparent border-none cursor-pointer py-1.5 px-2 rounded-xl font-bold text-[0.65rem] transition-all min-w-0 flex-1 {esActivo(
           m.id
         )
-          ? 'text-primary bg-primary/10'
-          : 'text-muted'}"
+          ? 'text-primary'
+          : 'text-muted hover:text-text'}"
         onclick={() => irA(m)}
         aria-label={m.nombre}
         aria-current={esActivo(m.id) ? 'page' : undefined}
       >
-        <Icono nombre={m.icono} size={22} />
-        <span class="block text-[0.68rem] leading-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-full"
+        {#if esActivo(m.id)}
+          <span class="absolute inset-x-2 bottom-0 h-0.5 bg-primary rounded-full"></span>
+        {/if}
+        <span class="relative flex items-center justify-center w-9 h-9 rounded-xl transition-colors {esActivo(m.id) ? 'bg-primary/10' : ''}">
+          <Icono nombre={m.icono} size={20} />
+        </span>
+        <span class="block leading-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-full mt-0.5"
           >{m.nombre}</span
         >
       </button>
@@ -159,12 +172,12 @@
 
   <!-- FAB "Mas" flotante -->
   <button
-    class="fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[60] w-12 h-12 rounded-full bg-primary text-white shadow-[0_4px_14px_rgba(33,150,243,0.45)] flex items-center justify-center border-none cursor-pointer active:scale-[0.92] transition-transform no-print"
+    class="fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[60] w-11 h-11 rounded-full bg-primary text-white shadow-[0_4px_14px_rgba(33,150,243,0.45)] flex items-center justify-center border-none cursor-pointer active:scale-[0.92] transition-transform no-print"
     onclick={toggleMas}
     aria-label="Menu de modulos"
     aria-expanded={ui.masAbierto}
   >
-    <Icono nombre={ui.masAbierto ? 'x' : 'grid'} size={22} color="#fff" />
+    <Icono nombre={ui.masAbierto ? 'x' : 'grid'} size={20} color="#fff" />
   </button>
 
   <!-- Sheet "Mas" -->

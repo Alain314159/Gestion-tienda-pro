@@ -55,7 +55,7 @@ export async function cargarModulos() {
     .filter(m => m.id)
     .sort((a, b) => (a.orden ?? 99) - (b.orden ?? 99));
 
-  navMods = modulos.slice(0, 4);
+  navMods = modulos.slice(1, 6);
 
   // Precargar lazy modules en idle time
   if ('requestIdleCallback' in window) {
